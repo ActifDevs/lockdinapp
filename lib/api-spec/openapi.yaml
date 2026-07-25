@@ -1,0 +1,862 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: A-Level Revision Platform API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: subjects
+    description: Subject operations
+  - name: syllabus
+    description: Syllabus topic operations
+  - name: tasks
+    description: Revision task operations
+  - name: pastPapers
+    description: Past paper operations
+  - name: examDates
+    description: Exam date operations
+  - name: dashboard
+    description: Dashboard summary operations
+  - name: progress
+    description: Progress and analytics operations
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /subjects:
+    get:
+      operationId: listSubjects
+      tags: [subjects]
+      summary: List all subjects for the current user
+      responses:
+        "200":
+          description: List of subjects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Subject"
+
+  /subjects/{subjectId}:
+    get:
+      operationId: getSubject
+      tags: [subjects]
+      summary: Get a single subject with detail
+      parameters:
+        - name: subjectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Subject detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subject"
+        "404":
+          description: Not found
+
+  /subjects/{subjectId}/syllabus:
+    get:
+      operationId: getSubjectSyllabus
+      tags: [subjects]
+      summary: Get syllabus topics grouped by unit for a subject
+      parameters:
+        - name: subjectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Syllabus units with topics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SyllabusUnit"
+
+  /subjects/{subjectId}/performance:
+    get:
+      operationId: getSubjectPerformance
+      tags: [subjects]
+      summary: Get past paper performance summary for a subject
+      parameters:
+        - name: subjectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Performance summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubjectPerformance"
+
+  /syllabus-topics/{topicId}:
+    patch:
+      operationId: updateSyllabusTopic
+      tags: [syllabus]
+      summary: Update a syllabus topic status or notes
+      parameters:
+        - name: topicId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyllabusTopicUpdate"
+      responses:
+        "200":
+          description: Updated topic
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyllabusTopic"
+
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List revision tasks
+      parameters:
+        - name: filter
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [today, upcoming, completed, all]
+        - name: subjectId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create a new revision task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{taskId}:
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      summary: Update a task (mark complete, change deadline, etc.)
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskUpdate"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+    delete:
+      operationId: deleteTask
+      tags: [tasks]
+      summary: Delete a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /past-papers:
+    get:
+      operationId: listPastPapers
+      tags: [pastPapers]
+      summary: List past paper attempts
+      parameters:
+        - name: subjectId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of past paper attempts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PastPaper"
+    post:
+      operationId: createPastPaper
+      tags: [pastPapers]
+      summary: Log a past paper attempt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PastPaperInput"
+      responses:
+        "201":
+          description: Created past paper entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PastPaper"
+
+  /past-papers/{pastPaperId}:
+    delete:
+      operationId: deletePastPaper
+      tags: [pastPapers]
+      summary: Delete a past paper entry
+      parameters:
+        - name: pastPaperId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /exam-dates:
+    get:
+      operationId: listExamDates
+      tags: [examDates]
+      summary: List exam dates
+      responses:
+        "200":
+          description: List of exam dates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExamDate"
+    post:
+      operationId: createExamDate
+      tags: [examDates]
+      summary: Add an exam date
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExamDateInput"
+      responses:
+        "201":
+          description: Created exam date
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExamDate"
+
+  /exam-dates/{examDateId}:
+    delete:
+      operationId: deleteExamDate
+      tags: [examDates]
+      summary: Delete an exam date
+      parameters:
+        - name: examDateId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard overview — today's tasks, streak, subject progress
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /progress/overview:
+    get:
+      operationId: getProgressOverview
+      tags: [progress]
+      summary: Get consolidated progress analytics across all subjects
+      responses:
+        "200":
+          description: Progress overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressOverview"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Subject:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        code:
+          type: string
+        color:
+          type: string
+        syllabusProgress:
+          type: number
+        topicsTotal:
+          type: integer
+        topicsCompleted:
+          type: integer
+        topicsInProgress:
+          type: integer
+        upcomingTasksCount:
+          type: integer
+        recentPaperScore:
+          type: ["number", "null"]
+        recentPaperLabel:
+          type: ["string", "null"]
+      required:
+        - id
+        - name
+        - code
+        - color
+        - syllabusProgress
+        - topicsTotal
+        - topicsCompleted
+        - topicsInProgress
+        - upcomingTasksCount
+        - recentPaperScore
+        - recentPaperLabel
+
+    SyllabusUnit:
+      type: object
+      properties:
+        id:
+          type: integer
+        subjectId:
+          type: integer
+        title:
+          type: string
+        orderIndex:
+          type: integer
+        topics:
+          type: array
+          items:
+            $ref: "#/components/schemas/SyllabusTopic"
+      required:
+        - id
+        - subjectId
+        - title
+        - orderIndex
+        - topics
+
+    SyllabusTopic:
+      type: object
+      properties:
+        id:
+          type: integer
+        unitId:
+          type: integer
+        subjectId:
+          type: integer
+        title:
+          type: string
+        status:
+          type: string
+          enum: [not_started, in_progress, completed]
+        notes:
+          type: ["string", "null"]
+        orderIndex:
+          type: integer
+      required:
+        - id
+        - unitId
+        - subjectId
+        - title
+        - status
+        - notes
+        - orderIndex
+
+    SyllabusTopicUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [not_started, in_progress, completed]
+        notes:
+          type: string
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        subjectColor:
+          type: string
+        topicId:
+          type: ["integer", "null"]
+        topicTitle:
+          type: ["string", "null"]
+        deadline:
+          type: ["string", "null"]
+        priority:
+          type: string
+          enum: [low, medium, high]
+        estimatedMinutes:
+          type: ["integer", "null"]
+        completed:
+          type: boolean
+        completedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - title
+        - subjectId
+        - subjectName
+        - subjectColor
+        - topicId
+        - topicTitle
+        - deadline
+        - priority
+        - estimatedMinutes
+        - completed
+        - completedAt
+        - createdAt
+
+    TaskInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        subjectId:
+          type: integer
+        topicId:
+          type: integer
+        deadline:
+          type: string
+        priority:
+          type: string
+          enum: [low, medium, high]
+        estimatedMinutes:
+          type: integer
+      required:
+        - title
+        - subjectId
+        - priority
+
+    TaskUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        completed:
+          type: boolean
+        deadline:
+          type: string
+        priority:
+          type: string
+          enum: [low, medium, high]
+        estimatedMinutes:
+          type: integer
+
+    PastPaper:
+      type: object
+      properties:
+        id:
+          type: integer
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        subjectColor:
+          type: string
+        paperCode:
+          type: string
+        session:
+          type: string
+        score:
+          type: number
+        totalMarks:
+          type: integer
+        percentage:
+          type: number
+        dateAttempted:
+          type: string
+        timeTakenMinutes:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - subjectId
+        - subjectName
+        - subjectColor
+        - paperCode
+        - session
+        - score
+        - totalMarks
+        - percentage
+        - dateAttempted
+        - timeTakenMinutes
+        - notes
+        - createdAt
+
+    PastPaperInput:
+      type: object
+      properties:
+        subjectId:
+          type: integer
+        paperCode:
+          type: string
+        session:
+          type: string
+        score:
+          type: number
+        totalMarks:
+          type: integer
+        dateAttempted:
+          type: string
+        timeTakenMinutes:
+          type: integer
+        notes:
+          type: string
+      required:
+        - subjectId
+        - paperCode
+        - session
+        - score
+        - totalMarks
+        - dateAttempted
+
+    ExamDate:
+      type: object
+      properties:
+        id:
+          type: integer
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        subjectColor:
+          type: string
+        paperCode:
+          type: string
+        date:
+          type: string
+        notes:
+          type: ["string", "null"]
+      required:
+        - id
+        - subjectId
+        - subjectName
+        - subjectColor
+        - paperCode
+        - date
+        - notes
+
+    ExamDateInput:
+      type: object
+      properties:
+        subjectId:
+          type: integer
+        paperCode:
+          type: string
+        date:
+          type: string
+        notes:
+          type: string
+      required:
+        - subjectId
+        - paperCode
+        - date
+
+    DashboardSummary:
+      type: object
+      properties:
+        studentName:
+          type: string
+        studyStreakDays:
+          type: integer
+        todayTasksTotal:
+          type: integer
+        todayTasksCompleted:
+          type: integer
+        todayTasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        upcomingDeadlines:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+        subjectProgressSummary:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubjectProgressItem"
+        recentPerformance:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentPerformanceItem"
+        upcomingExams:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExamDate"
+      required:
+        - studentName
+        - studyStreakDays
+        - todayTasksTotal
+        - todayTasksCompleted
+        - todayTasks
+        - upcomingDeadlines
+        - subjectProgressSummary
+        - recentPerformance
+        - upcomingExams
+
+    SubjectProgressItem:
+      type: object
+      properties:
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        subjectColor:
+          type: string
+        syllabusProgress:
+          type: number
+      required:
+        - subjectId
+        - subjectName
+        - subjectColor
+        - syllabusProgress
+
+    RecentPerformanceItem:
+      type: object
+      properties:
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        subjectColor:
+          type: string
+        paperCode:
+          type: string
+        previousPercentage:
+          type: ["number", "null"]
+        latestPercentage:
+          type: number
+        change:
+          type: ["number", "null"]
+      required:
+        - subjectId
+        - subjectName
+        - subjectColor
+        - paperCode
+        - previousPercentage
+        - latestPercentage
+        - change
+
+    SubjectPerformance:
+      type: object
+      properties:
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        latestScore:
+          type: ["number", "null"]
+        averageScore:
+          type: ["number", "null"]
+        bestScore:
+          type: ["number", "null"]
+        papersCompleted:
+          type: integer
+        trend:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaperTrendPoint"
+        componentBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComponentBreakdown"
+        insight:
+          type: ["string", "null"]
+      required:
+        - subjectId
+        - subjectName
+        - latestScore
+        - averageScore
+        - bestScore
+        - papersCompleted
+        - trend
+        - componentBreakdown
+        - insight
+
+    PaperTrendPoint:
+      type: object
+      properties:
+        label:
+          type: string
+        percentage:
+          type: number
+        session:
+          type: string
+      required:
+        - label
+        - percentage
+        - session
+
+    ComponentBreakdown:
+      type: object
+      properties:
+        component:
+          type: string
+        latestPercentage:
+          type: ["number", "null"]
+        attempts:
+          type: integer
+      required:
+        - component
+        - latestPercentage
+        - attempts
+
+    ProgressOverview:
+      type: object
+      properties:
+        syllabusCompletion:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubjectProgressItem"
+        weeklyTasksCompleted:
+          type: array
+          items:
+            $ref: "#/components/schemas/WeeklyActivity"
+        subjectAttentionNeeded:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttentionItem"
+        totalTasksCompleted:
+          type: integer
+        totalPapersLogged:
+          type: integer
+        overallSyllabusProgress:
+          type: number
+      required:
+        - syllabusCompletion
+        - weeklyTasksCompleted
+        - subjectAttentionNeeded
+        - totalTasksCompleted
+        - totalPapersLogged
+        - overallSyllabusProgress
+
+    WeeklyActivity:
+      type: object
+      properties:
+        date:
+          type: string
+        tasksCompleted:
+          type: integer
+      required:
+        - date
+        - tasksCompleted
+
+    AttentionItem:
+      type: object
+      properties:
+        subjectId:
+          type: integer
+        subjectName:
+          type: string
+        subjectColor:
+          type: string
+        reason:
+          type: string
+        syllabusProgress:
+          type: number
+        recentScoreTrend:
+          type: ["number", "null"]
+      required:
+        - subjectId
+        - subjectName
+        - subjectColor
+        - reason
+        - syllabusProgress
+        - recentScoreTrend

@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "A-Level Revision Platform"
+version = "1.0.0"
+id = "artifacts/revision-platform"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20997
+
+[services.development]
+run = "pnpm --filter @workspace/revision-platform run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/revision-platform", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/revision-platform/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20997"
+BASE_PATH = "/"
