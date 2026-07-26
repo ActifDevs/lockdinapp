@@ -2,67 +2,108 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+function validateEmail(value: string) {
+  if (!value.trim()) return "Email is required.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return "Enter a valid email address.";
+  return undefined;
+}
 
 export default function ForgotPassword() {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState<string | undefined>();
+  const [touched, setTouched] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const next = validateEmail(email);
+    setTouched(true);
+    setError(next);
+    if (next) return;
     setIsSubmitted(true);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
-      <Link href="/" className="absolute top-8 left-8 font-serif text-2xl font-bold tracking-tight">
+    <div className="grain relative flex min-h-[100dvh] items-center justify-center bg-muted/40 px-4">
+      <Link
+        href="/"
+        className="absolute left-4 top-6 font-serif text-2xl font-bold tracking-tight sm:left-8 sm:top-8"
+      >
         Scholr
       </Link>
-      
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-3 pt-8 text-center">
-          <CardTitle className="font-serif text-3xl">Reset password</CardTitle>
-          <CardDescription className="text-base">
-            {isSubmitted 
-              ? "Check your email for a reset link" 
-              : "Enter your email and we'll send you a reset link"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isSubmitted ? (
-            <div className="text-center space-y-6 py-4">
-              <div className="mx-auto w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                We've sent an email to your address with instructions to reset your password.
-              </p>
-              <Button variant="outline" className="w-full h-11" onClick={() => setIsSubmitted(false)}>
-                Try another email
-              </Button>
+
+      <div className="relative z-10 w-full max-w-sm">
+        <h1 className="font-serif text-3xl font-bold tracking-tight">Reset password</h1>
+        <p className="mt-2 text-muted-foreground">
+          {isSubmitted
+            ? "If an account exists for that email, a reset link is on its way."
+            : "Enter your email and we’ll send a reset link."}
+        </p>
+
+        {isSubmitted ? (
+          <div className="mt-8 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Check your inbox for instructions. The link expires after a short time.
+            </p>
+            <Button
+              variant="outline"
+              className="h-11 w-full cursor-pointer"
+              onClick={() => {
+                setIsSubmitted(false);
+                setEmail("");
+                setError(undefined);
+                setTouched(false);
+              }}
+            >
+              Try another email
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (touched) setError(validateEmail(e.target.value));
+                }}
+                onBlur={() => {
+                  setTouched(true);
+                  setError(validateEmail(email));
+                }}
+                placeholder="you@school.edu"
+                className={cn("h-11", error && touched && "border-destructive")}
+                aria-invalid={Boolean(error && touched)}
+                aria-describedby={error && touched ? "email-error" : undefined}
+              />
+              {error && touched && (
+                <p id="email-error" className="text-sm text-destructive" role="alert">
+                  {error}
+                </p>
+              )}
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="m@example.com" required className="h-11" />
-              </div>
-              <Button type="submit" className="w-full h-11 text-base mt-2">
-                Send reset link
-              </Button>
-            </form>
-          )}
-        </CardContent>
-        <CardFooter className="flex justify-center pb-8 pt-4">
-          <Link href="/login" className="flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to login
-          </Link>
-        </CardFooter>
-      </Card>
+            <Button type="submit" className="h-11 w-full cursor-pointer text-base active:scale-[0.98]">
+              Send reset link
+            </Button>
+          </form>
+        )}
+
+        <Link
+          href="/login"
+          className="mt-8 inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          Back to login
+        </Link>
+      </div>
     </div>
   );
 }

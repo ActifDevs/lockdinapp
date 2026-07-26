@@ -1,45 +1,97 @@
-import { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useState, useCallback } from "react";
+import { useLocation } from "wouter";
+
+export type AuthUser = {
+  name: string;
+  email: string;
+};
+
+const AUTH_KEY = "scholr_auth";
+const USER_KEY = "scholr_user";
+const ONBOARDED_KEY = "onboarded";
+
+function readUser(): AuthUser | null {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AuthUser;
+    if (!parsed?.name) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function firstNameFrom(name: string): string {
+  const part = name.trim().split(/\s+/)[0];
+  return part || name;
+}
 
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('scholr_auth') === 'true';
+    return localStorage.getItem(AUTH_KEY) === "true";
   });
 
   const [isOnboarded, setIsOnboarded] = useState<boolean>(() => {
-    return localStorage.getItem('onboarded') === 'true';
+    return localStorage.getItem(ONBOARDED_KEY) === "true";
   });
+
+  const [user, setUser] = useState<AuthUser | null>(() => readUser());
 
   const [, setLocation] = useLocation();
 
-  const login = () => {
-    localStorage.setItem('scholr_auth', 'true');
-    setIsAuthenticated(true);
-    
-    if (localStorage.getItem('onboarded') === 'true') {
-      setLocation('/dashboard');
-    } else {
-      setLocation('/onboarding');
-    }
-  };
+  const login = useCallback(
+    (nextUser?: Partial<AuthUser>) => {
+      const existing = readUser();
+      const merged: AuthUser = {
+        name: nextUser?.name?.trim() || existing?.name || "Student",
+        email: nextUser?.email?.trim() || existing?.email || "",
+      };
+      localStorage.setItem(AUTH_KEY, "true");
+      localStorage.setItem(USER_KEY, JSON.stringify(merged));
+      setUser(merged);
+      setIsAuthenticated(true);
 
-  const logout = () => {
-    localStorage.removeItem('scholr_auth');
+      if (localStorage.getItem(ONBOARDED_KEY) === "true") {
+        setLocation("/dashboard");
+      } else {
+        setLocation("/onboarding");
+      }
+    },
+    [setLocation],
+  );
+
+  const logout = useCallback(() => {
+    localStorage.removeItem(AUTH_KEY);
     setIsAuthenticated(false);
-    setLocation('/login');
-  };
+    setLocation("/login");
+  }, [setLocation]);
 
-  const completeOnboarding = () => {
-    localStorage.setItem('onboarded', 'true');
+  const completeOnboarding = useCallback(() => {
+    localStorage.setItem(ONBOARDED_KEY, "true");
     setIsOnboarded(true);
-    setLocation('/dashboard');
-  };
+    setLocation("/dashboard");
+  }, [setLocation]);
+
+  const updateUser = useCallback((next: Partial<AuthUser>) => {
+    setUser((prev) => {
+      const merged: AuthUser = {
+        name: next.name?.trim() || prev?.name || "Student",
+        email: next.email?.trim() || prev?.email || "",
+      };
+      localStorage.setItem(USER_KEY, JSON.stringify(merged));
+      return merged;
+    });
+  }, []);
 
   return {
     isAuthenticated,
     isOnboarded,
+    user,
+    firstName: user ? firstNameFrom(user.name) : null,
     login,
     logout,
-    completeOnboarding
+    completeOnboarding,
+    updateUser,
   };
 }

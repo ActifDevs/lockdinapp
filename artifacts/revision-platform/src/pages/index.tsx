@@ -1,31 +1,143 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle2, TrendingUp, Calendar as CalendarIcon, Target, CheckSquare } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
+
+const features = [
+  {
+    title: "Syllabus, topic by topic",
+    body: "Cambridge A-Level syllabuses broken into units you can mark as covered — so completion is a real percentage, not a guess.",
+  },
+  {
+    title: "Past papers with a trail",
+    body: "Log scores and papers in one place. Spot weak topics from the record instead of hunting through folders.",
+  },
+  {
+    title: "Today’s plan only",
+    body: "Pick the topics and time blocks for the day. Open Scholr and know what to revise next — nothing else.",
+  },
+];
+
+function ProductHeroVisual() {
+  return (
+    <div
+      className="absolute inset-0 bg-[hsl(220_18%_12%)]"
+      aria-hidden
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,hsl(220_15%_22%/0.9),transparent_55%),radial-gradient(ellipse_at_80%_70%,hsl(40_12%_18%/0.5),transparent_50%)]" />
+      <div className="absolute inset-x-0 bottom-0 top-[18%] mx-auto max-w-5xl px-4 sm:px-8">
+        <div className="h-full overflow-hidden rounded-t-xl border border-[hsl(40_20%_96%/0.12)] bg-[hsl(40_20%_98%/0.97)] shadow-2xl">
+          <div className="flex h-10 items-center gap-2 border-b border-[hsl(240_5%_90%)] bg-[hsl(40_20%_96%)] px-4">
+            <span className="font-serif text-sm font-bold tracking-tight text-[hsl(240_10%_15%)]">Scholr</span>
+            <div className="ml-6 hidden gap-1 sm:flex">
+              {["Dashboard", "Study plan", "Subjects", "Past papers"].map((label, i) => (
+                <span
+                  key={label}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium ${
+                    i === 0
+                      ? "bg-[hsl(40_10%_92%)] text-[hsl(240_10%_15%)]"
+                      : "text-[hsl(240_5%_45%)]"
+                  }`}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+            <div className="ml-auto h-6 w-6 rounded-md bg-[hsl(220_15%_30%/0.12)]" />
+          </div>
+          <div className="grid h-[calc(100%-2.5rem)] grid-cols-1 gap-4 p-4 sm:grid-cols-3 sm:p-6">
+            <div className="space-y-3 sm:col-span-2">
+              <div className="space-y-1">
+                <div className="h-3 w-40 rounded bg-[hsl(240_5%_90%)]" />
+                <div className="h-6 w-56 rounded bg-[hsl(240_10%_15%/0.12)]" />
+              </div>
+              <div className="rounded-lg border border-[hsl(240_5%_90%)] bg-white p-3">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="h-3 w-24 rounded bg-[hsl(240_5%_90%)]" />
+                  <div className="h-2 w-16 rounded bg-[hsl(240_5%_90%)]" />
+                </div>
+                <div className="mb-3 h-1 rounded-full bg-[hsl(240_5%_92%)]">
+                  <div className="h-full w-2/5 rounded-full bg-[hsl(220_15%_30%)]" />
+                </div>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex items-center gap-3 border-t border-[hsl(240_5%_92%)] py-2.5">
+                    <div className="h-4 w-4 rounded-full border-2 border-[hsl(220_15%_30%/0.35)]" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className={`h-2.5 rounded bg-[hsl(240_10%_15%/0.14)] ${i === 0 ? "w-3/4" : i === 1 ? "w-2/3" : "w-1/2"}`} />
+                      <div className="h-2 w-20 rounded bg-[hsl(220_15%_40%/0.15)]" />
+                    </div>
+                    <div className="h-2 w-8 rounded bg-[hsl(240_5%_90%)]" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="hidden space-y-3 sm:block">
+              <div className="rounded-lg border border-[hsl(240_5%_90%)] bg-white p-3">
+                <div className="mb-3 h-3 w-28 rounded bg-[hsl(240_5%_90%)]" />
+                {[72, 54, 41].map((pct, i) => (
+                  <div key={i} className="mb-3 space-y-1.5 last:mb-0">
+                    <div className="flex justify-between">
+                      <div className="h-2 w-16 rounded bg-[hsl(240_5%_88%)]" />
+                      <div className="h-2 w-6 rounded bg-[hsl(240_5%_88%)]" />
+                    </div>
+                    <div className="h-1 rounded-full bg-[hsl(240_5%_92%)]">
+                      <div className="h-full rounded-full bg-[hsl(220_15%_40%)]" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-lg border border-[hsl(220_15%_30%/0.12)] bg-[hsl(220_15%_30%/0.05)] p-3">
+                <div className="mb-2 h-3 w-24 rounded bg-[hsl(220_15%_30%/0.2)]" />
+                <div className="h-8 w-20 rounded bg-[hsl(220_15%_30%/0.18)]" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="absolute inset-0 bg-gradient-to-t from-[hsl(220_18%_10%/0.92)] via-[hsl(220_18%_10%/0.45)] to-[hsl(220_18%_10%/0.55)]" />
+    </div>
+  );
+}
 
 export default function LandingPage() {
   const { isAuthenticated } = useAuth();
-  
+  const reduceMotion = useReducedMotion();
+
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <span className="font-serif text-2xl font-bold tracking-tight">Scholr</span>
-          </div>
-          <div className="flex items-center gap-4">
+    <div className="flex min-h-[100dvh] flex-col bg-background">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-md focus:ring-2 focus:ring-ring"
+      >
+        Skip to main content
+      </a>
+
+      <header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:h-16 sm:px-6">
+          <Link href="/" className="font-serif text-xl font-bold tracking-tight sm:text-2xl">
+            Scholr
+          </Link>
+          <div className="flex items-center gap-3 sm:gap-4">
             {isAuthenticated ? (
-              <Link href="/dashboard" className="text-sm font-medium hover:underline underline-offset-4">
-                Dashboard
+              <Link
+                href="/dashboard"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Open workspace
               </Link>
             ) : (
               <>
-                <Link href="/login" className="text-sm font-medium hover:underline underline-offset-4 hidden sm:inline-block">
+                <Link
+                  href="/login"
+                  className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-block"
+                >
                   Log in
                 </Link>
                 <Link href="/signup">
-                  <Button size="sm">Get Started</Button>
+                  <Button size="sm" className="cursor-pointer active:scale-[0.98]">
+                    Start free
+                  </Button>
                 </Link>
               </>
             )}
@@ -33,159 +145,128 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main className="flex-1">
-        {/* Hero Section */}
-        <section className="px-4 pt-24 pb-16 md:pt-32 md:pb-24 lg:pt-40 lg:pb-32 overflow-hidden">
-          <div className="container mx-auto max-w-6xl text-center">
-            <h1 className="font-serif text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl mb-6 max-w-4xl mx-auto">
-              The calm, focused way to master your A-Levels.
-            </h1>
-            <p className="mx-auto max-w-2xl text-lg sm:text-xl text-muted-foreground mb-10">
-              No endless spreadsheets. No confusing dashboards. Just a clear view of your syllabus, your past papers, and exactly what you need to study today.
-            </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4 items-center mb-16">
-              <Link href="/signup">
-                <Button size="lg" className="w-full sm:w-auto text-base px-8 h-12">
-                  Start revising for free
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-              <p className="text-sm text-muted-foreground">No credit card required.</p>
-            </div>
-            
-            {/* Hero Mockup */}
-            <div className="relative mx-auto w-full max-w-5xl rounded-xl border bg-background shadow-2xl overflow-hidden aspect-video max-h-[600px]">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-background z-0" />
-              <img 
-                src="https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=2000" 
-                alt="Student studying with a clear desk" 
-                className="w-full h-full object-cover opacity-60 dark:opacity-40 mix-blend-overlay"
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="bg-card border rounded-lg shadow-lg p-6 w-[80%] max-w-3xl transform -rotate-1 hover:rotate-0 transition-transform duration-500">
-                  <div className="flex items-center justify-between border-b pb-4 mb-4">
-                    <div>
-                      <h3 className="font-serif text-xl font-semibold">Good morning, Alex</h3>
-                      <p className="text-sm text-muted-foreground">You have 3 tasks for today.</p>
-                    </div>
-                    <div className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
-                      12 Day Streak
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3 p-3 rounded-md border bg-background">
-                        <div className="w-4 h-4 rounded-full border-2 border-primary" />
-                        <div>
-                          <p className="text-sm font-medium">Further Integration</p>
-                          <p className="text-xs text-muted-foreground">Maths • 45m</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-3 rounded-md border bg-background">
-                        <div className="w-4 h-4 rounded-full border-2 border-primary" />
-                        <div>
-                          <p className="text-sm font-medium">Quantum Physics</p>
-                          <p className="text-xs text-muted-foreground">Physics • 60m</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-secondary/50 rounded-lg p-4 border">
-                      <h4 className="text-sm font-medium mb-3">Maths Progress</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs">
-                          <span>Syllabus covered</span>
-                          <span>68%</span>
-                        </div>
-                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                          <div className="h-full bg-primary w-[68%]" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+      <main id="main-content" className="flex-1">
+        <section className="grain relative min-h-[calc(100dvh-3.5rem)] overflow-hidden sm:min-h-[calc(100dvh-4rem)]">
+          <ProductHeroVisual />
+
+          <div className="relative z-10 mx-auto flex min-h-[100dvh] max-w-6xl flex-col justify-end px-4 pb-16 pt-28 sm:px-6 sm:pb-20 md:pb-24">
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : { duration: 0.55, ease: [0.22, 1, 0.36, 1] }
+              }
+              className="max-w-2xl"
+            >
+              <p className="mb-4 font-serif text-5xl font-bold tracking-tight text-primary-foreground sm:text-6xl md:text-7xl">
+                Scholr
+              </p>
+              <h1 className="mb-5 text-balance font-serif text-3xl font-semibold leading-[1.15] tracking-tight text-primary-foreground sm:text-4xl md:text-[2.75rem]">
+                Revision for Cambridge A-Levels — syllabus, papers, and today’s plan.
+              </h1>
+              <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-primary-foreground/80 sm:text-lg">
+                Built around how A-Levels are actually structured. See what you’ve covered, what you’ve sat, and what to do next.
+              </p>
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                <Link href={isAuthenticated ? "/dashboard" : "/signup"}>
+                  <Button
+                    size="lg"
+                    className="h-12 cursor-pointer bg-background px-7 text-base text-foreground hover:bg-background/90 active:scale-[0.98]"
+                  >
+                    {isAuthenticated ? "Open workspace" : "Create your workspace"}
+                    <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
+                  </Button>
+                </Link>
+                {!isAuthenticated && (
+                  <Link
+                    href="/login"
+                    className="text-sm font-medium text-primary-foreground/75 underline-offset-4 transition-colors hover:text-primary-foreground hover:underline"
+                  >
+                    Already revising here? Log in
+                  </Link>
+                )}
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
-        {/* Features Grid */}
-        <section className="py-24 bg-muted/50 border-y">
-          <div className="container mx-auto max-w-6xl px-4">
-            <div className="text-center mb-16">
-              <h2 className="font-serif text-3xl font-bold tracking-tight mb-4">Everything you need, nothing you don't.</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Scholr is designed specifically for the unique structure of Cambridge A-Levels. 
-                Track your syllabus, log past papers, and stay focused.
+        <section className="border-b bg-background py-20 md:py-28">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="mb-14 max-w-xl md:mb-20">
+              <h2 className="mb-3 text-balance font-serif text-3xl font-bold tracking-tight md:text-4xl">
+                Built for the A-Level calendar, not generic to-do lists.
+              </h2>
+              <p className="text-pretty text-muted-foreground md:text-lg">
+                Syllabus units, past-paper logs, and a daily plan that matches how Cambridge courses actually run.
               </p>
             </div>
-            
-            <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-              <div className="bg-card border rounded-xl p-8 shadow-sm">
-                <Target className="h-10 w-10 text-primary mb-5" />
-                <h3 className="text-xl font-bold mb-3">Track the Syllabus</h3>
-                <p className="text-muted-foreground">
-                  The entire Cambridge syllabus for your subjects, broken down topic by topic. 
-                  Mark what you've studied and see your true completion percentage.
-                </p>
-              </div>
-              <div className="bg-card border rounded-xl p-8 shadow-sm">
-                <TrendingUp className="h-10 w-10 text-primary mb-5" />
-                <h3 className="text-xl font-bold mb-3">Log Past Papers</h3>
-                <p className="text-muted-foreground">
-                  Stop losing track of which papers you've done. Log your scores, track your 
-                  improvement over time, and identify your weakest topics instantly.
-                </p>
-              </div>
-              <div className="bg-card border rounded-xl p-8 shadow-sm">
-                <CheckSquare className="h-10 w-10 text-primary mb-5" />
-                <h3 className="text-xl font-bold mb-3">Daily Study Plan</h3>
-                <p className="text-muted-foreground">
-                  Plan your revision sessions with specific topics and estimated times. 
-                  Wake up every day knowing exactly what you need to cover.
-                </p>
-              </div>
-              <div className="bg-card border rounded-xl p-8 shadow-sm">
-                <CalendarIcon className="h-10 w-10 text-primary mb-5" />
-                <h3 className="text-xl font-bold mb-3">Exam Readiness</h3>
-                <p className="text-muted-foreground">
-                  Enter your exam dates and let Scholr help you pace your revision. 
-                  Visualise your progress against the calendar so you're never caught off guard.
-                </p>
-              </div>
+
+            <div className="space-y-0">
+              {features.map((feature, index) => (
+                <motion.div
+                  key={feature.title}
+                  initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={
+                    reduceMotion
+                      ? { duration: 0 }
+                      : { duration: 0.45, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }
+                  }
+                  className={`grid gap-4 border-t border-border py-10 md:grid-cols-12 md:gap-8 md:py-12 ${
+                    index % 2 === 1 ? "md:[&>*:first-child]:col-start-5" : ""
+                  }`}
+                >
+                  <div className={`md:col-span-4 ${index % 2 === 1 ? "md:col-start-5" : ""}`}>
+                    <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                      {String(index + 1).padStart(2, "0")}
+                    </p>
+                    <h3 className="font-serif text-2xl font-semibold tracking-tight">{feature.title}</h3>
+                  </div>
+                  <p
+                    className={`max-w-md text-pretty leading-relaxed text-muted-foreground md:col-span-6 ${
+                      index % 2 === 1 ? "md:col-start-9" : "md:col-start-6"
+                    }`}
+                  >
+                    {feature.body}
+                  </p>
+                </motion.div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="py-32">
-          <div className="container mx-auto max-w-4xl text-center px-4">
-            <h2 className="font-serif text-3xl md:text-5xl font-bold tracking-tight mb-6">
-              Ready to take control of your revision?
-            </h2>
-            <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-              Join thousands of students using Scholr to study smarter, reduce stress, and achieve their target grades.
-            </p>
-            <Link href="/signup">
-              <Button size="lg" className="h-14 px-10 text-lg">
-                Create your free account
-              </Button>
-            </Link>
+        <section className="grain relative overflow-hidden bg-primary py-24 text-primary-foreground md:py-28">
+          <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="max-w-xl">
+              <h2 className="mb-4 text-balance font-serif text-3xl font-bold tracking-tight md:text-4xl">
+                Start with your subjects. Plan today’s revision from there.
+              </h2>
+              <p className="mb-8 text-pretty text-primary-foreground/75 md:text-lg">
+                Free to set up. Add your papers and syllabus when you’re ready — no trial countdown.
+              </p>
+              <Link href="/signup">
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  className="h-12 cursor-pointer bg-background px-7 text-base text-foreground hover:bg-background/90 active:scale-[0.98]"
+                >
+                  Create your workspace
+                </Button>
+              </Link>
+            </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t py-12 bg-muted/30">
-        <div className="container mx-auto max-w-6xl px-4 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="font-serif text-xl font-bold">Scholr</span>
-          </div>
+      <footer className="border-t bg-muted/40 py-10">
+        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-4 sm:flex-row sm:items-center sm:px-6">
+          <span className="font-serif text-xl font-bold tracking-tight">Scholr</span>
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Scholr Revision Platform. All rights reserved.
+            © {new Date().getFullYear()} Scholr. Cambridge A-Level revision workspace.
           </p>
-          <div className="flex gap-4">
-            <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground">Terms</Link>
-            <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">Privacy</Link>
-          </div>
         </div>
       </footer>
     </div>

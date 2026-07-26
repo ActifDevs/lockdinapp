@@ -2,86 +2,163 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
+
+type FieldErrors = {
+  email?: string;
+  password?: string;
+};
+
+function validateEmail(value: string) {
+  if (!value.trim()) return "Email is required.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return "Enter a valid email address.";
+  return undefined;
+}
+
+function validatePassword(value: string) {
+  if (!value) return "Password is required.";
+  if (value.length < 8) return "Password must be at least 8 characters.";
+  return undefined;
+}
 
 export default function Login() {
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
+
+  const handleBlur = (field: keyof FieldErrors) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    setErrors((prev) => ({
+      ...prev,
+      [field]: field === "email" ? validateEmail(email) : validatePassword(password),
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const next: FieldErrors = {
+      email: validateEmail(email),
+      password: validatePassword(password),
+    };
+    setTouched({ email: true, password: true });
+    setErrors(next);
+    if (next.email || next.password) return;
+
     setIsLoading(true);
-    // Simulate network request
     setTimeout(() => {
-      login();
-    }, 800);
+      login({ email: email.trim() });
+    }, 600);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
-      <Link href="/" className="absolute top-8 left-8 font-serif text-2xl font-bold tracking-tight">
-        Scholr
-      </Link>
-      
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-3 text-center pt-8">
-          <CardTitle className="font-serif text-3xl">Welcome back</CardTitle>
-          <CardDescription className="text-base">
-            Log in to continue your revision
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <Button variant="outline" className="w-full h-12 text-base font-normal" onClick={handleSubmit}>
-              <svg className="mr-3 h-5 w-5" viewBox="0 0 24 24">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-              </svg>
-              Continue with Google
-            </Button>
-            
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+    <div className="grid min-h-[100dvh] lg:grid-cols-2">
+      <aside className="grain relative hidden overflow-hidden bg-primary lg:block">
+        <div className="absolute inset-0 bg-[hsl(220_18%_14%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_40%_30%,hsl(220_15%_28%/0.8),transparent_60%)]" />
+        <div className="relative z-10 flex h-full flex-col justify-between p-10 text-primary-foreground">
+          <Link href="/" className="font-serif text-3xl font-bold tracking-tight">
+            Scholr
+          </Link>
+          <div className="max-w-sm">
+            <p className="font-serif text-3xl font-semibold leading-snug tracking-tight">
+              Pick up where you left off.
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-primary-foreground/75">
+              Your syllabus coverage, paper logs, and today’s plan stay in one workspace.
+            </p>
+          </div>
+        </div>
+      </aside>
+
+      <div className="relative flex flex-col justify-center bg-background px-4 py-12 sm:px-8">
+        <Link
+          href="/"
+          className="absolute left-4 top-6 font-serif text-2xl font-bold tracking-tight lg:hidden"
+        >
+          Scholr
+        </Link>
+
+        <div className="mx-auto w-full max-w-sm">
+          <h1 className="font-serif text-3xl font-bold tracking-tight">Welcome back</h1>
+          <p className="mt-2 text-muted-foreground">Log in to continue your revision.</p>
+
+          <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (touched.email) {
+                    setErrors((prev) => ({ ...prev, email: validateEmail(e.target.value) }));
+                  }
+                }}
+                onBlur={() => handleBlur("email")}
+                placeholder="you@school.edu"
+                className={cn("h-11", errors.email && touched.email && "border-destructive")}
+                aria-invalid={Boolean(errors.email && touched.email)}
+                aria-describedby={errors.email && touched.email ? "email-error" : undefined}
+              />
+              {errors.email && touched.email && (
+                <p id="email-error" className="text-sm text-destructive" role="alert">
+                  {errors.email}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                >
+                  Forgot password?
+                </Link>
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
-              </div>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (touched.password) {
+                    setErrors((prev) => ({ ...prev, password: validatePassword(e.target.value) }));
+                  }
+                }}
+                onBlur={() => handleBlur("password")}
+                className={cn("h-11", errors.password && touched.password && "border-destructive")}
+                aria-invalid={Boolean(errors.password && touched.password)}
+                aria-describedby={errors.password && touched.password ? "password-error" : undefined}
+              />
+              {errors.password && touched.password && (
+                <p id="password-error" className="text-sm text-destructive" role="alert">
+                  {errors.password}
+                </p>
+              )}
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="m@example.com" required className="h-11" />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <Link href="/forgot-password" className="text-xs text-primary hover:underline">
-                    Forgot password?
-                  </Link>
-                </div>
-                <Input id="password" type="password" required className="h-11" />
-              </div>
-              <Button type="submit" className="w-full h-11 text-base mt-2" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign in"}
-              </Button>
-            </form>
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col items-center justify-center pb-8 border-t bg-muted/10 p-6 mt-4">
-          <p className="text-sm text-muted-foreground text-center">
-            Don't have an account?{" "}
-            <Link href="/signup" className="text-primary hover:underline font-medium">
+            <Button type="submit" className="h-11 w-full cursor-pointer text-base active:scale-[0.98]" disabled={isLoading}>
+              {isLoading ? "Signing in…" : "Sign in"}
+            </Button>
+          </form>
+
+          <p className="mt-8 text-sm text-muted-foreground">
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" className="font-medium text-foreground underline-offset-4 hover:underline">
               Sign up
             </Link>
           </p>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

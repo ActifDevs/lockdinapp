@@ -119,14 +119,18 @@ export default function StudyPlan() {
 
     return (
       <div key={task.id} className={cn("p-4 border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors flex items-start gap-4 group", task.completed && "opacity-60")}>
-        <button 
+        <button
+          type="button"
           onClick={() => toggleTaskComplete(task)}
-          className="mt-0.5 text-muted-foreground hover:text-primary transition-colors focus:outline-none"
+          disabled={updateTask.isPending}
+          className="flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          aria-label={task.completed ? `Mark "${task.title}" as incomplete` : `Mark "${task.title}" as complete`}
+          aria-pressed={task.completed}
         >
           {task.completed ? (
-            <CheckCircle2 className="h-6 w-6 text-primary" />
+            <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden />
           ) : (
-            <Circle className="h-6 w-6" />
+            <Circle className="h-5 w-5" aria-hidden />
           )}
         </button>
         <div className="flex-1 min-w-0">

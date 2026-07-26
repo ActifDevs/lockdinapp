@@ -1,17 +1,48 @@
-import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useGetDashboardSummary, getGetDashboardSummaryQueryKey, useUpdateTask, Task } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Circle, Clock, Flame, ArrowUpRight, ArrowDownRight, FileText, Calendar, TrendingUp, Plus } from "lucide-react";
-import { format, isToday, isTomorrow } from "date-fns";
+import {
+  CheckCircle2,
+  Circle,
+  Clock,
+  ArrowUpRight,
+  ArrowDownRight,
+  FileText,
+  Calendar,
+  TrendingUp,
+  Plus,
+  Flame,
+} from "lucide-react";
+import { format, isTomorrow } from "date-fns";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Dashboard() {
+  const { firstName } = useAuth();
+  const queryClient = useQueryClient();
   const { data: summary, isLoading, isError } = useGetDashboardSummary({
     query: { queryKey: getGetDashboardSummaryQueryKey() }
   });
+
+  const updateTask = useUpdateTask({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      },
+    },
+  });
+
+  const toggleTaskComplete = (task: Task) => {
+    updateTask.mutate({
+      taskId: task.id,
+      data: { completed: !task.completed },
+    });
+  };
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -35,62 +66,59 @@ export default function Dashboard() {
   };
 
   const tasksRemaining = summary.todayTasksTotal - summary.todayTasksCompleted;
+  const displayName = firstName || summary.studentName;
 
   return (
     <div className="space-y-8 pb-8 animate-in fade-in duration-500">
-      {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-            {getGreeting()}, {summary.studentName}.
+            {getGreeting()}, {displayName}.
           </h1>
           <p className="text-muted-foreground mt-2 text-lg">
             {tasksRemaining === 0 
-              ? "You've completed all your tasks for today. Great job."
+              ? "You've completed all your tasks for today."
               : `You have ${tasksRemaining} task${tasksRemaining === 1 ? '' : 's'} remaining today.`}
           </p>
         </div>
         
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-500 px-4 py-2 rounded-full font-medium">
-            <Flame className="h-5 w-5" />
-            <span>{summary.studyStreakDays} Day Streak</span>
+          <div className="flex items-center gap-2 rounded-md border border-border bg-secondary/60 px-3 py-2 text-sm font-medium text-foreground">
+            <Flame className="h-4 w-4 text-primary" aria-hidden />
+            <span className="tabular">{summary.studyStreakDays}-day streak</span>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Main Column (Tasks & Actions) */}
         <div className="md:col-span-2 space-y-6">
-          {/* Quick Actions */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Button variant="outline" className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-primary/5 hover:border-primary/30" asChild>
+            <Button variant="outline" className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-primary/5 hover:border-primary/30 cursor-pointer" asChild>
               <Link href="/study-plan">
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-4" aria-hidden />
                 <span className="text-xs">Add Task</span>
               </Link>
             </Button>
-            <Button variant="outline" className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-primary/5 hover:border-primary/30" asChild>
+            <Button variant="outline" className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-primary/5 hover:border-primary/30 cursor-pointer" asChild>
               <Link href="/past-papers">
-                <FileText className="h-4 w-4" />
+                <FileText className="h-4 w-4" aria-hidden />
                 <span className="text-xs">Log Paper</span>
               </Link>
             </Button>
-            <Button variant="outline" className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-primary/5 hover:border-primary/30" asChild>
+            <Button variant="outline" className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-primary/5 hover:border-primary/30 cursor-pointer" asChild>
               <Link href="/subjects">
-                <TrendingUp className="h-4 w-4" />
+                <TrendingUp className="h-4 w-4" aria-hidden />
                 <span className="text-xs">View Syllabus</span>
               </Link>
             </Button>
-            <Button variant="outline" className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-primary/5 hover:border-primary/30" asChild>
+            <Button variant="outline" className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-primary/5 hover:border-primary/30 cursor-pointer" asChild>
               <Link href="/calendar">
-                <Calendar className="h-4 w-4" />
+                <Calendar className="h-4 w-4" aria-hidden />
                 <span className="text-xs">Calendar</span>
               </Link>
             </Button>
           </div>
 
-          {/* Today's Tasks */}
           <Card>
             <CardHeader className="pb-3 border-b border-border/50">
               <div className="flex items-center justify-between">
@@ -115,22 +143,29 @@ export default function Dashboard() {
               ) : (
                 <div className="divide-y">
                   {summary.todayTasks.map(task => (
-                    <div key={task.id} className="p-4 flex items-start gap-4 hover:bg-muted/30 transition-colors group">
-                      <button className="mt-0.5 text-muted-foreground hover:text-primary transition-colors focus:outline-none">
+                    <div key={task.id} className="p-4 flex items-start gap-3 hover:bg-muted/30 transition-colors group">
+                      <button
+                        type="button"
+                        onClick={() => toggleTaskComplete(task)}
+                        disabled={updateTask.isPending}
+                        className="flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                        aria-label={task.completed ? `Mark "${task.title}" as incomplete` : `Mark "${task.title}" as complete`}
+                        aria-pressed={task.completed}
+                      >
                         {task.completed ? (
-                          <CheckCircle2 className="h-5 w-5 text-primary" />
+                          <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden />
                         ) : (
-                          <Circle className="h-5 w-5" />
+                          <Circle className="h-5 w-5" aria-hidden />
                         )}
                       </button>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 pt-2.5">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <p className={cn("text-sm font-medium leading-none truncate", task.completed && "text-muted-foreground line-through")}>
                             {task.title}
                           </p>
                           {task.estimatedMinutes && (
                             <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
-                              <Clock className="h-3 w-3" /> {task.estimatedMinutes}m
+                              <Clock className="h-3 w-3" aria-hidden /> {task.estimatedMinutes}m
                             </span>
                           )}
                         </div>
@@ -150,12 +185,11 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Upcoming Deadlines */}
           {summary.upcomingDeadlines.length > 0 && (
             <Card>
               <CardHeader className="pb-3 border-b border-border/50">
                 <CardTitle className="font-serif text-xl flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-muted-foreground" /> 
+                  <Clock className="h-5 w-5 text-muted-foreground" aria-hidden /> 
                   Approaching Deadlines
                 </CardTitle>
               </CardHeader>
@@ -167,7 +201,7 @@ export default function Dashboard() {
                     return (
                       <div key={task.id} className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
                         <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: task.subjectColor }} />
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: task.subjectColor }} aria-hidden />
                           <div>
                             <p className="text-sm font-medium">{task.title}</p>
                             <p className="text-xs text-muted-foreground">{task.subjectName}</p>
@@ -185,15 +219,13 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Sidebar Column */}
         <div className="space-y-6">
-          {/* Syllabus Progress */}
           <Card>
             <CardHeader className="pb-4">
               <CardTitle className="font-serif text-xl flex items-center justify-between">
                 Syllabus Progress
                 <Link href="/progress" className="text-sm font-sans font-normal text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
-                  View all <ArrowUpRight className="h-3 w-3" />
+                  View all <ArrowUpRight className="h-3 w-3" aria-hidden />
                 </Link>
               </CardTitle>
             </CardHeader>
@@ -202,7 +234,7 @@ export default function Dashboard() {
                 <div key={subject.subjectId} className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium">{subject.subjectName}</span>
-                    <span className="text-muted-foreground">{subject.syllabusProgress}%</span>
+                    <span className="text-muted-foreground tabular">{subject.syllabusProgress}%</span>
                   </div>
                   <Progress 
                     value={subject.syllabusProgress} 
@@ -215,7 +247,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Recent Performance */}
           <Card>
             <CardHeader className="pb-4">
               <CardTitle className="font-serif text-xl">Recent Papers</CardTitle>
@@ -234,20 +265,20 @@ export default function Dashboard() {
                     <div key={i} className="flex items-center justify-between border-b border-border/50 pb-4 last:border-0 last:pb-0">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: perf.subjectColor }} />
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: perf.subjectColor }} aria-hidden />
                           <span className="text-sm font-medium">{perf.subjectName}</span>
                         </div>
                         <span className="text-xs text-muted-foreground">{perf.paperCode}</span>
                       </div>
                       
                       <div className="text-right">
-                        <div className="text-base font-semibold">{perf.latestPercentage}%</div>
+                        <div className="text-base font-semibold tabular">{perf.latestPercentage}%</div>
                         {perf.change !== null && perf.change !== 0 && (
                           <div className={cn(
                             "text-xs flex items-center justify-end gap-0.5",
                             perf.change > 0 ? "text-green-600 dark:text-green-500" : "text-destructive"
                           )}>
-                            {perf.change > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                            {perf.change > 0 ? <ArrowUpRight className="h-3 w-3" aria-hidden /> : <ArrowDownRight className="h-3 w-3" aria-hidden />}
                             {Math.abs(perf.change)}%
                           </div>
                         )}
@@ -259,11 +290,10 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Upcoming Exams */}
           <Card className="bg-primary/5 border-primary/10">
             <CardHeader className="pb-3">
               <CardTitle className="font-serif text-lg flex items-center gap-2">
-                <Calendar className="h-4 w-4" /> Upcoming Exams
+                <Calendar className="h-4 w-4" aria-hidden /> Upcoming Exams
               </CardTitle>
             </CardHeader>
             <CardContent>

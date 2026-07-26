@@ -1,7 +1,7 @@
 import { useGetProgressOverview, getGetProgressOverviewQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Trophy, Target, AlertCircle, BarChart2, BookOpen } from "lucide-react";
+import { AlertCircle, BarChart2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,11 @@ export default function ProgressPage() {
       <div className="space-y-8 animate-pulse">
         <div className="h-10 w-48 bg-muted rounded" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="h-32 bg-muted rounded-xl" />
-          <div className="h-32 bg-muted rounded-xl" />
-          <div className="h-32 bg-muted rounded-xl" />
+          <div className="h-40 bg-muted rounded-xl md:col-span-2" />
+          <div className="space-y-6">
+            <div className="h-[4.5rem] bg-muted rounded-xl" />
+            <div className="h-[4.5rem] bg-muted rounded-xl" />
+          </div>
         </div>
         <div className="h-96 bg-muted rounded-xl" />
       </div>
@@ -34,56 +36,37 @@ export default function ProgressPage() {
         <p className="text-muted-foreground mt-2">Bird's-eye view of your revision status and areas needing attention.</p>
       </div>
 
-      {/* High-level metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-primary text-primary-foreground shadow-md border-transparent">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start">
-              <div className="space-y-2">
-                <p className="text-primary-foreground/80 font-medium text-sm">Overall Syllabus</p>
-                <p className="text-4xl font-bold tracking-tight">{progress.overallSyllabusProgress}%</p>
-              </div>
-              <div className="p-3 bg-white/20 rounded-full">
-                <Target className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <Progress 
-              value={progress.overallSyllabusProgress} 
-              className="h-1.5 mt-6 bg-primary-foreground/20" 
-              indicatorClassName="bg-white"
-            />
-          </CardContent>
-        </Card>
+      {/* High-level metrics — asymmetric, not three equal cards */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
+        <div className="rounded-xl bg-primary p-6 text-primary-foreground shadow-md md:col-span-7 md:p-8">
+          <p className="text-sm font-medium text-primary-foreground/80">Overall syllabus</p>
+          <p className="mt-2 font-serif text-5xl font-bold tracking-tight tabular md:text-6xl">
+            {progress.overallSyllabusProgress}%
+          </p>
+          <Progress
+            value={progress.overallSyllabusProgress}
+            className="mt-8 h-1.5 bg-primary-foreground/20"
+            indicatorClassName="bg-white"
+          />
+          <p className="mt-3 text-sm text-primary-foreground/70">Coverage across all active subjects</p>
+        </div>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start">
-              <div className="space-y-2">
-                <p className="text-muted-foreground font-medium text-sm">Tasks Completed</p>
-                <p className="text-4xl font-bold tracking-tight">{progress.totalTasksCompleted}</p>
-              </div>
-              <div className="p-3 bg-primary/10 rounded-full">
-                <Trophy className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-6">Across all subjects</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start">
-              <div className="space-y-2">
-                <p className="text-muted-foreground font-medium text-sm">Papers Logged</p>
-                <p className="text-4xl font-bold tracking-tight">{progress.totalPapersLogged}</p>
-              </div>
-              <div className="p-3 bg-primary/10 rounded-full">
-                <BookOpen className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-6">Track record is growing</p>
-          </CardContent>
-        </Card>
+        <div className="grid gap-6 sm:grid-cols-2 md:col-span-5 md:grid-cols-1">
+          <div className="rounded-xl border bg-card p-6">
+            <p className="text-sm font-medium text-muted-foreground">Tasks completed</p>
+            <p className="mt-2 font-serif text-4xl font-bold tracking-tight tabular">
+              {progress.totalTasksCompleted}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">Across all subjects</p>
+          </div>
+          <div className="rounded-xl border bg-card p-6">
+            <p className="text-sm font-medium text-muted-foreground">Papers logged</p>
+            <p className="mt-2 font-serif text-4xl font-bold tracking-tight tabular">
+              {progress.totalPapersLogged}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">Past-paper trail</p>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -116,31 +99,31 @@ export default function ProgressPage() {
         </Card>
 
         {/* Needs Attention */}
-        <Card className="border-orange-200 dark:border-orange-900/50 bg-orange-50/30 dark:bg-orange-950/10">
+        <Card className="border-border bg-secondary/40">
           <CardHeader>
-            <CardTitle className="font-serif text-xl flex items-center gap-2 text-orange-800 dark:text-orange-500">
-              <AlertCircle className="h-5 w-5" />
-              Needs Attention
+            <CardTitle className="font-serif text-xl flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-muted-foreground" />
+              Needs attention
             </CardTitle>
             <CardDescription>Subjects falling behind in syllabus coverage or scores</CardDescription>
           </CardHeader>
           <CardContent>
             {progress.subjectAttentionNeeded.length === 0 ? (
               <div className="text-center py-6 text-muted-foreground">
-                <p>All subjects are on track! Keep up the good work.</p>
+                <p>All subjects are on track.</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {progress.subjectAttentionNeeded.map(item => (
-                  <div key={item.subjectId} className="bg-card border rounded-lg p-4 shadow-sm">
+                  <div key={item.subjectId} className="bg-card border rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.subjectColor }} />
+                      <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: item.subjectColor }} />
                       <h4 className="font-semibold text-sm">{item.subjectName}</h4>
                     </div>
                     <p className="text-sm text-muted-foreground mb-3">{item.reason}</p>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="font-medium">{item.syllabusProgress}% syllabus</span>
-                      <Button variant="link" size="sm" className="h-auto p-0 text-orange-600 dark:text-orange-500" asChild>
+                      <span className="font-medium tabular">{item.syllabusProgress}% syllabus</span>
+                      <Button variant="link" size="sm" className="h-auto p-0" asChild>
                         <Link href={`/subjects/${item.subjectId}`}>Focus on this</Link>
                       </Button>
                     </div>
@@ -165,7 +148,7 @@ export default function ProgressPage() {
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: subject.subjectColor }} />
                     <span className="font-medium">{subject.subjectName}</span>
                   </div>
-                  <span className="font-semibold">{subject.syllabusProgress}%</span>
+                  <span className="font-semibold tabular">{subject.syllabusProgress}%</span>
                 </div>
                 <Progress 
                   value={subject.syllabusProgress} 

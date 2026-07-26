@@ -8,10 +8,22 @@ import { useTheme } from "@/components/theme-provider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Bell, Palette, BookOpen, Calendar as CalendarIcon, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
 
 export default function Settings() {
   const { theme, setTheme } = useTheme();
+  const { user, updateUser } = useAuth();
   const { data: subjects } = useListSubjects({ query: { queryKey: getListSubjectsQueryKey() } });
+  const [name, setName] = useState(user?.name || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [saved, setSaved] = useState(false);
+
+  const saveProfile = () => {
+    updateUser({ name: name.trim() || user?.name, email: email.trim() });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
 
   return (
     <div className="space-y-8 pb-8 animate-in fade-in duration-500 max-w-4xl mx-auto">
@@ -21,7 +33,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="account" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 lg:w-auto">
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
@@ -31,19 +43,35 @@ export default function Settings() {
         <TabsContent value="account" className="space-y-6 mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="font-serif text-xl flex items-center gap-2"><User className="h-5 w-5" /> Profile Settings</CardTitle>
+              <CardTitle className="font-serif text-xl flex items-center gap-2"><User className="h-5 w-5" /> Profile</CardTitle>
               <CardDescription>Update your personal information.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input id="name" defaultValue="Alex Student" className="max-w-md" />
+                <Label htmlFor="name">Full name</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Jordan Mensah"
+                  className="max-w-md"
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" defaultValue="alex@example.com" className="max-w-md" />
+                <Label htmlFor="email">Email address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@school.edu"
+                  className="max-w-md"
+                />
               </div>
-              <Button>Save Changes</Button>
+              <div className="flex items-center gap-3">
+                <Button onClick={saveProfile}>Save changes</Button>
+                {saved && <span className="text-sm text-muted-foreground">Saved</span>}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

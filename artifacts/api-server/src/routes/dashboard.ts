@@ -131,7 +131,7 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
 
   res.json(
     GetDashboardSummaryResponse.parse({
-      studentName: "Alex",
+      studentName: "Student",
       studyStreakDays: streakDays,
       todayTasksTotal: todayTasks.length,
       todayTasksCompleted: allTasks.filter((t) => t.completed && t.deadline === today).length,
