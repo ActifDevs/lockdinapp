@@ -1,5 +1,5 @@
 import { useListPastPapers, getListPastPapersQueryKey, useListSubjects, getListSubjectsQueryKey, useCreatePastPaper, useDeletePastPaper } from "@workspace/api-client-react";
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Plus, Trash2, Library, TrendingUp, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { RichEmptyState } from "@/components/rich-empty-state";
+import { Plus, Trash2, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { ChartSkeleton } from "@/components/charts/chart-skeleton";
+
+const ScoreTrendLineChart = lazy(
+  () => import("@/components/charts/score-trend-line-chart"),
+);
 
 const paperSchema = z.object({
   subjectId: z.coerce.number().min(1, "Subject is required"),
@@ -106,8 +111,8 @@ export default function PastPapers() {
     <div className="space-y-8 pb-8 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-3xl font-bold tracking-tight">Past Papers</h1>
-          <p className="text-muted-foreground mt-2">Log your past paper attempts and track your progress over time.</p>
+          <h1 className="page-title">Past papers</h1>
+          <p className="page-subtitle">Log your past paper attempts and track your progress over time.</p>
         </div>
         <Button onClick={() => setIsAddDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" /> Log Paper
@@ -115,13 +120,13 @@ export default function PastPapers() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-3">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="card-tint-teal lg:col-span-3">
+          <CardHeader className="flex flex-col gap-4 pb-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="font-serif text-xl">Performance Trend</CardTitle>
+              <CardTitle className="text-xl">Performance Trend</CardTitle>
               <CardDescription>Percentage scores over time</CardDescription>
             </div>
-            <div className="w-[180px]">
+            <div className="w-full sm:w-[180px]">
               <Select value={filterSubject} onValueChange={setFilterSubject}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Subjects" />
@@ -137,47 +142,40 @@ export default function PastPapers() {
           </CardHeader>
           <CardContent>
             {chartData.length < 2 ? (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground flex-col">
-                <TrendingUp className="h-10 w-10 mb-2 opacity-20" />
-                <p>Not enough data to show a trend.</p>
-                <p className="text-sm">Log at least two papers.</p>
-              </div>
+              <RichEmptyState
+                scene="chart"
+                title="Not enough data yet"
+                description="Log at least two past papers to see your score trend over time."
+                actionLabel="Log a paper"
+                onAction={() => setIsAddDialogOpen(true)}
+                variant="blue"
+                className="py-10"
+              />
             ) : (
-              <div className="h-[300px] mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="opacity-10" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.5, fontSize: 12 }} dy={10} />
-                    <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.5, fontSize: 12 }} dx={-10} tickFormatter={(v) => `${v}%`} />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)' }}
-                      itemStyle={{ color: 'var(--foreground)' }}
-                      formatter={(value: number) => [`${value}%`, 'Score']}
-                      labelFormatter={(label, items) => {
-                        if (items.length > 0 && items[0].payload) {
-                          return `${items[0].payload.subject} - ${label} (${items[0].payload.date})`;
-                        }
-                        return label;
-                      }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="percentage" 
-                      stroke="hsl(var(--primary))" 
-                      strokeWidth={3}
-                      dot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 0 }}
-                      activeDot={{ r: 6, fill: "hsl(var(--primary))", strokeWidth: 0 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+              <div className="mt-4">
+                <Suspense fallback={<ChartSkeleton height={300} className="mt-4" />}>
+                  <ScoreTrendLineChart
+                    data={chartData}
+                    xKey="name"
+                    stroke="hsl(var(--primary))"
+                    height={300}
+                    tooltipLabelFormatter={(label, items) => {
+                      const payload = items[0]?.payload as { subject?: string; date?: string } | undefined;
+                      if (payload?.subject && payload?.date) {
+                        return `${payload.subject} - ${label} (${payload.date})`;
+                      }
+                      return label;
+                    }}
+                  />
+                </Suspense>
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-3">
+        <Card className="card-tint-amber lg:col-span-3">
           <CardHeader>
-            <CardTitle className="font-serif text-xl">Paper Log</CardTitle>
+            <CardTitle className="text-xl">Paper Log</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {isLoading ? (
@@ -185,18 +183,54 @@ export default function PastPapers() {
                 {[1,2,3].map(i => <div key={i} className="h-12 bg-muted rounded animate-pulse" />)}
               </div>
             ) : !papers || papers.length === 0 ? (
-              <div className="p-12 text-center flex flex-col items-center">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                  <Library className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">No papers logged</h3>
-                <p className="text-muted-foreground max-w-sm mb-6">
-                  Keep track of every past paper you attempt to see your improvement over time.
-                </p>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(true)}>Log a Paper</Button>
-              </div>
+              <RichEmptyState
+                scene="papers"
+                title="No papers logged"
+                description="Keep track of every past paper you attempt to see improvement and weak areas over time."
+                actionLabel="Log a paper"
+                onAction={() => setIsAddDialogOpen(true)}
+                variant="purple"
+              />
             ) : (
-              <div className="overflow-x-auto">
+              <>
+                <div className="mobile-card-list">
+                  {papers.map((paper) => (
+                    <div key={paper.id} className="mobile-card-row">
+                      <div className="min-w-0 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className="rounded-full border-0 font-medium"
+                            style={{ backgroundColor: `${paper.subjectColor}18`, color: paper.subjectColor }}
+                          >
+                            {paper.subjectName}
+                          </Badge>
+                          <span className="text-sm font-semibold">{paper.paperCode}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{paper.session}</p>
+                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                          <span className="text-lg font-bold tabular">{paper.percentage}%</span>
+                          <span className="text-xs text-muted-foreground">
+                            {paper.score}/{paper.totalMarks} marks
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {format(parseISO(paper.dateAttempted), "d MMM yyyy")}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-11 w-11 shrink-0 self-end text-muted-foreground hover:text-destructive sm:self-center"
+                        aria-label={`Delete paper: ${paper.subjectName} ${paper.paperCode}`}
+                        onClick={() => deletePaper.mutate({ pastPaperId: paper.id })}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto md:block">
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b">
                     <tr>
@@ -212,7 +246,7 @@ export default function PastPapers() {
                     {papers.map(paper => (
                       <tr key={paper.id} className="bg-card hover:bg-muted/30 transition-colors">
                         <td className="px-6 py-4">
-                          <Badge variant="outline" className="font-medium border-0 rounded-sm" style={{ backgroundColor: `${paper.subjectColor}15`, color: paper.subjectColor }}>
+                          <Badge variant="outline" className="rounded-full border-0 font-medium" style={{ backgroundColor: `${paper.subjectColor}18`, color: paper.subjectColor }}>
                             {paper.subjectName}
                           </Badge>
                         </td>
@@ -231,17 +265,19 @@ export default function PastPapers() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            className="h-11 w-11 text-muted-foreground hover:text-destructive"
+                            aria-label={`Delete paper: ${paper.subjectName} ${paper.paperCode}`}
                             onClick={() => deletePaper.mutate({ pastPaperId: paper.id })}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" aria-hidden />
                           </Button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              </div>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -250,7 +286,7 @@ export default function PastPapers() {
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle className="font-serif">Log Past Paper Attempt</DialogTitle>
+            <DialogTitle className="font-bold">Log Past Paper Attempt</DialogTitle>
             <DialogDescription>Record your score to track your progress.</DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -278,7 +314,7 @@ export default function PastPapers() {
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="form-grid-2">
                 <FormField
                   control={form.control}
                   name="paperCode"
@@ -307,7 +343,7 @@ export default function PastPapers() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="form-grid-2">
                 <FormField
                   control={form.control}
                   name="score"
@@ -345,7 +381,7 @@ export default function PastPapers() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="form-grid-2">
                 <FormField
                   control={form.control}
                   name="dateAttempted"

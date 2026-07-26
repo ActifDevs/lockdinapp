@@ -2,29 +2,25 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { Check, ChevronRight } from "lucide-react";
-
-const SUBJECTS = [
-  { id: 9709, name: "Mathematics", code: "9709", color: "bg-[hsl(220_15%_40%)]" },
-  { id: 9702, name: "Physics", code: "9702", color: "bg-[hsl(200_18%_42%)]" },
-  { id: 9701, name: "Chemistry", code: "9701", color: "bg-[hsl(175_20%_38%)]" },
-  { id: 9618, name: "Computer Science", code: "9618", color: "bg-[hsl(240_8%_32%)]" },
-  { id: 9700, name: "Biology", code: "9700", color: "bg-[hsl(150_18%_36%)]" },
-  { id: 9708, name: "Economics", code: "9708", color: "bg-[hsl(30_22%_45%)]" },
-  { id: 9609, name: "Business", code: "9609", color: "bg-[hsl(25_15%_40%)]" },
-  { id: 9489, name: "History", code: "9489", color: "bg-[hsl(350_18%_42%)]" },
-];
+import { SUBJECT_CATALOG } from "@/lib/subject-catalog";
+import { createSubject, createTask } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Check, ChevronRight, Loader2 } from "lucide-react";
+import { IllustCalm } from "@/components/illustrations";
 
 export default function Onboarding() {
   const { completeOnboarding, firstName } = useAuth();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
-  const [selectedSubjects, setSelectedSubjects] = useState<number[]>([]);
+  const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [level, setLevel] = useState<string | null>(null);
   const [examSession, setExamSession] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const toggleSubject = (id: number) => {
-    setSelectedSubjects((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
+  const toggleSubject = (code: string) => {
+    setSelectedCodes((prev) =>
+      prev.includes(code) ? prev.filter((s) => s !== code) : [...prev, code],
     );
   };
 
@@ -32,13 +28,55 @@ export default function Onboarding() {
   const handleBack = () => setStep((s) => Math.max(s - 1, 1));
   const greetingName = firstName || "there";
 
+  const finishSetup = async () => {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const today = new Date().toISOString().split("T")[0]!;
+      const createdSubjects = [];
+
+      for (const code of selectedCodes) {
+        const catalog = SUBJECT_CATALOG.find((s) => s.code === code);
+        if (!catalog) continue;
+        const subject = await createSubject({
+          name: catalog.name,
+          code: catalog.code,
+          color: catalog.color,
+        });
+        createdSubjects.push(subject);
+      }
+
+      // First win: one due-today task per subject (cap at 3 so Day 1 stays finishable)
+      for (const subject of createdSubjects.slice(0, 3)) {
+        await createTask({
+          title: `Review ${subject.name} syllabus overview`,
+          subjectId: subject.id,
+          priority: "medium",
+          deadline: today,
+          estimatedMinutes: 30,
+        });
+      }
+
+      await queryClient.invalidateQueries();
+      completeOnboarding({
+        level,
+        examSession,
+        subjectCodes: selectedCodes,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not finish setup.";
+      setError(message);
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="grain flex min-h-[100dvh] flex-col items-center justify-center bg-muted/30 px-4 py-12">
       <div className="relative z-10 mb-8 w-full max-w-2xl text-center">
-        <span className="font-serif text-3xl font-bold tracking-tight">Scholr</span>
+        <span className="text-3xl font-bold tracking-tight">Scholr</span>
       </div>
 
-      <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-xl border bg-card shadow-md">
+      <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-2xl border bg-card shadow-[0_20px_60px_-20px_hsl(185_100%_23%/0.18)]">
         <div className="h-1.5 w-full bg-secondary">
           <div
             className="h-full bg-primary transition-all duration-500 ease-out"
@@ -49,7 +87,8 @@ export default function Onboarding() {
         <div className="p-8 md:p-12">
           {step === 1 && (
             <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6 duration-500">
-              <h1 className="text-balance font-serif text-3xl font-bold tracking-tight sm:text-4xl">
+              <IllustCalm className="mb-2 max-w-[12rem]" />
+              <h1 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
                 Welcome to Scholr, {greetingName}.
               </h1>
               <p className="max-w-md text-pretty text-lg leading-relaxed text-muted-foreground">
@@ -67,29 +106,29 @@ export default function Onboarding() {
           {step === 2 && (
             <div className="animate-in fade-in slide-in-from-right-8 space-y-8 duration-500">
               <div>
-                <h2 className="mb-2 font-serif text-3xl font-bold tracking-tight">
+                <h2 className="mb-2 text-3xl font-bold tracking-tight">
                   Which subjects are you taking?
                 </h2>
                 <p className="text-muted-foreground">Select all that apply. You can change this later.</p>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {SUBJECTS.map((subject) => {
-                  const isSelected = selectedSubjects.includes(subject.id);
+                {SUBJECT_CATALOG.map((subject) => {
+                  const isSelected = selectedCodes.includes(subject.code);
                   return (
                     <button
-                      key={subject.id}
+                      key={subject.code}
                       type="button"
-                      onClick={() => toggleSubject(subject.id)}
+                      onClick={() => toggleSubject(subject.code)}
                       className={cn(
-                        "flex items-center justify-between rounded-lg border-2 p-4 text-left transition-colors",
+                        "flex items-center justify-between rounded-2xl border-2 p-4 text-left transition-colors",
                         isSelected
                           ? "border-primary bg-primary/5"
                           : "border-border hover:border-primary/40",
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={cn("h-2.5 w-2.5 rounded-sm", subject.color)} />
+                        <div className={cn("h-2.5 w-2.5 rounded-sm", subject.swatchClass)} />
                         <div>
                           <p className="font-medium">{subject.name}</p>
                           <p className="text-xs text-muted-foreground">{subject.code}</p>
@@ -114,7 +153,7 @@ export default function Onboarding() {
                 <Button variant="ghost" onClick={handleBack}>
                   Back
                 </Button>
-                <Button size="lg" onClick={handleNext} disabled={selectedSubjects.length === 0}>
+                <Button size="lg" onClick={handleNext} disabled={selectedCodes.length === 0}>
                   Continue
                 </Button>
               </div>
@@ -124,7 +163,7 @@ export default function Onboarding() {
           {step === 3 && (
             <div className="animate-in fade-in slide-in-from-right-8 space-y-8 duration-500">
               <div>
-                <h2 className="mb-2 font-serif text-3xl font-bold tracking-tight">Study details</h2>
+                <h2 className="mb-2 text-3xl font-bold tracking-tight">Study details</h2>
                 <p className="text-muted-foreground">Optional — helps pace your plan.</p>
               </div>
 
@@ -187,18 +226,19 @@ export default function Onboarding() {
                 <Check className="h-8 w-8" aria-hidden />
               </div>
 
-              <h2 className="font-serif text-3xl font-bold tracking-tight">You’re set up</h2>
+              <h2 className="text-3xl font-bold tracking-tight">You're set up</h2>
               <p className="mx-auto max-w-md text-pretty text-muted-foreground">
-                {selectedSubjects.length} subject
-                {selectedSubjects.length === 1 ? "" : "s"} on your dashboard. Add tasks and past papers when you’re ready.
+                We’ll add {selectedCodes.length} subject
+                {selectedCodes.length === 1 ? "" : "s"} and seed today’s first revision tasks so you
+                can start immediately.
               </p>
 
               <div className="flex flex-wrap justify-center gap-2 py-2">
-                {selectedSubjects.map((id) => {
-                  const subject = SUBJECTS.find((s) => s.id === id);
+                {selectedCodes.map((code) => {
+                  const subject = SUBJECT_CATALOG.find((s) => s.code === code);
                   return subject ? (
                     <span
-                      key={id}
+                      key={code}
                       className="inline-flex items-center rounded-md bg-secondary px-3 py-1 text-sm font-medium"
                     >
                       {subject.name}
@@ -207,13 +247,27 @@ export default function Onboarding() {
                 })}
               </div>
 
+              {error && (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+
               <div className="pt-4">
                 <Button
                   size="lg"
                   className="h-12 w-full px-10 text-base sm:w-auto active:scale-[0.98]"
-                  onClick={completeOnboarding}
+                  onClick={finishSetup}
+                  disabled={isSubmitting}
                 >
-                  Go to dashboard
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                      Setting up…
+                    </>
+                  ) : (
+                    "Go to dashboard"
+                  )}
                 </Button>
               </div>
             </div>

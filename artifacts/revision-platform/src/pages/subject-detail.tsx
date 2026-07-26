@@ -1,14 +1,21 @@
-import { useGetSubject, getGetSubjectQueryKey, useGetSubjectSyllabus, getGetSubjectSyllabusQueryKey, useGetSubjectPerformance, getGetSubjectPerformanceQueryKey, useListTasks, getListTasksQueryKey, useListPastPapers, getListPastPapersQueryKey, useUpdateSyllabusTopic } from "@workspace/api-client-react";
-import { useRoute } from "wouter";
+import { useGetSubject, getGetSubjectQueryKey, useGetSubjectSyllabus, getGetSubjectSyllabusQueryKey, useGetSubjectPerformance, getGetSubjectPerformanceQueryKey, useListTasks, getListTasksQueryKey, useListPastPapers, getListPastPapersQueryKey, useUpdateSyllabusTopic, useUpdateTask } from "@workspace/api-client-react";
+import { Link, useRoute } from "wouter";
+import { lazy, Suspense, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart, Clock, ListTodo, Trophy, ChevronDown, CheckCircle2, Circle, ArrowUpRight, TrendingUp } from "lucide-react";
+import { ProgressRing } from "@/components/progress-ring";
+import { TaskRow } from "@/components/task-row";
+import { RichEmptyState } from "@/components/rich-empty-state";
+import { BarChart, Clock, CheckCircle2, Circle, ArrowUpRight, ChevronLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
+import { ChartSkeleton } from "@/components/charts/chart-skeleton";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+
+const ScoreTrendLineChart = lazy(
+  () => import("@/components/charts/score-trend-line-chart"),
+);
 
 export default function SubjectDetail() {
   const [, params] = useRoute("/subjects/:id");
@@ -41,10 +48,24 @@ export default function SubjectDetail() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetSubjectSyllabusQueryKey(subjectId!) });
         queryClient.invalidateQueries({ queryKey: getGetSubjectQueryKey(subjectId!) });
-        queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] }); // update dashboard overall
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       }
     }
   });
+
+  const updateTask = useUpdateTask({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListTasksQueryKey({ subjectId: subjectId! }) });
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      },
+    },
+  });
+
+  useEffect(() => {
+    if (!subject?.name) return;
+    document.title = `${subject.name} · Scholr`;
+  }, [subject?.name]);
 
   if (subjectLoading || !subject) {
     return (
@@ -70,9 +91,25 @@ export default function SubjectDetail() {
 
   const getStatusIcon = (status: string) => {
     switch(status) {
-      case 'completed': return <CheckCircle2 className="h-5 w-5 text-primary" />;
-      case 'in_progress': return <Circle className="h-5 w-5 text-orange-500 fill-orange-500/20" />;
-      default: return <Circle className="h-5 w-5 text-muted-foreground/30" />;
+      case 'completed': return <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden />;
+      case 'in_progress': return <Circle className="h-5 w-5 text-orange-500 fill-orange-500/20" aria-hidden />;
+      default: return <Circle className="h-5 w-5 text-muted-foreground/30" aria-hidden />;
+    }
+  };
+
+  const topicStatusLabel = (status: string) => {
+    switch (status) {
+      case 'completed': return 'Completed';
+      case 'in_progress': return 'In progress';
+      default: return 'Not started';
+    }
+  };
+
+  const topicStatusAction = (status: string) => {
+    switch (status) {
+      case 'not_started': return 'Mark as in progress';
+      case 'in_progress': return 'Mark as completed';
+      default: return 'Mark as not started';
     }
   };
 
@@ -80,41 +117,50 @@ export default function SubjectDetail() {
 
   return (
     <div className="space-y-8 pb-8 animate-in fade-in duration-500">
+      <Link
+        href="/subjects"
+        className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ChevronLeft className="h-4 w-4" aria-hidden strokeWidth={1.75} />
+        All subjects
+      </Link>
+
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-card border shadow-sm p-8">
-        <div className="absolute top-0 right-0 w-64 h-64 opacity-5 rounded-bl-[100px]" style={{ backgroundColor: subject.color }} />
+      <div className="relative overflow-hidden rounded-2xl border border-[hsl(var(--brand-teal)/0.22)] bg-card p-4 shadow-sm sm:p-8">
+        <div className="absolute right-0 top-0 h-64 w-64 rounded-bl-[100px] opacity-5" style={{ backgroundColor: subject.color }} />
         
-        <div className="relative z-10 flex items-start gap-6">
-          <div className="w-16 h-16 rounded-xl flex items-center justify-center font-serif text-2xl font-bold text-white shadow-md shrink-0" style={{ backgroundColor: subject.color }}>
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-2xl font-bold text-white shadow-md sm:h-16 sm:w-16" style={{ backgroundColor: subject.color }}>
             {subject.name.charAt(0)}
           </div>
-          <div className="flex-1">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
-              <h1 className="font-serif text-3xl font-bold tracking-tight">{subject.name}</h1>
-              <span className="text-muted-foreground font-medium">{subject.code}</span>
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h1 className="page-title">{subject.name}</h1>
+              <span className="font-medium text-muted-foreground">{subject.code}</span>
             </div>
             
-            <div className="flex flex-wrap items-center gap-6 mt-4 text-sm">
-              <div className="flex-1 min-w-[200px] max-w-md">
-                <div className="flex justify-between mb-1.5">
-                  <span className="text-muted-foreground font-medium">Syllabus Coverage</span>
-                  <span className="font-bold">{subject.syllabusProgress}%</span>
-                </div>
-                <Progress 
-                  value={subject.syllabusProgress} 
-                  className="h-2 bg-secondary"
-                  indicatorClassName="bg-current"
-                  style={{ color: subject.color }}
+            <div className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:gap-6">
+              <div className="flex items-center gap-4">
+                <ProgressRing
+                  value={subject.syllabusProgress}
+                  label={`${subject.name} syllabus`}
+                  color={subject.color}
+                  size={56}
+                  strokeWidth={5}
                 />
-              </div>
-              <div className="flex items-center gap-4 border-l pl-6 py-1">
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">Tasks</p>
-                  <p className="font-bold text-base">{subject.upcomingTasksCount} <span className="text-muted-foreground text-xs font-normal">pending</span></p>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Syllabus</p>
+                  <p className="text-2xl font-bold tabular-nums">{subject.syllabusProgress}%</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 rounded-xl border border-border/50 bg-muted/20 p-4 sm:border-l sm:border-border/50 sm:bg-transparent sm:p-0 sm:pl-6 lg:border-l">
+                <div>
+                  <p className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tasks</p>
+                  <p className="text-base font-bold">{subject.upcomingTasksCount} <span className="text-xs font-normal text-muted-foreground">pending</span></p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">Latest Score</p>
-                  <p className="font-bold text-base">{subject.recentPaperScore !== null ? `${subject.recentPaperScore}%` : 'N/A'}</p>
+                  <p className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Latest score</p>
+                  <p className="text-base font-bold">{subject.recentPaperScore !== null ? `${subject.recentPaperScore}%` : "N/A"}</p>
                 </div>
               </div>
             </div>
@@ -123,11 +169,11 @@ export default function SubjectDetail() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="bg-transparent border-b h-auto p-0 gap-6 w-full justify-start overflow-x-auto rounded-none mb-6">
-          <TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-3 pt-2 font-medium">Overview</TabsTrigger>
-          <TabsTrigger value="syllabus" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-3 pt-2 font-medium">Syllabus</TabsTrigger>
-          <TabsTrigger value="tasks" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-3 pt-2 font-medium">Tasks ({pendingTasks.length})</TabsTrigger>
-          <TabsTrigger value="performance" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-3 pt-2 font-medium">Performance</TabsTrigger>
+        <TabsList className="tabs-scroll mb-6 rounded-none border-b bg-transparent p-0">
+          <TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent px-1 pb-3 pt-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">Overview</TabsTrigger>
+          <TabsTrigger value="syllabus" className="rounded-none border-b-2 border-transparent px-1 pb-3 pt-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">Syllabus</TabsTrigger>
+          <TabsTrigger value="tasks" className="rounded-none border-b-2 border-transparent px-1 pb-3 pt-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">Tasks ({pendingTasks.length})</TabsTrigger>
+          <TabsTrigger value="performance" className="rounded-none border-b-2 border-transparent px-1 pb-3 pt-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">Performance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -143,9 +189,9 @@ export default function SubjectDetail() {
                 </div>
               )}
               
-              <Card>
+              <Card className="card-tint-coral">
                 <CardHeader>
-                  <CardTitle className="font-serif text-lg">Upcoming Tasks</CardTitle>
+                  <CardTitle className="text-lg">Upcoming Tasks</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                   {pendingTasks.length === 0 ? (
@@ -172,9 +218,9 @@ export default function SubjectDetail() {
             </div>
 
             <div className="space-y-6">
-              <Card>
+              <Card className="card-tint-teal">
                 <CardHeader className="pb-3">
-                  <CardTitle className="font-serif text-lg">Stats</CardTitle>
+                  <CardTitle className="text-lg">Stats</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex justify-between items-center border-b pb-3">
@@ -196,9 +242,9 @@ export default function SubjectDetail() {
         </TabsContent>
 
         <TabsContent value="syllabus" className="space-y-4">
-          <Card>
+          <Card className="card-tint-amber">
             <CardHeader>
-              <CardTitle className="font-serif text-xl">Syllabus Progress</CardTitle>
+              <CardTitle className="text-xl">Syllabus Progress</CardTitle>
               <CardDescription>Click the circle icon to update a topic's status.</CardDescription>
             </CardHeader>
             <CardContent className="p-0 border-t">
@@ -215,9 +261,12 @@ export default function SubjectDetail() {
                       <div className="space-y-1 ml-8">
                         {unit.topics.map(topic => (
                           <div key={topic.id} className="flex items-start gap-3 py-2 group hover:bg-muted/30 -ml-2 pl-2 rounded-md transition-colors">
-                            <button 
+                            <button
+                              type="button"
                               onClick={() => cycleTopicStatus(topic.id, topic.status)}
-                              className="mt-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full shrink-0"
+                              aria-label={`${topic.title}: ${topicStatusLabel(topic.status)}. ${topicStatusAction(topic.status)}.`}
+                              aria-pressed={topic.status === 'completed'}
+                              className="mt-0.5 flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                             >
                               {getStatusIcon(topic.status)}
                             </button>
@@ -241,29 +290,41 @@ export default function SubjectDetail() {
         </TabsContent>
 
         <TabsContent value="tasks">
-          <Card>
+          <Card className="card-tint-deep">
             <CardHeader>
-              <CardTitle className="font-serif text-xl">Subject Tasks</CardTitle>
+              <CardTitle className="text-xl">Subject Tasks</CardTitle>
             </CardHeader>
             <CardContent className="p-0 border-t">
               {!tasks || tasks.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">No tasks for this subject.</div>
+                <RichEmptyState
+                  scene="tasks"
+                  title="No tasks for this subject"
+                  description="Add revision tasks from your study plan and link them to this subject."
+                  actionHref="/study-plan"
+                  actionLabel="Go to study plan"
+                  variant="blue"
+                />
               ) : (
-                <div className="divide-y">
-                  {tasks.map(task => (
-                    <div key={task.id} className={cn("p-4 flex items-center justify-between hover:bg-muted/30", task.completed && "opacity-60")}>
-                      <div className="flex items-center gap-3">
-                        <CheckCircle2 className={cn("h-5 w-5", task.completed ? "text-primary" : "text-muted-foreground/30")} />
-                        <div>
-                          <p className={cn("text-sm font-medium", task.completed && "line-through text-muted-foreground")}>{task.title}</p>
-                          {task.topicTitle && <p className="text-xs text-muted-foreground">{task.topicTitle}</p>}
-                        </div>
-                      </div>
-                      <div className="flex gap-2 text-xs">
-                        {task.estimatedMinutes && <span className="flex items-center text-muted-foreground"><Clock className="h-3 w-3 mr-1" /> {task.estimatedMinutes}m</span>}
-                        {task.deadline && <span className="text-muted-foreground">{format(parseISO(task.deadline), "MMM d")}</span>}
-                      </div>
-                    </div>
+                <div className="list-divider">
+                  {tasks.map((task) => (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      disabled={updateTask.isPending}
+                      onToggle={() =>
+                        updateTask.mutate({
+                          taskId: task.id,
+                          data: { completed: !task.completed },
+                        })
+                      }
+                      trailing={
+                        task.deadline ? (
+                          <span className="hidden shrink-0 self-center pt-1 text-xs text-muted-foreground sm:inline">
+                            {format(parseISO(task.deadline), "MMM d")}
+                          </span>
+                        ) : undefined
+                      }
+                    />
                   ))}
                 </div>
               )}
@@ -272,52 +333,44 @@ export default function SubjectDetail() {
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-6">
-          <Card>
+          <Card className="card-tint-teal">
             <CardHeader>
-              <CardTitle className="font-serif text-xl">Score Trend</CardTitle>
+              <CardTitle className="text-xl">Score Trend</CardTitle>
             </CardHeader>
             <CardContent>
               {!performance || performance.trend.length < 2 ? (
-                <div className="h-64 flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg">
-                  <TrendingUp className="h-8 w-8 mb-2 opacity-20" />
-                  <p className="text-sm">Log at least two papers to see your trend.</p>
-                </div>
+                <RichEmptyState
+                  scene="chart"
+                  title="Not enough data yet"
+                  description="Log at least two past papers for this subject to see your score trend."
+                  actionHref="/past-papers"
+                  actionLabel="Log a paper"
+                  variant="purple"
+                  className="py-10"
+                />
               ) : (
-                <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={performance.trend} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="opacity-10" />
-                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.5, fontSize: 12 }} dy={10} />
-                      <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: 'currentColor', opacity: 0.5, fontSize: 12 }} dx={-10} tickFormatter={(v) => `${v}%`} />
-                      <RechartsTooltip 
-                        contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card)' }}
-                        itemStyle={{ color: 'var(--foreground)' }}
-                        formatter={(value: number) => [`${value}%`, 'Score']}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="percentage" 
-                        stroke={subject.color} 
-                        strokeWidth={3}
-                        dot={{ r: 4, fill: subject.color, strokeWidth: 0 }}
-                        activeDot={{ r: 6, fill: subject.color, strokeWidth: 0 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                <Suspense fallback={<ChartSkeleton height={300} />}>
+                  <ScoreTrendLineChart
+                    data={performance.trend}
+                    xKey="label"
+                    stroke={subject.color}
+                    height={300}
+                  />
+                </Suspense>
               )}
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="card-tint-coral">
             <CardHeader>
-              <CardTitle className="font-serif text-xl">Component Breakdown</CardTitle>
+              <CardTitle className="text-xl">Component Breakdown</CardTitle>
             </CardHeader>
             <CardContent className="p-0 border-t">
               {!performance || performance.componentBreakdown.length === 0 ? (
                 <div className="p-6 text-center text-muted-foreground text-sm">No component data.</div>
               ) : (
-                <table className="w-full text-sm text-left">
+                <div className="overflow-x-auto">
+                <table className="w-full min-w-[320px] text-left text-sm">
                   <thead className="bg-muted/50 text-muted-foreground">
                     <tr>
                       <th className="px-6 py-3 font-medium">Component</th>
@@ -335,6 +388,7 @@ export default function SubjectDetail() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </CardContent>
           </Card>

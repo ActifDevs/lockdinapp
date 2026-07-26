@@ -1,105 +1,130 @@
 import { useListSubjects, getListSubjectsQueryKey } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProgressRing } from "@/components/progress-ring";
+import { RichEmptyState } from "@/components/rich-empty-state";
 import { Link } from "wouter";
-import { ChevronRight, BookOpen, Clock, BarChart } from "lucide-react";
+import { ChevronRight, Clock, BarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { motion, useReducedMotion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 export default function Subjects() {
   const { data: subjects, isLoading } = useListSubjects({
-    query: { queryKey: getListSubjectsQueryKey() }
+    query: { queryKey: getListSubjectsQueryKey() },
   });
+  const reduceMotion = useReducedMotion();
 
   if (isLoading) {
     return <SubjectsSkeleton />;
   }
 
   return (
-    <div className="space-y-8 pb-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="font-serif text-3xl font-bold tracking-tight">My Subjects</h1>
-        <p className="text-muted-foreground mt-2">
-          Track syllabus coverage and monitor your progress across all your A-Level subjects.
-        </p>
+    <div className="space-y-8 pb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="page-title">My subjects</h1>
+          <p className="page-subtitle">
+            Track syllabus coverage and monitor progress across your A-Level subjects.
+          </p>
+        </div>
+        <Button asChild className="shrink-0">
+          <Link href="/settings?tab=subjects">Add subject</Link>
+        </Button>
       </div>
 
       {!subjects || subjects.length === 0 ? (
-        <Card className="text-center py-12">
+        <Card className="card-tint-teal">
           <CardContent>
-            <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-              <BookOpen className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-semibold mb-2">No subjects added</h3>
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              You haven't selected any subjects yet. Go to your settings to add the subjects you are studying.
-            </p>
-            <Button asChild>
-              <Link href="/settings">Manage Subjects</Link>
-            </Button>
+            <RichEmptyState
+              scene="books"
+              title="No subjects added"
+              description="Add the subjects you're taking so Scholr can track syllabus coverage and past papers for each one."
+              actionLabel="Add subjects"
+              actionHref="/settings?tab=subjects"
+              variant="mint"
+            />
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {subjects.map(subject => (
-            <Link key={subject.id} href={`/subjects/${subject.id}`}>
-              <Card className="hover:border-primary/50 transition-colors cursor-pointer group h-full flex flex-col hover-elevate">
-                <CardHeader className="pb-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center font-serif font-bold text-white shadow-sm" style={{ backgroundColor: subject.color }}>
-                        {subject.name.charAt(0)}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          {subjects.map((subject, index) => {
+            const tintClass = [
+              "card-tint-cream",
+              "card-tint-teal",
+              "card-tint-amber",
+              "card-tint-coral",
+              "card-tint-deep",
+            ][index % 5];
+            return (
+            <motion.div
+              key={subject.id}
+              initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: reduceMotion ? 0 : index * 0.05, duration: 0.25 }}
+            >
+              <Link href={`/subjects/${subject.id}`}>
+                <Card className={cn("group h-full cursor-pointer overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-md", tintClass)}>
+                  <div
+                    className="h-2 w-full"
+                    style={{ background: `linear-gradient(90deg, ${subject.color}, ${subject.color}88)` }}
+                  />
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-4">
+                        <ProgressRing
+                          value={subject.syllabusProgress}
+                          label={subject.name}
+                          color={subject.color}
+                          size={56}
+                          strokeWidth={5}
+                        />
+                        <div>
+                          <CardTitle className="text-xl transition-colors group-hover:text-primary">
+                            {subject.name}
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground">{subject.code}</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-5 w-5 -translate-x-1 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0 group-hover:text-primary group-hover:opacity-100" />
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-5">
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-semibold text-foreground tabular">{subject.topicsCompleted}</span> of{" "}
+                      <span className="tabular">{subject.topicsTotal}</span> topics covered
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-4 border-t border-border/40 pt-4">
+                      <div>
+                        <p className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Clock className="h-3.5 w-3.5" strokeWidth={1.75} /> Upcoming tasks
+                        </p>
+                        <p className="text-2xl font-bold tabular">{subject.upcomingTasksCount}</p>
                       </div>
                       <div>
-                        <CardTitle className="text-xl group-hover:text-primary transition-colors">{subject.name}</CardTitle>
-                        <p className="text-sm text-muted-foreground">{subject.code}</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="text-muted-foreground group-hover:text-primary transition-colors h-5 w-5 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0" />
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-6 flex-1">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Syllabus Coverage</span>
-                      <span className="font-medium">{subject.syllabusProgress}%</span>
-                    </div>
-                    <Progress 
-                      value={subject.syllabusProgress} 
-                      className="h-2 bg-secondary"
-                      indicatorClassName="bg-current"
-                      style={{ color: subject.color }}
-                    />
-                    <p className="text-xs text-muted-foreground text-right">
-                      {subject.topicsCompleted} of {subject.topicsTotal} topics
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/50">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5" /> Upcoming Tasks
-                      </p>
-                      <p className="text-lg font-semibold">{subject.upcomingTasksCount}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                        <BarChart className="h-3.5 w-3.5" /> Recent Score
-                      </p>
-                      <div className="flex items-baseline gap-2">
-                        <p className="text-lg font-semibold">
-                          {subject.recentPaperScore !== null ? `${subject.recentPaperScore}%` : '-'}
+                        <p className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <BarChart className="h-3.5 w-3.5" strokeWidth={1.75} /> Recent score
+                        </p>
+                        <p className="text-2xl font-bold tabular">
+                          {subject.recentPaperScore !== null ? `${subject.recentPaperScore}%` : "—"}
                         </p>
                         {subject.recentPaperLabel && (
-                          <span className="text-xs text-muted-foreground truncate">{subject.recentPaperLabel}</span>
+                          <p className="truncate text-xs text-muted-foreground">{subject.recentPaperLabel}</p>
                         )}
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+                  </CardContent>
+                  <CardFooter className="border-t border-border/40 bg-muted/20 px-6 py-3">
+                    <span className="text-xs font-medium text-muted-foreground group-hover:text-primary">
+                      Open subject workspace
+                    </span>
+                  </CardFooter>
+                </Card>
+              </Link>
+            </motion.div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -110,13 +135,12 @@ function SubjectsSkeleton() {
   return (
     <div className="space-y-8 pb-8">
       <div className="space-y-3">
-        <div className="h-10 w-48 bg-muted rounded animate-pulse" />
-        <div className="h-5 w-96 bg-muted rounded animate-pulse" />
+        <div className="h-10 w-48 animate-pulse rounded-xl bg-muted" />
+        <div className="h-5 w-96 animate-pulse rounded-xl bg-muted" />
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {[1, 2, 3, 4].map(i => (
-          <div key={i} className="h-64 bg-muted rounded-xl animate-pulse" />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-64 animate-pulse rounded-2xl bg-muted" />
         ))}
       </div>
     </div>

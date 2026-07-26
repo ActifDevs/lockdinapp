@@ -2,117 +2,148 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ArrowRight, GraduationCap, LayoutDashboard, BookOpen, FileText, TrendingUp } from "lucide-react";
+import {
+  EmptyIllustration,
+  type EmptyScene,
+} from "@/components/illustrations";
 
-const features = [
+const features: {
+  title: string;
+  body: string;
+  variant: string;
+  scene: EmptyScene;
+}[] = [
   {
     title: "Syllabus, topic by topic",
     body: "Cambridge A-Level syllabuses broken into units you can mark as covered — so completion is a real percentage, not a guess.",
+    variant: "pastel-purple",
+    scene: "books",
   },
   {
     title: "Past papers with a trail",
     body: "Log scores and papers in one place. Spot weak topics from the record instead of hunting through folders.",
+    variant: "pastel-blue",
+    scene: "papers",
   },
   {
-    title: "Today’s plan only",
+    title: "Today's plan only",
     body: "Pick the topics and time blocks for the day. Open Scholr and know what to revise next — nothing else.",
+    variant: "pastel-mint",
+    scene: "tasks",
   },
+];
+
+const navItems = [
+  { label: "Dashboard", icon: LayoutDashboard, active: true },
+  { label: "Study plan", icon: BookOpen, active: false },
+  { label: "Subjects", icon: GraduationCap, active: false },
+  { label: "Past papers", icon: FileText, active: false },
 ];
 
 function ProductHeroVisual() {
   return (
-    <div className="absolute inset-0 bg-[hsl(220_18%_12%)]" aria-hidden>
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,hsl(220_15%_22%/0.9),transparent_55%),radial-gradient(ellipse_at_80%_70%,hsl(40_12%_18%/0.5),transparent_50%)]" />
-      <div className="absolute inset-x-0 bottom-0 top-[18%] mx-auto max-w-5xl px-4 sm:px-8">
-        <div className="flex h-full overflow-hidden rounded-t-xl border border-[hsl(40_20%_96%/0.12)] bg-[hsl(40_20%_98%/0.97)] shadow-2xl">
-          <div className="hidden w-44 shrink-0 flex-col border-r border-[hsl(240_5%_90%)] bg-[hsl(40_20%_96%)] sm:flex">
-            <div className="flex h-12 items-center px-4">
-              <span className="font-serif text-sm font-bold tracking-tight text-[hsl(240_10%_15%)]">Scholr</span>
+    <div className="absolute inset-0 bg-background" aria-hidden>
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_15%_0%,hsl(var(--brand-teal)/0.22),transparent_45%),radial-gradient(ellipse_at_90%_20%,hsl(var(--brand-amber)/0.2),transparent_40%),radial-gradient(ellipse_at_80%_85%,hsl(var(--brand-coral)/0.14),transparent_45%)]" />
+      <div className="absolute inset-x-0 bottom-0 top-[12%] mx-auto max-w-5xl px-4 sm:px-8">
+        <div className="flex h-full overflow-hidden rounded-t-2xl border border-border/60 bg-card shadow-[0_24px_80px_-12px_hsl(var(--primary)/0.18)]">
+          <div className="hidden w-48 shrink-0 flex-col border-r border-border/50 bg-card p-4 sm:flex">
+            <div className="mb-5 flex items-center gap-2 px-1">
+              <div className="brand-icon-sm">
+                <GraduationCap className="h-4 w-4" strokeWidth={2} />
+              </div>
+              <span className="text-sm font-bold tracking-tight text-foreground">Scholr</span>
             </div>
-            <div className="space-y-1 px-2">
-              {["Dashboard", "Study plan", "Subjects", "Past papers"].map((label, i) => (
+            <div className="space-y-1">
+              {navItems.map(({ label, icon: Icon, active }) => (
                 <div
                   key={label}
-                  className={`rounded-md px-2.5 py-2 text-xs font-medium ${
-                    i === 0
-                      ? "bg-[hsl(40_10%_92%)] text-[hsl(240_10%_15%)]"
-                      : "text-[hsl(240_5%_45%)]"
+                  className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium ${
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground"
                   }`}
                 >
+                  <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
                   {label}
                 </div>
               ))}
             </div>
-            <div className="mt-4 space-y-1 px-2">
-              <div className="px-2.5 text-[9px] font-medium uppercase tracking-wider text-[hsl(240_5%_55%)]">
-                Insights
-              </div>
-              {["Progress", "Calendar"].map((label) => (
-                <div key={label} className="rounded-md px-2.5 py-2 text-xs font-medium text-[hsl(240_5%_45%)]">
-                  {label}
-                </div>
-              ))}
+            <div className="mt-auto rounded-xl border border-border/60 bg-muted/40 p-3">
+              <div className="h-2 w-16 rounded bg-muted" />
+              <div className="mt-2 h-2 w-24 rounded bg-muted/70" />
             </div>
           </div>
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex h-10 items-center border-b border-[hsl(240_5%_90%)] bg-white px-4 sm:hidden">
-              <span className="font-serif text-sm font-bold tracking-tight text-[hsl(240_10%_15%)]">Scholr</span>
+          <div className="min-w-0 flex-1 bg-muted/30">
+            <div className="flex h-11 items-center border-b border-border/50 bg-card px-4 sm:hidden">
+              <span className="text-sm font-bold tracking-tight">Scholr</span>
             </div>
-            <div className="grid flex-1 grid-cols-1 gap-4 p-4 sm:grid-cols-3 sm:p-6">
-              <div className="space-y-3 sm:col-span-2">
-                <div className="space-y-1">
-                  <div className="h-3 w-40 rounded bg-[hsl(240_5%_90%)]" />
-                  <div className="h-6 w-56 rounded bg-[hsl(240_10%_15%/0.12)]" />
+            <div className="grid h-full grid-cols-1 gap-4 p-4 sm:grid-cols-3 sm:p-6">
+              <div className="space-y-4 sm:col-span-2">
+                <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/90 p-5 text-primary-foreground shadow-sm">
+                  <div className="mb-1 text-xs font-medium text-primary-foreground/75">Good afternoon</div>
+                  <div className="text-lg font-bold">Today's revision</div>
+                  <div className="mt-3 inline-flex rounded-full bg-primary-foreground/15 px-3 py-1 text-xs font-medium">
+                    3 tasks · 2h planned
+                  </div>
                 </div>
-                <div className="rounded-lg border border-[hsl(240_5%_90%)] bg-white p-3">
+                <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-sm">
                   <div className="mb-3 flex items-center justify-between">
-                    <div className="h-3 w-24 rounded bg-[hsl(240_5%_90%)]" />
-                    <div className="h-2 w-16 rounded bg-[hsl(240_5%_90%)]" />
+                    <div className="text-xs font-semibold text-muted-foreground">Today's tasks</div>
+                    <div className="text-xs font-medium text-primary">40% done</div>
                   </div>
-                  <div className="mb-3 h-1 rounded-full bg-[hsl(240_5%_92%)]">
-                    <div className="h-full w-2/5 rounded-full bg-[hsl(220_15%_30%)]" />
-                  </div>
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="flex items-center gap-3 border-t border-[hsl(240_5%_92%)] py-2.5">
-                      <div className="h-4 w-4 rounded-full border-2 border-[hsl(220_15%_30%/0.35)]" />
-                      <div className="flex-1 space-y-1.5">
+                  {[["Mechanics review", "Physics"], ["Integration practice", "Maths"], ["Organic reactions", "Chemistry"]].map(
+                    ([title, subject], i) => (
+                      <div
+                        key={title}
+                        className="flex items-center gap-3 border-t border-border/40 py-3 first:border-t-0 first:pt-0"
+                      >
                         <div
-                          className={`h-2.5 rounded bg-[hsl(240_10%_15%/0.14)] ${
-                            i === 0 ? "w-3/4" : i === 1 ? "w-2/3" : "w-1/2"
+                          className={`h-4 w-4 rounded-full border-2 ${
+                            i === 0 ? "border-primary bg-primary" : "border-primary/40"
                           }`}
                         />
-                        <div className="h-2 w-20 rounded bg-[hsl(220_15%_40%/0.15)]" />
+                        <div className="flex-1">
+                          <div className="text-xs font-medium">{title}</div>
+                          <div className="text-xs text-muted-foreground">{subject}</div>
+                        </div>
                       </div>
-                      <div className="h-2 w-8 rounded bg-[hsl(240_5%_90%)]" />
-                    </div>
-                  ))}
+                    ),
+                  )}
                 </div>
               </div>
-              <div className="hidden space-y-3 sm:block">
-                <div className="rounded-lg border border-[hsl(240_5%_90%)] bg-white p-3">
-                  <div className="mb-3 h-3 w-28 rounded bg-[hsl(240_5%_90%)]" />
-                  {[72, 54, 41].map((pct, i) => (
-                    <div key={i} className="mb-3 space-y-1.5 last:mb-0">
-                      <div className="flex justify-between">
-                        <div className="h-2 w-16 rounded bg-[hsl(240_5%_88%)]" />
-                        <div className="h-2 w-6 rounded bg-[hsl(240_5%_88%)]" />
+              <div className="hidden space-y-4 sm:block">
+                <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-sm">
+                  <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                    <TrendingUp className="h-3.5 w-3.5" /> Syllabus
+                  </div>
+                  {[
+                    { label: "Physics", pct: 72, color: "hsl(var(--chart-1))" },
+                    { label: "Maths", pct: 54, color: "hsl(var(--chart-2))" },
+                    { label: "Chemistry", pct: 41, color: "hsl(var(--chart-3))" },
+                  ].map(({ label, pct, color }) => (
+                    <div key={label} className="mb-3 last:mb-0">
+                      <div className="mb-1 flex justify-between text-[10px]">
+                        <span className="font-medium">{label}</span>
+                        <span className="text-muted-foreground">{pct}%</span>
                       </div>
-                      <div className="h-1 rounded-full bg-[hsl(240_5%_92%)]">
-                        <div className="h-full rounded-full bg-[hsl(220_15%_40%)]" style={{ width: `${pct}%` }} />
+                      <div className="h-1.5 rounded-full bg-muted">
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="rounded-lg border border-[hsl(220_15%_30%/0.12)] bg-[hsl(220_15%_30%/0.05)] p-3">
-                  <div className="mb-2 h-3 w-24 rounded bg-[hsl(220_15%_30%/0.2)]" />
-                  <div className="h-8 w-20 rounded bg-[hsl(220_15%_30%/0.18)]" />
+                <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-sm">
+                  <div className="text-xs font-semibold text-muted-foreground">Next exam</div>
+                  <div className="mt-2 text-sm font-bold">Physics P2</div>
+                  <div className="mt-1 text-xs font-medium text-primary">12 days</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-[hsl(220_18%_10%/0.92)] via-[hsl(220_18%_10%/0.45)] to-[hsl(220_18%_10%/0.55)]" />
     </div>
   );
 }
@@ -130,16 +161,19 @@ export default function LandingPage() {
         Skip to main content
       </a>
 
-      <header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:h-16 sm:px-6">
-          <Link href="/" className="font-serif text-xl font-bold tracking-tight sm:text-2xl">
+          <Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight sm:text-2xl">
+            <span className="brand-icon-sm">
+              <GraduationCap className="h-4 w-4" strokeWidth={2} />
+            </span>
             Scholr
           </Link>
           <div className="flex items-center gap-3 sm:gap-4">
             {isAuthenticated ? (
               <Link
                 href="/dashboard"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                className="inline-flex min-h-11 items-center px-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 Open workspace
               </Link>
@@ -147,7 +181,7 @@ export default function LandingPage() {
               <>
                 <Link
                   href="/login"
-                  className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-block"
+                  className="inline-flex min-h-11 items-center px-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   Log in
                 </Link>
@@ -163,10 +197,10 @@ export default function LandingPage() {
       </header>
 
       <main id="main-content" className="flex-1">
-        <section className="grain relative min-h-[calc(100dvh-3.5rem)] overflow-hidden sm:min-h-[calc(100dvh-4rem)]">
+        <section className="relative min-h-[calc(100dvh-3.5rem)] overflow-hidden sm:min-h-[calc(100dvh-4rem)]">
           <ProductHeroVisual />
 
-          <div className="relative z-10 mx-auto flex min-h-[100dvh] max-w-6xl flex-col justify-end px-4 pb-16 pt-28 sm:px-6 sm:pb-20 md:pb-24">
+          <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-6xl flex-col justify-end px-4 pb-16 pt-28 sm:min-h-[calc(100dvh-4rem)] sm:px-6 sm:pb-20 md:pb-24">
             <motion.div
               initial={reduceMotion ? false : { opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
@@ -175,22 +209,22 @@ export default function LandingPage() {
                   ? { duration: 0 }
                   : { duration: 0.55, ease: [0.22, 1, 0.36, 1] }
               }
-              className="max-w-2xl"
+              className="max-w-2xl rounded-2xl border border-border/50 bg-card/90 p-8 shadow-[0_20px_60px_-20px_hsl(var(--primary)/0.2)] backdrop-blur-sm sm:p-10"
             >
-              <p className="mb-4 font-serif text-5xl font-bold tracking-tight text-primary-foreground sm:text-6xl md:text-7xl">
-                Scholr
+              <p className="mb-3 text-sm font-semibold tracking-wide text-primary">
+                Cambridge A-Level revision
               </p>
-              <h1 className="mb-5 text-balance font-serif text-3xl font-semibold leading-[1.15] tracking-tight text-primary-foreground sm:text-4xl md:text-[2.75rem]">
-                Revision for Cambridge A-Levels — syllabus, papers, and today’s plan.
+              <h1 className="display-title mb-4">
+                Syllabus, papers, and today&apos;s plan — in one workspace.
               </h1>
-              <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-primary-foreground/80 sm:text-lg">
-                Built around how A-Levels are actually structured. See what you’ve covered, what you’ve sat, and what to do next.
+              <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
+                Built around how A-Levels are actually structured. See what you've covered, what you've sat, and what to do next.
               </p>
               <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
                 <Link href={isAuthenticated ? "/dashboard" : "/signup"}>
                   <Button
                     size="lg"
-                    className="h-12 cursor-pointer bg-background px-7 text-base text-foreground hover:bg-background/90 active:scale-[0.98]"
+                    className="h-12 cursor-pointer px-7 text-base active:scale-[0.98]"
                   >
                     {isAuthenticated ? "Open workspace" : "Create your workspace"}
                     <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
@@ -199,7 +233,7 @@ export default function LandingPage() {
                 {!isAuthenticated && (
                   <Link
                     href="/login"
-                    className="text-sm font-medium text-primary-foreground/75 underline-offset-4 transition-colors hover:text-primary-foreground hover:underline"
+                    className="text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
                   >
                     Already revising here? Log in
                   </Link>
@@ -212,7 +246,7 @@ export default function LandingPage() {
         <section className="border-b bg-background py-20 md:py-28">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="mb-14 max-w-xl md:mb-20">
-              <h2 className="mb-3 text-balance font-serif text-3xl font-bold tracking-tight md:text-4xl">
+              <h2 className="mb-3 text-balance text-3xl font-bold tracking-tight md:text-4xl">
                 Built for the A-Level calendar, not generic to-do lists.
               </h2>
               <p className="text-pretty text-muted-foreground md:text-lg">
@@ -220,7 +254,7 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="space-y-0">
+            <div className="space-y-8">
               {features.map((feature, index) => (
                 <motion.div
                   key={feature.title}
@@ -232,43 +266,48 @@ export default function LandingPage() {
                       ? { duration: 0 }
                       : { duration: 0.45, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }
                   }
-                  className={`grid gap-4 border-t border-border py-10 md:grid-cols-12 md:gap-8 md:py-12 ${
-                    index % 2 === 1 ? "md:[&>*:first-child]:col-start-5" : ""
-                  }`}
+                  className={cn(
+                    "surface-card grid items-center gap-6 rounded-2xl p-6 md:grid-cols-2 md:gap-10 md:p-8",
+                    ["card-tint-cream", "card-tint-teal", "card-tint-amber", "card-tint-coral"][index % 4],
+                    index % 2 === 1 && "md:[&>*:first-child]:order-2",
+                  )}
                 >
-                  <div className={`md:col-span-4 ${index % 2 === 1 ? "md:col-start-5" : ""}`}>
-                    <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                      {String(index + 1).padStart(2, "0")}
-                    </p>
-                    <h3 className="font-serif text-2xl font-semibold tracking-tight">{feature.title}</h3>
+                  <div>
+                    <div className={`mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl ${feature.variant}`}>
+                      <span className="text-sm font-bold tabular text-primary">{String(index + 1).padStart(2, "0")}</span>
+                    </div>
+                    <h3 className="mb-3 text-xl font-semibold tracking-tight">{feature.title}</h3>
+                    <p className="max-w-prose text-pretty leading-relaxed text-muted-foreground">{feature.body}</p>
                   </div>
-                  <p
-                    className={`max-w-md text-pretty leading-relaxed text-muted-foreground md:col-span-6 ${
-                      index % 2 === 1 ? "md:col-start-9" : "md:col-start-6"
-                    }`}
+                  <div
+                    className={cn(
+                      "flex min-h-[11rem] items-center justify-center rounded-xl px-4 py-6",
+                      feature.variant,
+                    )}
+                    aria-hidden
                   >
-                    {feature.body}
-                  </p>
-                </motion.div>
+                    <EmptyIllustration scene={feature.scene} className="max-w-[11rem]" />
+                  </div>                </motion.div>
               ))}
             </div>
           </div>
         </section>
 
-        <section className="grain relative overflow-hidden bg-primary py-24 text-primary-foreground md:py-28">
+        <section className="marketing-cta-section">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(255,255,255,0.12),transparent_50%)]" />
           <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
             <div className="max-w-xl">
-              <h2 className="mb-4 text-balance font-serif text-3xl font-bold tracking-tight md:text-4xl">
-                Start with your subjects. Plan today’s revision from there.
+              <h2 className="mb-4 text-balance text-3xl font-bold tracking-tight md:text-4xl">
+                Start with your subjects. Plan today's revision from there.
               </h2>
-              <p className="mb-8 text-pretty text-primary-foreground/75 md:text-lg">
-                Free to set up. Add your papers and syllabus when you’re ready — no trial countdown.
+              <p className="hero-band-muted mb-8 text-pretty md:text-lg">
+                Free to set up. Add your papers and syllabus when you're ready — no trial countdown.
               </p>
               <Link href="/signup">
                 <Button
                   size="lg"
                   variant="secondary"
-                  className="h-12 cursor-pointer bg-background px-7 text-base text-foreground hover:bg-background/90 active:scale-[0.98]"
+                  className="h-12 cursor-pointer px-7 text-base cta-on-brand active:scale-[0.98]"
                 >
                   Create your workspace
                 </Button>
@@ -279,11 +318,22 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t bg-muted/40 py-10">
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-4 sm:flex-row sm:items-center sm:px-6">
-          <span className="font-serif text-xl font-bold tracking-tight">Scholr</span>
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Scholr. Cambridge A-Level revision workspace.
-          </p>
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <span className="flex items-center gap-2 text-xl font-bold tracking-tight">
+            <span className="brand-icon h-7 w-7 rounded-lg">
+              <GraduationCap className="h-3.5 w-3.5" strokeWidth={2} />
+            </span>
+            Scholr
+          </span>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+            <Link href="/privacy" className="hover:text-foreground">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-foreground">
+              Terms
+            </Link>
+            <span>© {new Date().getFullYear()} Scholr</span>
+          </div>
         </div>
       </footer>
     </div>

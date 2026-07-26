@@ -31,39 +31,35 @@ export default function ForgotPassword() {
     <div className="grain relative flex min-h-[100dvh] items-center justify-center bg-muted/40 px-4">
       <Link
         href="/"
-        className="absolute left-4 top-6 font-serif text-2xl font-bold tracking-tight sm:left-8 sm:top-8"
+        className="absolute left-4 top-6 font-bold tracking-tight sm:left-8 sm:top-8"
       >
         Scholr
       </Link>
 
       <div className="relative z-10 w-full max-w-sm">
-        <h1 className="font-serif text-3xl font-bold tracking-tight">Reset password</h1>
+        <h1 className="font-bold tracking-tight">Reset password</h1>
         <p className="mt-2 text-muted-foreground">
           {isSubmitted
-            ? "If an account exists for that email, a reset link is on its way."
-            : "Enter your email and we’ll send a reset link."}
+            ? "Thanks — we've noted your request."
+            : "Password reset email isn't live in this build yet."}
         </p>
 
         {isSubmitted ? (
           <div className="mt-8 space-y-4">
             <p className="text-sm text-muted-foreground">
-              Check your inbox for instructions. The link expires after a short time.
+              For now, sign in with any email on the login page to continue using Scholr. Real email
+              reset will ship with full accounts.
             </p>
-            <Button
-              variant="outline"
-              className="h-11 w-full cursor-pointer"
-              onClick={() => {
-                setIsSubmitted(false);
-                setEmail("");
-                setError(undefined);
-                setTouched(false);
-              }}
-            >
-              Try another email
+            <Button asChild className="h-11 w-full cursor-pointer">
+              <Link href="/login">Back to login</Link>
             </Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
+            <div className="rounded-xl border border-border/70 bg-muted/40 p-3 text-sm text-muted-foreground">
+              Leave your email if you'd like to be notified when reset works. You can still sign in
+              without a password today.
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -91,7 +87,7 @@ export default function ForgotPassword() {
               )}
             </div>
             <Button type="submit" className="h-11 w-full cursor-pointer text-base active:scale-[0.98]">
-              Send reset link
+              Notify me when ready
             </Button>
           </form>
         )}

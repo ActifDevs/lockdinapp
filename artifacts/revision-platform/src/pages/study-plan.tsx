@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "wouter";
 import { 
   useListTasks, 
   getListTasksQueryKey, 
@@ -16,14 +15,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CheckCircle2, Circle, Clock, Plus, Trash2, Calendar as CalendarIcon, AlertCircle } from "lucide-react";
+import { TaskRow } from "@/components/task-row";
+import { RichEmptyState } from "@/components/rich-empty-state";
+import { Plus, Trash2, Calendar as CalendarIcon } from "lucide-react";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -40,7 +40,13 @@ type TaskFormValues = z.infer<typeof taskSchema>;
 export default function StudyPlan() {
   const [activeTab, setActiveTab] = useState("today");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  const mutationMessage = (error: unknown) =>
+    error instanceof Error && error.message.trim()
+      ? error.message
+      : "We couldn't save your changes. Try again.";
 
   const { data: tasks, isLoading: tasksLoading } = useListTasks(
     { filter: activeTab as any },
@@ -54,29 +60,34 @@ export default function StudyPlan() {
   const createTask = useCreateTask({
     mutation: {
       onSuccess: () => {
+        setActionError(null);
         queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
         setIsAddDialogOpen(false);
         form.reset();
-      }
-    }
+      },
+      onError: (error) => setActionError(mutationMessage(error)),
+    },
   });
 
   const updateTask = useUpdateTask({
     mutation: {
       onSuccess: () => {
+        setActionError(null);
         queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
-        // Also invalidate dashboard since tasks might show up there
         queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      }
-    }
+      },
+      onError: (error) => setActionError(mutationMessage(error)),
+    },
   });
 
   const deleteTask = useDeleteTask({
     mutation: {
       onSuccess: () => {
+        setActionError(null);
         queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
-      }
-    }
+      },
+      onError: (error) => setActionError(mutationMessage(error)),
+    },
   });
 
   const form = useForm<TaskFormValues>({
@@ -118,62 +129,35 @@ export default function StudyPlan() {
     }
 
     return (
-      <div key={task.id} className={cn("p-4 border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors flex items-start gap-4 group", task.completed && "opacity-60")}>
-        <button
-          type="button"
-          onClick={() => toggleTaskComplete(task)}
-          disabled={updateTask.isPending}
-          className="flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-          aria-label={task.completed ? `Mark "${task.title}" as incomplete` : `Mark "${task.title}" as complete`}
-          aria-pressed={task.completed}
-        >
-          {task.completed ? (
-            <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden />
-          ) : (
-            <Circle className="h-5 w-5" aria-hidden />
-          )}
-        </button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className={cn("text-base font-medium", task.completed && "line-through text-muted-foreground")}>
-                {task.title}
-              </p>
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                <Badge variant="outline" className="text-xs h-6 rounded-sm border-0 font-medium" style={{ backgroundColor: `${task.subjectColor}15`, color: task.subjectColor }}>
-                  {task.subjectName}
-                </Badge>
-                
-                {task.priority === 'high' && (
-                  <Badge variant="destructive" className="h-6 text-[10px] uppercase tracking-wider rounded-sm px-1.5 py-0">High Priority</Badge>
+      <TaskRow
+        key={task.id}
+        task={task}
+        disabled={updateTask.isPending}
+        onToggle={() => toggleTaskComplete(task)}
+        trailing={
+          <div className="flex shrink-0 items-center gap-2 self-center pt-1">
+            {deadlineStr && (
+              <span
+                className={cn(
+                  "hidden items-center gap-1 text-xs sm:flex",
+                  deadlineStr === "Today" ? "font-medium text-destructive" : "text-muted-foreground",
                 )}
-                
-                {task.estimatedMinutes && (
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> {task.estimatedMinutes}m
-                  </span>
-                )}
-
-                {deadlineStr && (
-                  <span className={cn("text-xs flex items-center gap-1", 
-                    deadlineStr === "Today" ? "text-destructive font-medium" : "text-muted-foreground"
-                  )}>
-                    <CalendarIcon className="h-3 w-3" /> {deadlineStr}
-                  </span>
-                )}
-              </div>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0"
+              >
+                <CalendarIcon className="h-3 w-3" strokeWidth={1.75} /> {deadlineStr}
+              </span>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-11 w-11 text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:text-destructive group-hover:opacity-100"
+              aria-label={`Delete task: ${task.title}`}
               onClick={() => deleteTask.mutate({ taskId: task.id })}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" aria-hidden strokeWidth={1.75} />
             </Button>
           </div>
-        </div>
-      </div>
+        }
+      />
     );
   };
 
@@ -181,39 +165,48 @@ export default function StudyPlan() {
     <div className="space-y-8 pb-8 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-3xl font-bold tracking-tight">Study Plan</h1>
-          <p className="text-muted-foreground mt-2">Organise your revision session and track what needs to be done.</p>
+          <h1 className="page-title">Study plan</h1>
+          <p className="page-subtitle">Organise revision sessions and track what needs doing.</p>
         </div>
         <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" /> Add Task
+          <Plus className="mr-2 h-4 w-4" /> Add task
         </Button>
       </div>
 
-      <Card>
+      {actionError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+        >
+          {actionError}
+        </div>
+      )}
+
+      <Card className="card-tint-cream border-border/60">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <CardHeader className="pb-0 border-b">
-            <TabsList className="bg-transparent border-b-0 h-auto p-0 gap-6 w-full justify-start overflow-x-auto rounded-none">
-              <TabsTrigger 
-                value="today" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-3 pt-2"
+            <TabsList className="tabs-scroll rounded-none border-b bg-transparent p-0">
+              <TabsTrigger
+                value="today"
+                className="rounded-none border-b-2 border-transparent px-1 pb-3 pt-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
               >
                 Today
               </TabsTrigger>
-              <TabsTrigger 
-                value="upcoming" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-3 pt-2"
+              <TabsTrigger
+                value="upcoming"
+                className="rounded-none border-b-2 border-transparent px-1 pb-3 pt-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
               >
                 Upcoming
               </TabsTrigger>
-              <TabsTrigger 
-                value="completed" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-3 pt-2"
+              <TabsTrigger
+                value="completed"
+                className="rounded-none border-b-2 border-transparent px-1 pb-3 pt-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
               >
                 Completed
               </TabsTrigger>
-              <TabsTrigger 
-                value="all" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 pb-3 pt-2"
+              <TabsTrigger
+                value="all"
+                className="rounded-none border-b-2 border-transparent px-1 pb-3 pt-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
               >
                 All Tasks
               </TabsTrigger>
@@ -225,26 +218,34 @@ export default function StudyPlan() {
                 {[1,2,3].map(i => <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />)}
               </div>
             ) : !tasks || tasks.length === 0 ? (
-              <div className="p-12 text-center flex flex-col items-center">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                  <CheckCircle2 className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">No tasks found</h3>
-                <p className="text-muted-foreground max-w-sm">
-                  {activeTab === 'today' 
-                    ? "You don't have any tasks scheduled for today. Take a break or plan ahead."
-                    : activeTab === 'completed'
-                    ? "You haven't completed any tasks yet."
-                    : "Your study plan is empty."}
-                </p>
-                {activeTab !== 'completed' && (
-                  <Button variant="outline" className="mt-6" onClick={() => setIsAddDialogOpen(true)}>
-                    Create a task
-                  </Button>
-                )}
-              </div>
+              <RichEmptyState
+                scene={
+                  activeTab === "completed"
+                    ? "calm"
+                    : activeTab === "today"
+                      ? "tasks"
+                      : "tasks"
+                }
+                title={
+                  activeTab === "today"
+                    ? "No tasks for today yet"
+                    : activeTab === "completed"
+                      ? "No completed tasks yet"
+                      : "Your study plan is empty"
+                }
+                description={
+                  activeTab === "today"
+                    ? "Add today's first task to protect your streak and unlock Daily Champion."
+                    : activeTab === "completed"
+                      ? "You haven't completed any tasks yet — your first checkmark is waiting."
+                      : "Break revision into small, finishable blocks and schedule the next session."
+                }
+                actionLabel={activeTab !== "completed" ? "Create a task" : undefined}
+                onAction={activeTab !== "completed" ? () => setIsAddDialogOpen(true) : undefined}
+                variant={activeTab === "today" ? "purple" : activeTab === "completed" ? "mint" : "blue"}
+              />
             ) : (
-              <div className="divide-y border-t-0">
+              <div className="list-divider group">
                 {tasks.map(renderTask)}
               </div>
             )}
@@ -255,10 +256,15 @@ export default function StudyPlan() {
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle className="font-serif">Add New Task</DialogTitle>
+            <DialogTitle>Add new task</DialogTitle>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+              {createTask.isError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {mutationMessage(createTask.error)}
+                </p>
+              )}
               <FormField
                 control={form.control}
                 name="title"
@@ -296,7 +302,7 @@ export default function StudyPlan() {
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid form-grid-2">
                 <FormField
                   control={form.control}
                   name="deadline"
@@ -352,7 +358,7 @@ export default function StudyPlan() {
               <DialogFooter className="pt-4">
                 <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={createTask.isPending}>
-                  {createTask.isPending ? "Adding..." : "Add Task"}
+                  {createTask.isPending ? "Adding…" : "Add task"}
                 </Button>
               </DialogFooter>
             </form>

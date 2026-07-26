@@ -4,6 +4,14 @@ import { useLocation } from "wouter";
 export type AuthUser = {
   name: string;
   email: string;
+  level?: string | null;
+  examSession?: string | null;
+};
+
+export type OnboardingPayload = {
+  level?: string | null;
+  examSession?: string | null;
+  subjectCodes?: string[];
 };
 
 const AUTH_KEY = "scholr_auth";
@@ -20,6 +28,10 @@ function readUser(): AuthUser | null {
   } catch {
     return null;
   }
+}
+
+function writeUser(user: AuthUser) {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 function firstNameFrom(name: string): string {
@@ -44,11 +56,16 @@ export function useAuth() {
     (nextUser?: Partial<AuthUser>) => {
       const existing = readUser();
       const merged: AuthUser = {
-        name: nextUser?.name?.trim() || existing?.name || "Student",
+        name: nextUser?.name?.trim() || existing?.name || "Scholar",
         email: nextUser?.email?.trim() || existing?.email || "",
+        level: nextUser?.level !== undefined ? nextUser.level : existing?.level ?? null,
+        examSession:
+          nextUser?.examSession !== undefined
+            ? nextUser.examSession
+            : existing?.examSession ?? null,
       };
       localStorage.setItem(AUTH_KEY, "true");
-      localStorage.setItem(USER_KEY, JSON.stringify(merged));
+      writeUser(merged);
       setUser(merged);
       setIsAuthenticated(true);
 
@@ -67,19 +84,38 @@ export function useAuth() {
     setLocation("/login");
   }, [setLocation]);
 
-  const completeOnboarding = useCallback(() => {
-    localStorage.setItem(ONBOARDED_KEY, "true");
-    setIsOnboarded(true);
-    setLocation("/dashboard");
-  }, [setLocation]);
+  const completeOnboarding = useCallback(
+    (payload?: OnboardingPayload) => {
+      setUser((prev) => {
+        const merged: AuthUser = {
+          name: prev?.name || "Scholar",
+          email: prev?.email || "",
+          level: payload?.level ?? prev?.level ?? null,
+          examSession: payload?.examSession ?? prev?.examSession ?? null,
+        };
+        writeUser(merged);
+        return merged;
+      });
+      localStorage.setItem(ONBOARDED_KEY, "true");
+      if (payload?.subjectCodes?.length) {
+        localStorage.setItem("scholr_subject_codes", JSON.stringify(payload.subjectCodes));
+      }
+      setIsOnboarded(true);
+      setLocation("/dashboard");
+    },
+    [setLocation],
+  );
 
   const updateUser = useCallback((next: Partial<AuthUser>) => {
     setUser((prev) => {
       const merged: AuthUser = {
-        name: next.name?.trim() || prev?.name || "Student",
+        name: next.name?.trim() || prev?.name || "Scholar",
         email: next.email?.trim() || prev?.email || "",
+        level: next.level !== undefined ? next.level : prev?.level ?? null,
+        examSession:
+          next.examSession !== undefined ? next.examSession : prev?.examSession ?? null,
       };
-      localStorage.setItem(USER_KEY, JSON.stringify(merged));
+      writeUser(merged);
       return merged;
     });
   }, []);

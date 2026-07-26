@@ -7,6 +7,7 @@ import {
 } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { RichEmptyState } from "@/components/rich-empty-state";
 import {
   format,
   startOfMonth,
@@ -29,7 +30,6 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -111,33 +111,56 @@ export default function CalendarPage() {
     return exams.filter((e) => isSameMonth(parseISO(e.date), viewMonth)).length;
   }, [exams, viewMonth]);
 
+  const calendarWeeks = useMemo(() => {
+    const weeks: Date[][] = [];
+    for (let i = 0; i < calendarDays.length; i += 7) {
+      weeks.push(calendarDays.slice(i, i + 7));
+    }
+    return weeks;
+  }, [calendarDays]);
+
+  const monthDays = useMemo(
+    () => calendarDays.filter((day) => isSameMonth(day, viewMonth)),
+    [calendarDays, viewMonth],
+  );
+
+  const selectedDateLabel = `${format(selectedDate, "EEEE, MMMM d, yyyy")}${
+    selTasks.length + selExams.length > 0
+      ? `, ${selTasks.length + selExams.length} scheduled item${selTasks.length + selExams.length === 1 ? "" : "s"}`
+      : ", nothing scheduled"
+  }`;
+
   return (
-    <div className="space-y-6 pb-10 animate-in fade-in duration-500">
+    <div className="space-y-6 pb-4 animate-in fade-in duration-500 md:pb-10">
+      <p className="sr-only" aria-live="polite" aria-atomic="true">
+        Selected: {selectedDateLabel}
+      </p>
       {/* Page header */}
       <div>
-        <h1 className="font-serif text-3xl font-bold tracking-tight">Calendar</h1>
-        <p className="text-muted-foreground mt-1.5">
+        <h1 className="page-title">Calendar</h1>
+        <p className="page-subtitle">
           Your revision schedule and upcoming exams at a glance.
         </p>
       </div>
 
       {/* Exam countdown strip */}
       {upcomingExams.length > 0 && (
-        <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
+        <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar" role="list" aria-label="Upcoming exams">
           {upcomingExams.slice(0, 5).map((exam) => {
             const diff = differenceInCalendarDays(exam._date, new Date());
             const urgency = diff <= 7 ? "urgent" : diff <= 21 ? "soon" : "upcoming";
+            const countdown = diff === 0 ? "Today" : diff === 1 ? "1 day" : `${diff} days`;
             return (
-              <div
+              <button
                 key={exam.id}
+                type="button"
+                role="listitem"
+                aria-label={`${exam.subjectName} ${exam.paperCode}, ${countdown} away on ${format(exam._date, "MMMM d")}. Show on calendar.`}
                 className={cn(
-                  "flex-shrink-0 flex items-center gap-3 rounded-xl px-4 py-3 border text-sm cursor-pointer transition-all",
-                  urgency === "urgent" &&
-                    "bg-red-50 border-red-200 text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-300",
-                  urgency === "soon" &&
-                    "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/30 dark:border-amber-700 dark:text-amber-300",
-                  urgency === "upcoming" &&
-                    "bg-muted/60 border-border text-foreground"
+                  "flex shrink-0 items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  urgency === "urgent" && "pastel-pink pastel-border-pink",
+                  urgency === "soon" && "pastel-yellow pastel-border-yellow",
+                  urgency === "upcoming" && "surface-card border-border/60",
                 )}
                 onClick={() => {
                   setSelectedDate(exam._date);
@@ -145,36 +168,128 @@ export default function CalendarPage() {
                 }}
               >
                 <div
-                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  className="h-2 w-2 shrink-0 rounded-full"
                   style={{ backgroundColor: exam.subjectColor }}
+                  aria-hidden
                 />
                 <div>
                   <div className="font-semibold leading-tight">{exam.subjectName}</div>
-                  <div className="text-xs opacity-75 mt-0.5">{exam.paperCode}</div>
+                  <div className="mt-0.5 text-xs opacity-75">{exam.paperCode}</div>
                 </div>
-                <div className="ml-2 text-right flex-shrink-0">
+                <div className="ml-2 shrink-0 text-right">
                   <div className="font-bold tabular-nums">
                     {diff === 0 ? "Today" : diff === 1 ? "1 day" : `${diff}d`}
                   </div>
                   <div className="text-xs opacity-60">{format(exam._date, "d MMM")}</div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
       )}
 
-      {/* Main grid layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
-        {/* ── Calendar grid ── */}
-        <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+      {/* Main layout */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">
+        {/* Mobile: day picker + detail first */}
+        <div className="space-y-4 md:hidden">
+          <div className="overflow-hidden rounded-2xl border border-[hsl(var(--brand-amber)/0.25)] bg-card shadow-sm">
+            <div className="flex flex-col gap-3 border-b px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-lg font-bold">{format(viewMonth, "MMMM yyyy")}</h2>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground rounded-full bg-muted px-2.5 py-1">
+                  <span>{monthTaskCount} tasks</span>
+                  <span className="mx-1 opacity-40">·</span>
+                  <span>{monthExamCount} exams</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-11 text-xs"
+                  onClick={() => {
+                    const today = new Date();
+                    setViewMonth(today);
+                    setSelectedDate(today);
+                  }}
+                >
+                  Today
+                </Button>
+                <div className="flex">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-11 w-11 rounded-r-none border-r-0"
+                    aria-label="Previous month"
+                    onClick={() => setViewMonth((m) => subMonths(m, 1))}
+                  >
+                    <ChevronLeft className="h-4 w-4" aria-hidden />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-11 w-11 rounded-l-none"
+                    aria-label="Next month"
+                    onClick={() => setViewMonth((m) => addMonths(m, 1))}
+                  >
+                    <ChevronRight className="h-4 w-4" aria-hidden />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="scroll-snap-x flex gap-2 overflow-x-auto p-3 no-scrollbar">
+              {monthDays.map((day) => {
+                const key = format(day, "yyyy-MM-dd");
+                const dayTasks = tasksByDate.get(key) ?? [];
+                const dayExams = examsByDate.get(key) ?? [];
+                const eventCount = dayTasks.length + dayExams.length;
+                const selected = isSameDay(day, selectedDate);
+                const todayDay = isToday(day);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-label={format(day, "EEEE, MMMM d")}
+                    aria-current={todayDay ? "date" : undefined}
+                    aria-selected={selected}
+                    onClick={() => setSelectedDate(day)}
+                    className={cn(
+                      "scroll-snap-start flex min-w-[3.25rem] shrink-0 flex-col items-center gap-1 rounded-xl border px-2 py-2 text-center transition-colors",
+                      selected
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border/60 bg-card hover:bg-muted/40",
+                    )}
+                  >
+                    <span className="text-[10px] font-medium uppercase text-muted-foreground">
+                      {format(day, "EEE")}
+                    </span>
+                    <span
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold",
+                        todayDay && "bg-primary text-primary-foreground",
+                      )}
+                    >
+                      {format(day, "d")}
+                    </span>
+                    {eventCount > 0 && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Calendar grid (tablet+) ── */}
+        <div className="hidden overflow-hidden rounded-2xl border border-[hsl(var(--brand-teal)/0.22)] bg-card shadow-sm md:block">
           {/* Month nav header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b">
-            <div className="flex items-center gap-3">
-              <h2 className="font-serif text-xl font-bold">
+          <div className="flex flex-col gap-3 border-b px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-xl font-bold">
                 {format(viewMonth, "MMMM yyyy")}
               </h2>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2.5 py-1">
+              <div className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
                 <span>{monthTaskCount} tasks</span>
                 <span className="mx-1 opacity-40">·</span>
                 <span>{monthExamCount} exams</span>
@@ -184,7 +299,7 @@ export default function CalendarPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs h-8"
+                className="h-11 text-xs"
                 onClick={() => {
                   const today = new Date();
                   setViewMonth(today);
@@ -197,28 +312,31 @@ export default function CalendarPage() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8 rounded-r-none border-r-0"
+                  className="h-11 w-11 rounded-r-none border-r-0"
+                  aria-label="Previous month"
                   onClick={() => setViewMonth((m) => subMonths(m, 1))}
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4" aria-hidden />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8 rounded-l-none"
+                  className="h-11 w-11 rounded-l-none"
+                  aria-label="Next month"
                   onClick={() => setViewMonth((m) => addMonths(m, 1))}
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4" aria-hidden />
                 </Button>
               </div>
             </div>
           </div>
 
           {/* Weekday headers */}
-          <div className="grid grid-cols-7 border-b">
+          <div className="grid grid-cols-7 border-b" role="row">
             {WEEKDAYS.map((d) => (
               <div
                 key={d}
+                role="columnheader"
                 className={cn(
                   "py-2.5 text-center text-xs font-medium text-muted-foreground",
                   (d === "Sat" || d === "Sun") && "text-muted-foreground/60"
@@ -230,11 +348,14 @@ export default function CalendarPage() {
           </div>
 
           {/* Day cells */}
-          <div className="grid grid-cols-7 auto-rows-[minmax(90px,1fr)]">
-            {calendarDays.map((day, idx) => {
+          <div className="grid grid-cols-1 auto-rows-[minmax(90px,1fr)]" role="grid" aria-label={format(viewMonth, "MMMM yyyy")}>
+            {calendarWeeks.map((week, weekIdx) => (
+              <div key={weekIdx} className="grid grid-cols-7" role="row">
+                {week.map((day, idx) => {
               const key = format(day, "yyyy-MM-dd");
               const dayTasks = tasksByDate.get(key) ?? [];
               const dayExams = examsByDate.get(key) ?? [];
+              const eventCount = dayTasks.length + dayExams.length;
               const allEvents = [...dayExams.map(e => ({ type: "exam" as const, id: `e-${e.id}`, label: e.paperCode, color: "#ef4444", subjectName: e.subjectName })),
                                  ...dayTasks.map(t => ({ type: "task" as const, id: `t-${t.id}`, label: t.title, color: t.subjectColor ?? "#6366f1", completed: t.completed }))];
               const overflow = allEvents.length > 3 ? allEvents.length - 2 : 0;
@@ -243,32 +364,42 @@ export default function CalendarPage() {
               const todayDay = isToday(day);
               const selected = isSameDay(day, selectedDate);
               const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+              const dayLabel = format(day, "EEEE, MMMM d, yyyy");
+              const eventsLabel =
+                eventCount === 0
+                  ? "no events"
+                  : `${eventCount} event${eventCount === 1 ? "" : "s"}`;
 
               return (
-                <div
+                <button
                   key={key}
+                  type="button"
+                  role="gridcell"
+                  aria-selected={selected}
+                  aria-current={todayDay ? "date" : undefined}
+                  aria-label={`${dayLabel}, ${eventsLabel}`}
                   onClick={() => setSelectedDate(day)}
                   className={cn(
-                    "relative flex flex-col gap-1 p-2 cursor-pointer transition-colors border-b border-r group",
-                    // remove double borders on last row / col
-                    idx % 7 === 6 && "border-r-0",
+                    "relative flex min-h-[90px] flex-col gap-1 border-b border-r p-2 text-left transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
+                    idx === 6 && "border-r-0",
                     !inMonth && "bg-muted/30",
                     inMonth && isWeekend && "bg-muted/10",
                     inMonth && !isWeekend && "bg-card",
-                    selected && "ring-2 ring-inset ring-primary/50 bg-primary/5",
+                    selected && "bg-primary/5 ring-2 ring-inset ring-primary/50",
                     !selected && "hover:bg-muted/40"
                   )}
                 >
                   {/* Day number */}
                   <div className="flex justify-end">
                     <span
+                      aria-hidden
                       className={cn(
-                        "text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full leading-none transition-colors",
+                        "flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium leading-none transition-colors",
                         !inMonth && "text-muted-foreground/40",
                         inMonth && !todayDay && "text-foreground",
                         todayDay &&
-                          "bg-primary text-primary-foreground font-bold",
-                        selected && !todayDay && "text-primary font-semibold"
+                          "bg-primary font-bold text-primary-foreground",
+                        selected && !todayDay && "font-semibold text-primary"
                       )}
                     >
                       {format(day, "d")}
@@ -276,12 +407,12 @@ export default function CalendarPage() {
                   </div>
 
                   {/* Event chips */}
-                  <div className="flex flex-col gap-0.5 min-h-0">
+                  <div className="flex min-h-0 flex-col gap-0.5" aria-hidden>
                     {visible.map((ev) => (
                       <div
                         key={ev.id}
                         className={cn(
-                          "flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] leading-tight truncate font-medium",
+                          "flex items-center gap-1 truncate rounded px-1.5 py-0.5 text-xs leading-tight font-medium",
                           ev.type === "exam"
                             ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
                             : "opacity-90"
@@ -296,36 +427,38 @@ export default function CalendarPage() {
                         }
                       >
                         {ev.type === "exam" && (
-                          <AlertCircle className="h-2.5 w-2.5 flex-shrink-0" />
+                          <AlertCircle className="h-2.5 w-2.5 shrink-0" />
                         )}
                         <span className="truncate">{ev.label}</span>
                         {ev.type === "task" && ev.completed && (
-                          <CheckCircle2 className="h-2.5 w-2.5 flex-shrink-0 opacity-70" />
+                          <CheckCircle2 className="h-2.5 w-2.5 shrink-0 opacity-70" />
                         )}
                       </div>
                     ))}
                     {overflow > 0 && (
-                      <div className="text-[10px] text-muted-foreground font-medium px-1.5">
+                      <div className="px-1.5 text-xs font-medium text-muted-foreground">
                         +{overflow} more
                       </div>
                     )}
                   </div>
-                </div>
+                </button>
               );
-            })}
+                })}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* ── Day detail sidebar ── */}
-        <div className="flex flex-col gap-4">
-          <div className="rounded-2xl border bg-card shadow-sm overflow-hidden sticky top-6">
+        {/* ── Day detail ── */}
+        <div className="flex flex-col gap-4 md:col-span-1 xl:col-span-1">
+          <div className="overflow-hidden rounded-2xl border border-[hsl(var(--brand-coral)/0.22)] bg-card shadow-sm md:sticky md:top-6">
             {/* Sidebar header */}
             <div className="px-5 py-4 border-b">
               <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium uppercase tracking-wider mb-1">
                 <CalendarDays className="h-3.5 w-3.5" />
                 {isToday(selectedDate) ? "Today" : format(selectedDate, "EEEE")}
               </div>
-              <div className="font-serif text-2xl font-bold">
+              <div className="text-2xl font-bold">
                 {format(selectedDate, "MMMM d")}
               </div>
               <div className="text-sm text-muted-foreground">
@@ -336,24 +469,22 @@ export default function CalendarPage() {
             {/* Events */}
             <div className="overflow-y-auto max-h-[520px]">
               {selExams.length === 0 && selTasks.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center px-6">
-                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
-                    <BookOpen className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Nothing scheduled
-                  </p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">
-                    A free day — use it well.
-                  </p>
-                </div>
+                <RichEmptyState
+                  scene="calendar"
+                  title="Nothing scheduled"
+                  description="A free day — use it well, or add tasks from your study plan."
+                  actionHref="/study-plan"
+                  actionLabel="Open study plan"
+                  variant="mint"
+                  className="py-10"
+                />
               ) : (
                 <div className="divide-y">
                   {/* Exams first */}
                   {selExams.map((exam) => (
                     <div
                       key={`exam-${exam.id}`}
-                      className="p-4 bg-red-50/60 dark:bg-red-950/20"
+                      className="p-4 pastel-pink"
                     >
                       <div className="flex items-center gap-2 mb-1.5">
                         <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />

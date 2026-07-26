@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { IllustAuthDesk } from "@/components/illustrations";
 
 type FieldErrors = {
   email?: string;
@@ -57,15 +58,17 @@ export default function Login() {
 
   return (
     <div className="grid min-h-[100dvh] lg:grid-cols-2">
-      <aside className="grain relative hidden overflow-hidden bg-primary lg:block">
-        <div className="absolute inset-0 bg-[hsl(220_18%_14%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_40%_30%,hsl(220_15%_28%/0.8),transparent_60%)]" />
+      <aside className="auth-aside grain">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_20%,rgba(255,255,255,0.15),transparent_55%)]" />
         <div className="relative z-10 flex h-full flex-col justify-between p-10 text-primary-foreground">
-          <Link href="/" className="font-serif text-3xl font-bold tracking-tight">
+          <Link href="/" className="font-bold tracking-tight">
             Scholr
           </Link>
+          <div className="flex flex-1 flex-col items-center justify-center py-8">
+            <IllustAuthDesk className="w-full max-w-[20rem]" />
+          </div>
           <div className="max-w-sm">
-            <p className="font-serif text-3xl font-semibold leading-snug tracking-tight">
+            <p className="text-3xl font-semibold leading-snug tracking-tight">
               Pick up where you left off.
             </p>
             <p className="mt-3 text-sm leading-relaxed text-primary-foreground/75">
@@ -78,13 +81,13 @@ export default function Login() {
       <div className="relative flex flex-col justify-center bg-background px-4 py-12 sm:px-8">
         <Link
           href="/"
-          className="absolute left-4 top-6 font-serif text-2xl font-bold tracking-tight lg:hidden"
+          className="absolute left-4 top-6 font-bold tracking-tight lg:hidden"
         >
           Scholr
         </Link>
 
         <div className="mx-auto w-full max-w-sm">
-          <h1 className="font-serif text-3xl font-bold tracking-tight">Welcome back</h1>
+          <h1 className="font-bold tracking-tight">Welcome back</h1>
           <p className="mt-2 text-muted-foreground">Log in to continue your revision.</p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>

@@ -1,4 +1,12 @@
-import { useListSubjects, getListSubjectsQueryKey } from "@workspace/api-client-react";
+import {
+  useListSubjects,
+  getListSubjectsQueryKey,
+  useCreateSubject,
+  useDeleteSubject,
+  getGetDashboardSummaryQueryKey,
+  getGetProgressOverviewQueryKey,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -6,44 +14,178 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/components/theme-provider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Bell, Palette, BookOpen, Calendar as CalendarIcon, Check } from "lucide-react";
+import { User, Bell, Palette, BookOpen, Calendar as CalendarIcon, Check, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-import { useState } from "react";
+import { useNotificationPrefs } from "@/hooks/use-notification-prefs";
+import { SUBJECT_CATALOG } from "@/lib/subject-catalog";
+import { toast } from "@/hooks/use-toast";
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
+import { Link } from "wouter";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+function ComingSoonBadge() {
+  return (
+    <Badge variant="secondary" className="shrink-0 text-[10px] uppercase tracking-wide">
+      Coming soon
+    </Badge>
+  );
+}
+
+function ThemeOption({
+  label,
+  selected,
+  onSelect,
+  preview,
+}: {
+  label: string;
+  selected: boolean;
+  onSelect: () => void;
+  preview: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={cn(
+        "relative flex flex-col items-center justify-center rounded-xl border-2 p-4 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
+      )}
+    >
+      {preview}
+      <span className="text-sm font-medium">{label}</span>
+      {selected && <Check className="absolute right-2 top-2 h-4 w-4 text-primary" aria-hidden />}
+    </button>
+  );
+}
 
 export default function Settings() {
   const { theme, setTheme } = useTheme();
   const { user, updateUser } = useAuth();
+  const { prefs, updatePref, requestBrowserPermission } = useNotificationPrefs();
+  const queryClient = useQueryClient();
   const { data: subjects } = useListSubjects({ query: { queryKey: getListSubjectsQueryKey() } });
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
+  const [level, setLevel] = useState(user?.level || "");
+  const [examSession, setExamSession] = useState(user?.examSession || "");
   const [saved, setSaved] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const defaultTab = (() => {
+    try {
+      return new URLSearchParams(window.location.search).get("tab") || "account";
+    } catch {
+      return "account";
+    }
+  })();
+
+  const invalidateSubjects = () => {
+    queryClient.invalidateQueries({ queryKey: getListSubjectsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetProgressOverviewQueryKey() });
+  };
+
+  const createSubject = useCreateSubject({
+    mutation: {
+      onSuccess: (subject) => {
+        invalidateSubjects();
+        setAddOpen(false);
+        toast({ title: `${subject.name} added`, description: "Starter syllabus topics are ready." });
+      },
+      onError: (err) => {
+        toast({
+          title: "Could not add subject",
+          description: err instanceof Error ? err.message : "Try again.",
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
+  const deleteSubject = useDeleteSubject({
+    mutation: {
+      onSuccess: () => {
+        invalidateSubjects();
+        toast({ title: "Subject removed" });
+      },
+      onError: (err) => {
+        toast({
+          title: "Could not remove subject",
+          description: err instanceof Error ? err.message : "Try again.",
+          variant: "destructive",
+        });
+      },
+    },
+  });
 
   const saveProfile = () => {
-    updateUser({ name: name.trim() || user?.name, email: email.trim() });
+    updateUser({
+      name: name.trim() || user?.name,
+      email: email.trim(),
+      level: level || null,
+      examSession: examSession || null,
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const activeCodes = new Set((subjects ?? []).map((s) => s.code));
+  const availableToAdd = SUBJECT_CATALOG.filter((s) => !activeCodes.has(s.code));
+
+  useEffect(() => {
+    if (defaultTab === "subjects" && availableToAdd.length > 0 && (subjects?.length ?? 0) === 0) {
+      setAddOpen(true);
+    }
+  }, [defaultTab, availableToAdd.length, subjects?.length]);
+
+  const handlePrefToggle = async (key: keyof typeof prefs, checked: boolean) => {
+    updatePref(key, checked);
+    if (checked) {
+      const permission = await requestBrowserPermission();
+      if (permission === "granted") {
+        toast({
+          title: "Alerts enabled",
+          description: "We'll nudge you in this browser when reminders are due.",
+        });
+      } else if (permission === "denied") {
+        toast({
+          title: "Browser alerts blocked",
+          description: "Prefs are saved. Enable notifications in your browser to get desktop nudges.",
+        });
+      } else {
+        toast({ title: "Preference saved", description: "In-app reminders will still appear." });
+      }
+    }
+  };
+
   return (
-    <div className="space-y-8 pb-8 animate-in fade-in duration-500 max-w-4xl mx-auto">
+    <div className="mx-auto max-w-4xl space-y-8 pb-8 animate-in fade-in duration-500">
       <div>
-        <h1 className="font-serif text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-2">Manage your account, preferences, and workspace.</p>
+        <h1 className="page-title">Settings</h1>
+        <p className="page-subtitle">Manage your account, preferences, and workspace.</p>
       </div>
 
-      <Tabs defaultValue="account" className="w-full">
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 lg:w-auto">
+      <Tabs defaultValue={defaultTab} className="w-full">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 lg:w-auto tabs-scroll lg:overflow-visible">
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="notifications">Alerts</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="account" className="space-y-6 mt-6">
-          <Card>
+        <TabsContent value="account" className="mt-6 space-y-6">
+          <Card className="card-tint-cream">
             <CardHeader>
-              <CardTitle className="font-serif text-xl flex items-center gap-2"><User className="h-5 w-5" /> Profile</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <User className="h-5 w-5" aria-hidden /> Profile
+              </CardTitle>
               <CardDescription>Update your personal information.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -68,145 +210,276 @@ export default function Settings() {
                   className="max-w-md"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="level">Level</Label>
+                <Input
+                  id="level"
+                  value={level}
+                  onChange={(e) => setLevel(e.target.value)}
+                  placeholder="AS Level (Year 12)"
+                  className="max-w-md"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="examSession">Exam session</Label>
+                <Input
+                  id="examSession"
+                  value={examSession}
+                  onChange={(e) => setExamSession(e.target.value)}
+                  placeholder="May/June 2026"
+                  className="max-w-md"
+                />
+              </div>
               <div className="flex items-center gap-3">
                 <Button onClick={saveProfile}>Save changes</Button>
-                {saved && <span className="text-sm text-muted-foreground">Saved</span>}
+                {saved && (
+                  <span className="text-sm text-muted-foreground" role="status">
+                    Saved
+                  </span>
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="subjects" className="space-y-6 mt-6">
-          <Card>
+        <TabsContent value="subjects" className="mt-6 space-y-6">
+          <Card className="card-tint-teal">
             <CardHeader>
-              <CardTitle className="font-serif text-xl flex items-center gap-2"><BookOpen className="h-5 w-5" /> Active Subjects</CardTitle>
-              <CardDescription>The subjects currently on your dashboard.</CardDescription>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <BookOpen className="h-5 w-5" aria-hidden /> Active subjects
+              </CardTitle>
+              <CardDescription>Add or remove the subjects on your dashboard.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid sm:grid-cols-2 gap-4 mb-6">
-                {subjects?.map(subject => (
-                  <div key={subject.id} className="flex justify-between items-center p-3 border rounded-md bg-card">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: subject.color }} />
-                      <div>
-                        <p className="font-medium text-sm">{subject.name}</p>
-                        <p className="text-xs text-muted-foreground">{subject.code}</p>
+              {subjects && subjects.length > 0 ? (
+                <div className="mb-6 grid gap-4 sm:grid-cols-2">
+                  {subjects.map((subject) => (
+                    <div
+                      key={subject.id}
+                      className="flex items-center justify-between gap-2 rounded-md border bg-card p-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div
+                          className="h-3 w-3 shrink-0 rounded-full"
+                          style={{ backgroundColor: subject.color }}
+                          aria-hidden
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{subject.name}</p>
+                          <p className="text-xs text-muted-foreground">{subject.code}</p>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/subjects/${subject.id}`}>View</Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                          aria-label={`Remove ${subject.name}`}
+                          disabled={deleteSubject.isPending}
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Remove ${subject.name}? Tasks and papers for this subject will also be deleted.`,
+                              )
+                            ) {
+                              deleteSubject.mutate({ subjectId: subject.id });
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden />
+                        </Button>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive/90 hover:bg-destructive/10">Remove</Button>
-                  </div>
-                ))}
-              </div>
-              <Button variant="outline" className="w-full sm:w-auto">Add Another Subject</Button>
+                  ))}
+                </div>
+              ) : (
+                <p className="mb-6 text-sm text-muted-foreground">No subjects on your workspace yet.</p>
+              )}
+              <Button
+                onClick={() => setAddOpen(true)}
+                disabled={availableToAdd.length === 0}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                Add subject
+              </Button>
+              {availableToAdd.length === 0 && (
+                <p className="mt-3 text-sm text-muted-foreground">All catalog subjects are already added.</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="appearance" className="space-y-6 mt-6">
-          <Card>
+        <TabsContent value="appearance" className="mt-6 space-y-6">
+          <Card className="card-tint-amber">
             <CardHeader>
-              <CardTitle className="font-serif text-xl flex items-center gap-2"><Palette className="h-5 w-5" /> Theme</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Palette className="h-5 w-5" aria-hidden /> Theme
+              </CardTitle>
               <CardDescription>Select your preferred visual style.</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-3 gap-4 max-w-2xl">
-              <button 
-                onClick={() => setTheme("light")}
-                className={`relative flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all ${theme === 'light' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
-              >
-                <div className="w-full h-20 bg-white border rounded-md shadow-sm mb-3 flex flex-col gap-2 p-2">
-                  <div className="w-1/2 h-2 bg-slate-200 rounded" />
-                  <div className="w-full h-10 bg-slate-50 rounded border" />
-                </div>
-                <span className="font-medium text-sm">Light Theme</span>
-                {theme === 'light' && <Check className="absolute top-2 right-2 h-4 w-4 text-primary" />}
-              </button>
-
-              <button 
-                onClick={() => setTheme("dark")}
-                className={`relative flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all ${theme === 'dark' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
-              >
-                <div className="w-full h-20 bg-slate-950 border border-slate-800 rounded-md shadow-sm mb-3 flex flex-col gap-2 p-2">
-                  <div className="w-1/2 h-2 bg-slate-800 rounded" />
-                  <div className="w-full h-10 bg-slate-900 rounded border border-slate-800" />
-                </div>
-                <span className="font-medium text-sm">Dark Theme</span>
-                {theme === 'dark' && <Check className="absolute top-2 right-2 h-4 w-4 text-primary" />}
-              </button>
-
-              <button 
-                onClick={() => setTheme("system")}
-                className={`relative flex flex-col items-center justify-center p-4 border-2 rounded-xl transition-all ${theme === 'system' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
-              >
-                <div className="w-full h-20 flex border rounded-md shadow-sm mb-3 overflow-hidden">
-                  <div className="w-1/2 h-full bg-white p-2">
-                    <div className="w-3/4 h-2 bg-slate-200 rounded" />
+            <CardContent className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-3">
+              <ThemeOption
+                label="Light"
+                selected={theme === "light"}
+                onSelect={() => setTheme("light")}
+                preview={
+                  <div className="mb-3 flex h-20 w-full flex-col gap-2 rounded-md border bg-white p-2 shadow-sm">
+                    <div className="h-2 w-1/2 rounded bg-muted" />
+                    <div className="h-10 w-full rounded border bg-muted/40" />
                   </div>
-                  <div className="w-1/2 h-full bg-slate-950 p-2 border-l border-slate-800">
-                    <div className="w-3/4 h-2 bg-slate-800 rounded" />
+                }
+              />
+              <ThemeOption
+                label="Dark"
+                selected={theme === "dark"}
+                onSelect={() => setTheme("dark")}
+                preview={
+                  <div className="mb-3 flex h-20 w-full flex-col gap-2 rounded-md border border-border bg-card p-2 shadow-sm">
+                    <div className="h-2 w-1/2 rounded bg-muted" />
+                    <div className="h-10 w-full rounded border border-border bg-muted/60" />
                   </div>
-                </div>
-                <span className="font-medium text-sm">System</span>
-                {theme === 'system' && <Check className="absolute top-2 right-2 h-4 w-4 text-primary" />}
-              </button>
+                }
+              />
+              <ThemeOption
+                label="System"
+                selected={theme === "system"}
+                onSelect={() => setTheme("system")}
+                preview={
+                  <div className="mb-3 flex h-20 w-full overflow-hidden rounded-md border shadow-sm">
+                    <div className="w-1/2 bg-background p-2">
+                      <div className="h-2 w-3/4 rounded bg-muted" />
+                    </div>
+                    <div className="w-1/2 border-l border-border bg-card p-2">
+                      <div className="h-2 w-3/4 rounded bg-muted" />
+                    </div>
+                  </div>
+                }
+              />
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-6 mt-6">
-          <Card>
+        <TabsContent value="notifications" className="mt-6 space-y-6">
+          <Card className="card-tint-coral">
             <CardHeader>
-              <CardTitle className="font-serif text-xl flex items-center gap-2"><Bell className="h-5 w-5" /> Preferences</CardTitle>
-              <CardDescription>Control when and how Scholr contacts you.</CardDescription>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Bell className="h-5 w-5" aria-hidden /> Study reminders
+              </CardTitle>
+              <CardDescription>
+                Local reminders in this browser (and desktop notifications when allowed). Prefs save on this device.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between space-x-2">
-                <div className="space-y-0.5">
-                  <Label className="text-base font-medium">Morning Summary</Label>
-                  <p className="text-sm text-muted-foreground">Receive a daily email with your tasks for the day.</p>
+              {[
+                {
+                  id: "morning-summary" as const,
+                  key: "morningSummary" as const,
+                  label: "Morning summary",
+                  description: "A morning nudge with how many tasks you have today.",
+                },
+                {
+                  id: "deadline-reminders" as const,
+                  key: "deadlineReminders" as const,
+                  label: "Deadline reminders",
+                  description: "Get notified when a task is due tomorrow.",
+                },
+                {
+                  id: "exam-alerts" as const,
+                  key: "examAlerts" as const,
+                  label: "Exam approaching alerts",
+                  description: "Reminders when an exam is within 30 days.",
+                },
+              ].map(({ id, key, label, description }) => (
+                <div key={id} className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor={id} className="text-base font-medium">
+                      {label}
+                    </Label>
+                    <p className="text-sm text-muted-foreground">{description}</p>
+                  </div>
+                  <Switch
+                    id={id}
+                    checked={prefs[key]}
+                    onCheckedChange={(checked) => void handlePrefToggle(key, checked)}
+                  />
                 </div>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between space-x-2">
-                <div className="space-y-0.5">
-                  <Label className="text-base font-medium">Deadline Reminders</Label>
-                  <p className="text-sm text-muted-foreground">Get notified 24 hours before a task is due.</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between space-x-2">
-                <div className="space-y-0.5">
-                  <Label className="text-base font-medium">Exam Approaching Alerts</Label>
-                  <p className="text-sm text-muted-foreground">Weekly count-down emails when exams are within 30 days.</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
+              ))}
+              <p className="text-xs text-muted-foreground">
+                Email delivery is not available yet — these alerts run while Scholr is open in your browser.
+              </p>
             </CardContent>
           </Card>
-          
-          <Card>
+
+          <Card className="card-tint-deep">
             <CardHeader>
-              <CardTitle className="font-serif text-xl flex items-center gap-2"><CalendarIcon className="h-5 w-5" /> Integrations</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <CalendarIcon className="h-5 w-5" aria-hidden /> Integrations
+              </CardTitle>
               <CardDescription>Connect Scholr with your other tools.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-white border shadow-sm rounded flex items-center justify-center">
-                    <svg className="w-6 h-6" viewBox="0 0 24 24">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z" fill="#4285F4"/>
+                  <div className="flex h-10 w-10 items-center justify-center rounded border bg-card shadow-sm">
+                    <svg className="h-6 w-6" viewBox="0 0 24 24" aria-hidden>
+                      <path
+                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"
+                        fill="#4285F4"
+                      />
                     </svg>
                   </div>
                   <div>
-                    <h4 className="font-medium">Google Calendar</h4>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="font-medium">Google Calendar</h4>
+                      <ComingSoonBadge />
+                    </div>
                     <p className="text-sm text-muted-foreground">Sync your tasks and deadlines</p>
                   </div>
                 </div>
-                <Button variant="outline">Connect</Button>
+                <Button variant="outline" disabled aria-disabled className="shrink-0">
+                  Connect
+                </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add a subject</DialogTitle>
+          </DialogHeader>
+          <div className="grid max-h-[60vh] gap-2 overflow-y-auto py-2">
+            {availableToAdd.map((item) => (
+              <button
+                key={item.code}
+                type="button"
+                disabled={createSubject.isPending}
+                onClick={() =>
+                  createSubject.mutate({
+                    data: { name: item.name, code: item.code, color: item.color },
+                  })
+                }
+                className="flex items-center justify-between rounded-xl border p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={cn("h-2.5 w-2.5 rounded-sm", item.swatchClass)} />
+                  <div>
+                    <p className="font-medium">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">{item.code}</p>
+                  </div>
+                </div>
+                <Plus className="h-4 w-4 text-muted-foreground" aria-hidden />
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

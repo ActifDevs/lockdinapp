@@ -8,30 +8,79 @@ import {
   ChartBar,
   ClipboardList,
   FileText,
+  GraduationCap,
   Home,
   LogOut,
   Menu,
+  MoreHorizontal,
   Settings,
+  X,
 } from "lucide-react";
-import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 
 interface NavItem {
   title: string;
   href: string;
   icon: React.ElementType;
+  /** Brand tint class for the icon chip */
+  tint?: string;
 }
 
-const primaryNav: NavItem[] = [
-  { title: "Dashboard", href: "/dashboard", icon: Home },
-  { title: "Study plan", href: "/study-plan", icon: ClipboardList },
-  { title: "Subjects", href: "/subjects", icon: BookOpen },
-  { title: "Past papers", href: "/past-papers", icon: FileText },
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
+  {
+    label: "Today",
+    items: [
+      { title: "Dashboard", href: "/dashboard", icon: Home, tint: "sidebar-icon-deep" },
+      { title: "Study plan", href: "/study-plan", icon: ClipboardList, tint: "sidebar-icon-coral" },
+    ],
+  },
+  {
+    label: "Revision",
+    items: [
+      { title: "Subjects", href: "/subjects", icon: BookOpen, tint: "sidebar-icon-teal" },
+      { title: "Past papers", href: "/past-papers", icon: FileText, tint: "sidebar-icon-amber" },
+      { title: "Progress", href: "/progress", icon: ChartBar, tint: "sidebar-icon-sea" },
+      { title: "Calendar", href: "/calendar", icon: CalendarDays, tint: "sidebar-icon-sun" },
+    ],
+  },
 ];
 
-const secondaryNav: NavItem[] = [
-  { title: "Progress", href: "/progress", icon: ChartBar },
+const bottomPrimary: NavItem[] = [
+  {
+    title: "Home",
+    href: "/dashboard",
+    icon: Home,
+    tint: "text-[hsl(var(--brand-deep))] dark:text-[hsl(185_70%_68%)]",
+  },
+  {
+    title: "Plan",
+    href: "/study-plan",
+    icon: ClipboardList,
+    tint: "text-[hsl(353_75%_48%)] dark:text-[hsl(353_100%_76%)]",
+  },
+  {
+    title: "Progress",
+    href: "/progress",
+    icon: ChartBar,
+    tint: "text-[hsl(200_90%_34%)] dark:text-[hsl(200_90%_70%)]",
+  },
+  {
+    title: "Subjects",
+    href: "/subjects",
+    icon: BookOpen,
+    tint: "text-[hsl(175_100%_26%)] dark:text-[hsl(175_80%_62%)]",
+  },
+];
+
+const bottomMore: NavItem[] = [
+  { title: "Past papers", href: "/past-papers", icon: FileText },
   { title: "Calendar", href: "/calendar", icon: CalendarDays },
+  { title: "Settings", href: "/settings", icon: Settings },
 ];
 
 function isActivePath(location: string, href: string) {
@@ -45,114 +94,129 @@ function initials(name: string): string {
   return `${parts[0]!.slice(0, 1)}${parts[parts.length - 1]!.slice(0, 1)}`.toUpperCase();
 }
 
-function SidebarNav({
+function SidebarNavLink({
+  item,
   location,
   onNavigate,
 }: {
+  item: NavItem;
   location: string;
   onNavigate?: () => void;
 }) {
+  const active = isActivePath(location, item.href);
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-6">
-      <nav className="space-y-1" aria-label="Primary">
-        {primaryNav.map((item) => {
-          const active = isActivePath(location, item.href);
-          return (
-            <Link key={item.href} href={item.href} onClick={onNavigate}>
-              <span
-                className={cn(
-                  "flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
-                )}
-              >
-                <item.icon className="h-4 w-4 shrink-0" aria-hidden />
-                {item.title}
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div>
-        <p className="mb-2 px-3 text-[11px] font-medium uppercase tracking-[0.12em] text-sidebar-foreground/45">
-          Insights
-        </p>
-        <nav className="space-y-1" aria-label="Secondary">
-          {secondaryNav.map((item) => {
-            const active = isActivePath(location, item.href);
-            return (
-              <Link key={item.href} href={item.href} onClick={onNavigate}>
-                <span
-                  className={cn(
-                    "flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
-                  )}
-                >
-                  <item.icon className="h-4 w-4 shrink-0" aria-hidden />
-                  {item.title}
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-    </div>
+    <Link href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined}>
+      <span className={cn("sidebar-link cursor-pointer", active && "sidebar-link-active")}>
+        <span className={cn("sidebar-icon", item.tint)} aria-hidden>
+          <item.icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.25 : 1.75} />
+        </span>
+        <span className="truncate">{item.title}</span>
+      </span>
+    </Link>
   );
 }
 
-function SidebarAccount({
+function SidebarContent({
+  location,
   displayName,
   userName,
+  userEmail,
   onLogout,
   onNavigate,
+  showBrand = true,
 }: {
+  location: string;
   displayName: string;
-  userName?: string;
+  userName: string;
+  userEmail?: string;
   onLogout: () => void;
   onNavigate?: () => void;
+  showBrand?: boolean;
 }) {
-  const [location] = useLocation();
-  const settingsActive = isActivePath(location, "/settings");
-
   return (
-    <div className="mt-auto space-y-1 border-t border-sidebar-border pt-4">
-      <div className="mb-3 flex items-center gap-3 px-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-sidebar-primary/15 text-xs font-semibold text-sidebar-primary">
-          {initials(userName || displayName)}
+    <div className="sidebar-inner">
+      {showBrand && (
+        <Link href="/dashboard" onClick={onNavigate} className="sidebar-brand">
+          <span className="sidebar-brand-mark" aria-hidden>
+            <GraduationCap className="h-5 w-5" strokeWidth={1.75} />
+          </span>
+          <span className="sidebar-brand-text">
+            <span className="sidebar-brand-name">Scholr</span>
+            <span className="sidebar-brand-tag">A-Level workspace</span>
+          </span>
+        </Link>
+      )}
+
+      <div className="sidebar-scroll">
+        {navGroups.map((group) => (
+          <section key={group.label} className="sidebar-group" aria-label={group.label}>
+            <p className="sidebar-group-label">{group.label}</p>
+            <nav className="space-y-0" aria-label={group.label}>
+              {group.items.map((item) => (
+                <SidebarNavLink
+                  key={item.href}
+                  item={item}
+                  location={location}
+                  onNavigate={onNavigate}
+                />
+              ))}
+            </nav>
+          </section>
+        ))}
+      </div>
+
+      <div className="sidebar-footer">
+        <Link
+          href="/settings"
+          onClick={onNavigate}
+          aria-current={isActivePath(location, "/settings") ? "page" : undefined}
+        >
+          <span
+            className={cn(
+              "sidebar-link cursor-pointer",
+              isActivePath(location, "/settings") && "sidebar-link-active",
+            )}
+          >
+            <span className="sidebar-icon sidebar-icon-violet" aria-hidden>
+              <Settings className="h-[18px] w-[18px]" strokeWidth={1.75} />
+            </span>
+            <span className="truncate">Settings</span>
+          </span>
+        </Link>
+
+        <div className="sidebar-user-card">
+          <div className="sidebar-user-avatar" aria-hidden>
+            {initials(userName || displayName)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-sidebar-foreground">{displayName}</p>
+            {userEmail && <p className="truncate text-xs text-muted-foreground">{userEmail}</p>}
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-sidebar-foreground">{displayName}</p>
-          <p className="text-xs text-sidebar-foreground/55">A-Level</p>
+
+        <button
+          type="button"
+          onClick={() => {
+            onNavigate?.();
+            onLogout();
+          }}
+          className="sidebar-signout cursor-pointer"
+        >
+          <span className="sidebar-icon" aria-hidden>
+            <LogOut className="h-[18px] w-[18px]" strokeWidth={1.75} />
+          </span>
+          Sign out
+        </button>
+
+        <div className="sidebar-legal">
+          <Link href="/privacy" onClick={onNavigate}>
+            Privacy
+          </Link>
+          <Link href="/terms" onClick={onNavigate}>
+            Terms
+          </Link>
         </div>
       </div>
-      <Link href="/settings" onClick={onNavigate}>
-        <span
-          className={cn(
-            "flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
-            settingsActive
-              ? "bg-sidebar-accent text-sidebar-accent-foreground"
-              : "text-sidebar-foreground/70 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
-          )}
-        >
-          <Settings className="h-4 w-4" aria-hidden />
-          Settings
-        </span>
-      </Link>
-      <button
-        type="button"
-        onClick={() => {
-          onNavigate?.();
-          onLogout();
-        }}
-        className="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-md px-3 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
-      >
-        <LogOut className="h-4 w-4" aria-hidden />
-        Sign out
-      </button>
     </div>
   );
 }
@@ -160,85 +224,168 @@ function SidebarAccount({
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, logout, user, firstName } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [location] = useLocation();
 
   useEffect(() => {
     setMobileOpen(false);
+    setMoreOpen(false);
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [location]);
 
   if (!isAuthenticated) {
     return <div className="min-h-[100dvh] bg-background text-foreground">{children}</div>;
   }
 
-  const displayName = firstName || user?.name || "Student";
+  const displayName = firstName || user?.name || "Scholar";
+  const userName = user?.name || displayName;
+  const moreActive = bottomMore.some((item) => isActivePath(location, item.href));
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground">
+    <div className="flex min-h-[100dvh] bg-background text-foreground">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-md focus:ring-2 focus:ring-ring"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-md focus:ring-2 focus:ring-ring"
       >
         Skip to main content
       </a>
 
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-sidebar-border bg-sidebar md:flex">
-        <div className="flex h-16 items-center px-5">
-          <Link href="/dashboard" className="font-serif text-2xl font-bold tracking-tight text-sidebar-foreground">
-            Scholr
-          </Link>
-        </div>
-        <div className="flex flex-1 flex-col overflow-y-auto px-3 pb-4">
-          <SidebarNav location={location} />
-          <SidebarAccount
-            displayName={displayName}
-            userName={user?.name}
-            onLogout={logout}
-          />
-        </div>
+      <aside className="app-sidebar hidden md:flex" aria-label="Sidebar">
+        <SidebarContent
+          location={location}
+          displayName={displayName}
+          userName={userName}
+          userEmail={user?.email}
+          onLogout={logout}
+        />
       </aside>
 
-      {/* Mobile top bar */}
-      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur md:hidden">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="min-h-11 min-w-11 cursor-pointer"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open navigation"
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/40 bg-background/85 px-4 backdrop-blur-md md:hidden">
+          <button
+            type="button"
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-nav-sheet"
+            onClick={() => setMobileOpen((open) => !open)}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-foreground transition-colors duration-200 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Menu className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+          </button>
+          <Link
+            href="/dashboard"
+            className="flex min-w-0 flex-1 items-center gap-2 text-lg font-bold tracking-tight"
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <GraduationCap className="h-4 w-4" strokeWidth={2} />
+            </span>
+            Scholr
+          </Link>
+        </header>
+
+        <main
+          id="main-content"
+          className="flex-1 overflow-x-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-[env(safe-area-inset-bottom,0px)]"
         >
-          <Menu className="h-5 w-5" aria-hidden />
-        </Button>
-        <Link href="/dashboard" className="font-serif text-xl font-bold tracking-tight">
-          Scholr
-        </Link>
-      </header>
-
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="flex w-[min(18rem,85vw)] flex-col bg-sidebar p-0 text-sidebar-foreground">
-          <SheetHeader className="border-b border-sidebar-border px-5 py-4 text-left">
-            <SheetTitle className="font-serif text-2xl font-bold tracking-tight text-sidebar-foreground">
-              Scholr
-            </SheetTitle>
-          </SheetHeader>
-          <div className="flex flex-1 flex-col overflow-y-auto px-3 py-4">
-            <SidebarNav location={location} onNavigate={() => setMobileOpen(false)} />
-            <SidebarAccount
-              displayName={displayName}
-              userName={user?.name}
-              onLogout={logout}
-              onNavigate={() => setMobileOpen(false)}
-            />
+          <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+            {children}
           </div>
-        </SheetContent>
-      </Sheet>
-
-      <div className="md:pl-60">
-        <main id="main-content" className="min-h-[100dvh]">
-          <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">{children}</div>
         </main>
       </div>
+
+      {/* Mobile bottom nav — daily habit loop */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+        aria-label="Mobile primary"
+      >
+        <div className="mx-auto grid max-w-lg grid-cols-5">
+          {bottomPrimary.map((item) => {
+            const active = isActivePath(location, item.href);
+            return (
+              <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined}>
+                <span
+                  className={cn(
+                    "flex min-h-14 cursor-pointer flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium transition-colors",
+                    active ? "text-foreground" : "text-muted-foreground",
+                  )}
+                >
+                  <item.icon
+                    className={cn("h-5 w-5", active && (item.tint ?? "text-primary"))}
+                    strokeWidth={active ? 2.25 : 1.75}
+                    aria-hidden
+                  />
+                  <span className="truncate">{item.title}</span>
+                </span>
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setMoreOpen((open) => !open)}
+            className={cn(
+              "flex min-h-14 cursor-pointer flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium transition-colors",
+              moreOpen || moreActive ? "text-foreground" : "text-muted-foreground",
+            )}
+            aria-expanded={moreOpen}
+            aria-label="More navigation"
+          >
+            {moreOpen ? (
+              <X className="h-5 w-5" aria-hidden />
+            ) : (
+              <MoreHorizontal
+                className={cn("h-5 w-5", moreActive && "text-primary")}
+                aria-hidden
+              />
+            )}
+            <span>More</span>
+          </button>
+        </div>
+
+        {moreOpen && (
+          <div className="border-t border-border/60 bg-background px-4 py-3">
+            <div className="mx-auto flex max-w-lg flex-col gap-1">
+              {bottomMore.map((item) => {
+                const active = isActivePath(location, item.href);
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <span
+                      className={cn(
+                        "flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
+                        active
+                          ? "bg-secondary text-foreground"
+                          : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" aria-hidden />
+                      {item.title}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </nav>
+
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent
+          id="mobile-nav-sheet"
+          side="left"
+          className="w-[min(18.5rem,92vw)] border-r border-sidebar-border bg-sidebar p-0 [&>button]:right-3 [&>button]:top-3 [&>button]:h-11 [&>button]:w-11 [&>button]:rounded-xl"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Navigation menu</SheetTitle>
+          </SheetHeader>
+          <SidebarContent
+            location={location}
+            displayName={displayName}
+            userName={userName}
+            userEmail={user?.email}
+            onLogout={logout}
+            onNavigate={() => setMobileOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

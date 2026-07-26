@@ -1,49 +1,179 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/toaster';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { Route, Switch, Router as WouterRouter } from 'wouter';
-import { ThemeProvider } from '@/components/theme-provider';
+import { Component, Suspense, lazy, type ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Route, Switch, Router as WouterRouter } from "wouter";
+import { ThemeProvider } from "@/components/theme-provider";
+import { DocumentTitle } from "@/components/document-title";
+import { PageLoader } from "@/components/page-loader";
+import { AppShell } from "@/components/app-shell";
+import { RequireAuth, RedirectIfAuthenticated } from "@/components/require-auth";
+import { ReminderRunner } from "@/components/reminder-runner";
 
-// Pages
-import LandingPage from '@/pages/index';
-import Login from '@/pages/login';
-import Signup from '@/pages/signup';
-import ForgotPassword from '@/pages/forgot-password';
-import Onboarding from '@/pages/onboarding';
-import Dashboard from '@/pages/dashboard';
-import Subjects from '@/pages/subjects';
-import SubjectDetail from '@/pages/subject-detail';
-import StudyPlan from '@/pages/study-plan';
-import PastPapers from '@/pages/past-papers';
-import Progress from '@/pages/progress';
-import Calendar from '@/pages/calendar';
-import Settings from '@/pages/settings';
-import NotFound from '@/pages/not-found';
+const LandingPage = lazy(() => import("@/pages/index"));
+const Login = lazy(() => import("@/pages/login"));
+const Signup = lazy(() => import("@/pages/signup"));
+const ForgotPassword = lazy(() => import("@/pages/forgot-password"));
+const Onboarding = lazy(() => import("@/pages/onboarding"));
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const Subjects = lazy(() => import("@/pages/subjects"));
+const SubjectDetail = lazy(() => import("@/pages/subject-detail"));
+const StudyPlan = lazy(() => import("@/pages/study-plan"));
+const PastPapers = lazy(() => import("@/pages/past-papers"));
+const Progress = lazy(() => import("@/pages/progress"));
+const Calendar = lazy(() => import("@/pages/calendar"));
+const Settings = lazy(() => import("@/pages/settings"));
+const Privacy = lazy(() => import("@/pages/privacy"));
+const Terms = lazy(() => import("@/pages/terms"));
+const NotFound = lazy(() => import("@/pages/not-found"));
 
-import { AppShell } from '@/components/app-shell';
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
-const queryClient = new QueryClient();
+class RouteErrorBoundary extends Component<
+  { children: ReactNode; label: string },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center">
+          <h2 className="text-xl font-bold tracking-tight">Something went wrong on {this.props.label}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{this.state.error.message}</p>
+          <button
+            type="button"
+            className="mt-4 text-sm font-medium text-primary underline-offset-4 hover:underline"
+            onClick={() => this.setState({ error: null })}
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function AuthenticatedPage({ children, label }: { children: ReactNode; label?: string }) {
+  return (
+    <RequireAuth>
+      <AppShell>
+        {label ? (
+          <RouteErrorBoundary label={label}>
+            <Suspense fallback={<PageLoader />}>{children}</Suspense>
+          </RouteErrorBoundary>
+        ) : (
+          <Suspense fallback={<PageLoader />}>{children}</Suspense>
+        )}
+      </AppShell>
+    </RequireAuth>
+  );
+}
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={LandingPage} />
-      <Route path="/login" component={Login} />
-      <Route path="/signup" component={Signup} />
-      <Route path="/forgot-password" component={ForgotPassword} />
-      <Route path="/onboarding" component={Onboarding} />
-      
-      {/* Authenticated Routes wrapped in AppShell */}
-      <Route path="/dashboard"><AppShell><Dashboard /></AppShell></Route>
-      <Route path="/subjects"><AppShell><Subjects /></AppShell></Route>
-      <Route path="/subjects/:id"><AppShell><SubjectDetail /></AppShell></Route>
-      <Route path="/study-plan"><AppShell><StudyPlan /></AppShell></Route>
-      <Route path="/past-papers"><AppShell><PastPapers /></AppShell></Route>
-      <Route path="/progress"><AppShell><Progress /></AppShell></Route>
-      <Route path="/calendar"><AppShell><Calendar /></AppShell></Route>
-      <Route path="/settings"><AppShell><Settings /></AppShell></Route>
-      
-      <Route component={NotFound} />
+      <Route path="/">
+        <Suspense fallback={<PageLoader />}>
+          <LandingPage />
+        </Suspense>
+      </Route>
+      <Route path="/login">
+        <RedirectIfAuthenticated>
+          <Suspense fallback={<PageLoader />}>
+            <Login />
+          </Suspense>
+        </RedirectIfAuthenticated>
+      </Route>
+      <Route path="/signup">
+        <RedirectIfAuthenticated>
+          <Suspense fallback={<PageLoader />}>
+            <Signup />
+          </Suspense>
+        </RedirectIfAuthenticated>
+      </Route>
+      <Route path="/forgot-password">
+        <Suspense fallback={<PageLoader />}>
+          <ForgotPassword />
+        </Suspense>
+      </Route>
+      <Route path="/onboarding">
+        <RequireAuth onboardingOnly>
+          <Suspense fallback={<PageLoader />}>
+            <Onboarding />
+          </Suspense>
+        </RequireAuth>
+      </Route>
+
+      <Route path="/dashboard">
+        <AuthenticatedPage label="Dashboard">
+          <Dashboard />
+        </AuthenticatedPage>
+      </Route>
+      <Route path="/subjects">
+        <AuthenticatedPage>
+          <Subjects />
+        </AuthenticatedPage>
+      </Route>
+      <Route path="/subjects/:id">
+        <AuthenticatedPage>
+          <SubjectDetail />
+        </AuthenticatedPage>
+      </Route>
+      <Route path="/study-plan">
+        <AuthenticatedPage>
+          <StudyPlan />
+        </AuthenticatedPage>
+      </Route>
+      <Route path="/past-papers">
+        <AuthenticatedPage>
+          <PastPapers />
+        </AuthenticatedPage>
+      </Route>
+      <Route path="/progress">
+        <AuthenticatedPage>
+          <Progress />
+        </AuthenticatedPage>
+      </Route>
+      <Route path="/calendar">
+        <AuthenticatedPage>
+          <Calendar />
+        </AuthenticatedPage>
+      </Route>
+      <Route path="/settings">
+        <AuthenticatedPage>
+          <Settings />
+        </AuthenticatedPage>
+      </Route>
+
+      <Route path="/privacy">
+        <Suspense fallback={<PageLoader />}>
+          <Privacy />
+        </Suspense>
+      </Route>
+      <Route path="/terms">
+        <Suspense fallback={<PageLoader />}>
+          <Terms />
+        </Suspense>
+      </Route>
+
+      <Route>
+        <Suspense fallback={<PageLoader />}>
+          <NotFound />
+        </Suspense>
+      </Route>
     </Switch>
   );
 }
@@ -53,7 +183,9 @@ function App() {
     <ThemeProvider defaultTheme="light">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <DocumentTitle />
+            <ReminderRunner />
             <Router />
           </WouterRouter>
           <Toaster />
