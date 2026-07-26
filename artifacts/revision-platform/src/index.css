@@ -69,7 +69,9 @@
   --radius-2xl: calc(var(--radius) + 8px);
 }
 
-/* LIGHT MODE — lively coral / amber / teal / cream */
+/* LIGHT MODE — education teal + amber accents on cream canvas
+   Brand: Coral #FF5A6E · Amber #FFB703 · Teal #00B8A9 · Deep #006D77 · Cream #FFF1D6
+   Surfaces follow LMS pattern: tinted page, white cards, brand accents only */
 :root {
   --button-outline: rgba(0, 109, 119, 0.1);
   --badge-outline: rgba(0, 109, 119, 0.06);
@@ -77,63 +79,60 @@
   --elevate-1: rgba(0, 109, 119, 0.03);
   --elevate-2: rgba(0, 109, 119, 0.06);
 
-  /* Brand palette
-     Coral #FF5A6E · Amber #FFB703 · Teal #00B8A9 · Deep #006D77 · Cream #FFF1D6 */
   --brand-coral: 353 100% 68%;
   --brand-amber: 43 100% 51%;
   --brand-teal: 175 100% 36%;
   --brand-deep: 185 100% 23%;
   --brand-cream: 40 100% 92%;
 
-  /* Cream workspace — cards sit on a softer wash so brand fills read clearly */
-  --background: 40 42% 95%;
-  --foreground: 185 35% 14%;
+  /* Soft cream-mint canvas (not full yellow cream) */
+  --background: 42 48% 96.5%;
+  --foreground: 185 45% 16%;
 
-  --border: 40 28% 86%;
-  /* Brand cream as the default card fill (#FFF1D6 family) */
-  --card: 40 100% 92%;
-  --card-foreground: 185 35% 14%;
-  --card-border: 40 45% 82%;
+  --border: 185 14% 88%;
+  /* White cards for readable content */
+  --card: 0 0% 100%;
+  --card-foreground: 185 45% 16%;
+  --card-border: 185 14% 90%;
 
-  --sidebar: 40 55% 97%;
-  --sidebar-foreground: 185 28% 20%;
-  --sidebar-border: 40 28% 88%;
+  --sidebar: 40 40% 98%;
+  --sidebar-foreground: 185 30% 22%;
+  --sidebar-border: 185 12% 90%;
   --sidebar-primary: 185 100% 23%;
-  --sidebar-primary-foreground: 40 100% 96%;
-  --sidebar-accent: 175 45% 92%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 175 40% 94%;
   --sidebar-accent-foreground: 185 100% 20%;
   --sidebar-ring: 185 100% 23%;
 
-  --popover: 40 100% 99%;
-  --popover-foreground: 185 35% 14%;
-  --popover-border: 40 30% 90%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 185 45% 16%;
+  --popover-border: 185 14% 90%;
 
-  /* Deep sea teal — primary actions */
+  /* Deep teal — primary actions */
   --primary: 185 100% 23%;
-  --primary-foreground: 40 100% 96%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 40 45% 93%;
-  --secondary-foreground: 185 30% 22%;
+  --secondary: 175 28% 94%;
+  --secondary-foreground: 185 35% 22%;
 
-  --muted: 40 35% 93%;
-  --muted-foreground: 185 12% 40%;
+  --muted: 185 16% 94%;
+  /* Slate secondary text for WCAG contrast (not muddy teal-gray) */
+  --muted-foreground: 200 10% 40%;
 
-  /* Bright teal wash */
-  --accent: 175 50% 92%;
+  --accent: 175 42% 93%;
   --accent-foreground: 185 100% 20%;
 
-  /* Coral for errors / hot accents */
-  --destructive: 353 90% 55%;
+  /* Coral for errors — slightly deeper for contrast on white */
+  --destructive: 353 85% 52%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 40 30% 91%;
+  --input: 185 14% 92%;
   --ring: 185 100% 23%;
 
-  /* Multi-hue charts from the brand set */
   --chart-1: 185 100% 23%;
   --chart-2: 175 100% 36%;
-  --chart-3: 43 100% 51%;
-  --chart-4: 353 100% 68%;
+  --chart-3: 32 95% 44%;
+  --chart-4: 353 85% 55%;
   --chart-5: 185 25% 45%;
 
   --app-font-sans: 'Outfit', system-ui, sans-serif;
@@ -142,26 +141,27 @@
 
   --radius: 1rem;
 
-  --shadow-2xs: 0 1px 2px hsl(185 40% 18% / 0.05);
-  --shadow-xs: 0 2px 8px hsl(185 40% 18% / 0.06);
-  --shadow-sm: 0 4px 16px hsl(185 40% 18% / 0.07);
-  --shadow: 0 8px 24px hsl(185 40% 18% / 0.08);
-  --shadow-md: 0 12px 32px hsl(185 40% 18% / 0.09);
-  --shadow-lg: 0 16px 40px hsl(185 40% 18% / 0.1);
-  --shadow-xl: 0 24px 48px hsl(185 40% 18% / 0.11);
-  --shadow-2xl: 0 32px 64px hsl(185 40% 18% / 0.12);
+  --shadow-2xs: 0 1px 2px hsl(185 40% 18% / 0.04);
+  --shadow-xs: 0 2px 8px hsl(185 40% 18% / 0.05);
+  --shadow-sm: 0 4px 16px hsl(185 40% 18% / 0.06);
+  --shadow: 0 8px 24px hsl(185 40% 18% / 0.07);
+  --shadow-md: 0 12px 32px hsl(185 40% 18% / 0.08);
+  --shadow-lg: 0 16px 40px hsl(185 40% 18% / 0.09);
+  --shadow-xl: 0 24px 48px hsl(185 40% 18% / 0.1);
+  --shadow-2xl: 0 32px 64px hsl(185 40% 18% / 0.11);
 
-  --pastel-yellow: 43 90% 90%;
-  --pastel-mint: 175 45% 90%;
-  --pastel-blue: 185 40% 90%;
-  --pastel-pink: 353 80% 93%;
-  --pastel-purple: 175 35% 91%;
+  /* Soft accent washes — chips/empty states only, not full cards */
+  --pastel-yellow: 43 70% 94%;
+  --pastel-mint: 175 40% 94%;
+  --pastel-blue: 185 35% 94%;
+  --pastel-pink: 353 55% 95%;
+  --pastel-purple: 175 30% 94%;
 
-  --pastel-yellow-fg: 36 80% 28%;
-  --pastel-mint-fg: 175 80% 22%;
-  --pastel-blue-fg: 185 90% 20%;
-  --pastel-pink-fg: 353 70% 36%;
-  --pastel-purple-fg: 185 70% 24%;
+  --pastel-yellow-fg: 32 80% 28%;
+  --pastel-mint-fg: 175 70% 22%;
+  --pastel-blue-fg: 185 80% 22%;
+  --pastel-pink-fg: 353 65% 38%;
+  --pastel-purple-fg: 185 55% 26%;
 
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
@@ -179,69 +179,69 @@
   --elevate-1: rgba(255, 255, 255, 0.03);
   --elevate-2: rgba(255, 255, 255, 0.06);
 
-  --brand-coral: 353 100% 68%;
-  --brand-amber: 43 100% 55%;
-  --brand-teal: 175 80% 48%;
-  --brand-deep: 185 55% 55%;
-  --brand-cream: 40 40% 18%;
+  /* Lighter brand tones for dark surfaces (not inverted cream) */
+  --brand-coral: 353 90% 70%;
+  --brand-amber: 40 95% 58%;
+  --brand-teal: 175 70% 48%;
+  --brand-deep: 185 50% 58%;
+  --brand-cream: 40 20% 16%;
 
-  --background: 185 28% 8%;
-  --foreground: 40 40% 94%;
+  --background: 185 22% 7%;
+  --foreground: 40 20% 96%;
 
-  --border: 185 18% 16%;
-  /* Deep teal card with a warm cream undertone in dark mode */
-  --card: 185 24% 13%;
-  --card-foreground: 40 40% 94%;
-  --card-border: 185 18% 18%;
+  --border: 185 12% 18%;
+  --card: 185 18% 11%;
+  --card-foreground: 40 20% 96%;
+  --card-border: 185 12% 18%;
 
-  --sidebar: 185 24% 9%;
-  --sidebar-foreground: 40 30% 90%;
-  --sidebar-border: 185 18% 15%;
-  --sidebar-primary: 175 80% 48%;
+  --sidebar: 185 20% 8%;
+  --sidebar-foreground: 40 15% 90%;
+  --sidebar-border: 185 12% 15%;
+  --sidebar-primary: 175 70% 48%;
   --sidebar-primary-foreground: 185 40% 8%;
-  --sidebar-accent: 185 25% 16%;
-  --sidebar-accent-foreground: 175 60% 78%;
-  --sidebar-ring: 175 80% 48%;
+  --sidebar-accent: 185 16% 14%;
+  --sidebar-accent-foreground: 175 55% 75%;
+  --sidebar-ring: 175 70% 48%;
 
-  --popover: 185 22% 11%;
-  --popover-foreground: 40 40% 94%;
-  --popover-border: 185 18% 16%;
+  --popover: 185 18% 11%;
+  --popover-foreground: 40 20% 96%;
+  --popover-border: 185 12% 18%;
 
-  --primary: 175 80% 48%;
+  --primary: 175 70% 48%;
   --primary-foreground: 185 40% 8%;
 
-  --secondary: 185 18% 16%;
-  --secondary-foreground: 40 30% 90%;
+  --secondary: 185 14% 15%;
+  --secondary-foreground: 40 15% 90%;
 
-  --muted: 185 18% 15%;
-  --muted-foreground: 185 12% 62%;
+  --muted: 185 14% 14%;
+  --muted-foreground: 185 8% 65%;
 
-  --accent: 185 25% 16%;
-  --accent-foreground: 175 60% 78%;
+  --accent: 185 16% 15%;
+  --accent-foreground: 175 55% 75%;
 
-  --destructive: 353 85% 58%;
+  --destructive: 353 80% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 185 18% 18%;
-  --ring: 175 80% 48%;
+  --input: 185 14% 16%;
+  --ring: 175 70% 48%;
 
-  --chart-1: 175 80% 48%;
-  --chart-2: 43 100% 55%;
-  --chart-3: 353 100% 68%;
-  --chart-4: 185 40% 55%;
-  --chart-5: 40 30% 55%;
+  --chart-1: 175 70% 48%;
+  --chart-2: 40 95% 58%;
+  --chart-3: 353 90% 70%;
+  --chart-4: 185 40% 58%;
+  --chart-5: 40 20% 60%;
 
-  --pastel-yellow: 43 40% 14%;
-  --pastel-mint: 175 30% 14%;
-  --pastel-blue: 185 28% 14%;
-  --pastel-pink: 353 35% 14%;
-  --pastel-purple: 175 25% 14%;
+  --pastel-yellow: 40 22% 14%;
+  --pastel-mint: 175 18% 14%;
+  --pastel-blue: 185 16% 14%;
+  --pastel-pink: 353 18% 14%;
+  --pastel-purple: 175 14% 14%;
 
-  --pastel-yellow-fg: 43 90% 72%;
-  --pastel-mint-fg: 175 70% 72%;
-  --pastel-blue-fg: 185 60% 75%;
-  --pastel-pink-fg: 353 80% 78%;
-  --pastel-purple-fg: 175 55% 72%;
+  --pastel-yellow-fg: 40 90% 70%;
+  --pastel-mint-fg: 175 65% 70%;
+  --pastel-blue-fg: 185 55% 72%;
+  --pastel-pink-fg: 353 80% 76%;
+  --pastel-purple-fg: 175 50% 70%;
 }
 
 @layer base {
@@ -324,78 +324,50 @@
   }
 
   .surface-card {
-    @apply rounded-2xl border text-card-foreground transition-all duration-200;
-    border-color: hsl(var(--brand-amber) / 0.22);
-    background:
-      linear-gradient(
-        155deg,
-        hsl(var(--brand-cream)) 0%,
-        hsl(40 90% 94%) 48%,
-        hsl(var(--brand-teal) / 0.1) 100%
-      );
-    box-shadow: 0 4px 20px hsl(var(--brand-deep) / 0.07);
+    @apply rounded-2xl border border-border/70 bg-card text-card-foreground transition-all duration-200;
+    box-shadow: 0 4px 20px hsl(var(--brand-deep) / 0.05);
   }
 
   .surface-card:hover {
-    box-shadow: 0 8px 28px hsl(var(--brand-deep) / 0.12);
+    box-shadow: 0 8px 28px hsl(var(--brand-deep) / 0.09);
   }
 
-  .dark .surface-card {
-    border-color: hsl(var(--brand-teal) / 0.22);
-    background:
-      linear-gradient(
-        155deg,
-        hsl(185 28% 14%) 0%,
-        hsl(185 22% 12%) 55%,
-        hsl(var(--brand-teal) / 0.12) 100%
-      );
-  }
-
-  /* Soft brand fills — use on any card surface */
+  /* Accent identity via a uniform tinted border on all sides */
   .card-tint-cream {
-    border-color: hsl(var(--brand-amber) / 0.28) !important;
-    background: hsl(var(--brand-cream)) !important;
+    border-color: hsl(var(--brand-amber) / 0.45) !important;
+    background: hsl(var(--card)) !important;
   }
   .card-tint-teal {
-    border-color: hsl(var(--brand-teal) / 0.28) !important;
-    background:
-      linear-gradient(160deg, hsl(var(--pastel-mint)) 0%, hsl(var(--brand-cream)) 100%) !important;
+    border-color: hsl(var(--brand-teal) / 0.4) !important;
+    background: hsl(var(--card)) !important;
   }
   .card-tint-amber {
-    border-color: hsl(var(--brand-amber) / 0.35) !important;
-    background:
-      linear-gradient(160deg, hsl(var(--pastel-yellow)) 0%, hsl(var(--brand-cream)) 100%) !important;
+    border-color: hsl(32 95% 44% / 0.4) !important;
+    background: hsl(var(--card)) !important;
   }
   .card-tint-coral {
-    border-color: hsl(var(--brand-coral) / 0.28) !important;
-    background:
-      linear-gradient(160deg, hsl(var(--pastel-pink)) 0%, hsl(var(--brand-cream)) 100%) !important;
+    border-color: hsl(var(--brand-coral) / 0.4) !important;
+    background: hsl(var(--card)) !important;
   }
   .card-tint-deep {
-    border-color: hsl(var(--brand-deep) / 0.22) !important;
-    background:
-      linear-gradient(160deg, hsl(var(--pastel-blue)) 0%, hsl(var(--brand-cream)) 100%) !important;
+    border-color: hsl(var(--brand-deep) / 0.38) !important;
+    background: hsl(var(--card)) !important;
   }
 
   .dark .card-tint-cream {
-    border-color: hsl(var(--brand-amber) / 0.22) !important;
-    background: linear-gradient(160deg, hsl(40 30% 14%) 0%, hsl(var(--card)) 100%) !important;
+    border-color: hsl(var(--brand-amber) / 0.32) !important;
   }
   .dark .card-tint-teal {
-    border-color: hsl(var(--brand-teal) / 0.28) !important;
-    background: linear-gradient(160deg, hsl(var(--pastel-mint)) 0%, hsl(var(--card)) 100%) !important;
+    border-color: hsl(var(--brand-teal) / 0.32) !important;
   }
   .dark .card-tint-amber {
-    border-color: hsl(var(--brand-amber) / 0.28) !important;
-    background: linear-gradient(160deg, hsl(var(--pastel-yellow)) 0%, hsl(var(--card)) 100%) !important;
+    border-color: hsl(40 95% 58% / 0.3) !important;
   }
   .dark .card-tint-coral {
-    border-color: hsl(var(--brand-coral) / 0.28) !important;
-    background: linear-gradient(160deg, hsl(var(--pastel-pink)) 0%, hsl(var(--card)) 100%) !important;
+    border-color: hsl(var(--brand-coral) / 0.32) !important;
   }
   .dark .card-tint-deep {
-    border-color: hsl(var(--brand-deep) / 0.3) !important;
-    background: linear-gradient(160deg, hsl(var(--pastel-blue)) 0%, hsl(var(--card)) 100%) !important;
+    border-color: hsl(var(--brand-deep) / 0.4) !important;
   }
 
   .nav-active {
@@ -623,27 +595,35 @@
   }
 
   .sidebar-footer {
-    @apply mt-auto shrink-0 space-y-1 border-t border-border/50 pt-3;
+    @apply mt-auto shrink-0 space-y-2 border-t border-border/50 pt-3;
+  }
+
+  .sidebar-footer-row {
+    @apply flex items-center gap-1.5;
+  }
+
+  .sidebar-icon-btn {
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sidebar-foreground/70 transition-colors duration-200 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40;
+  }
+
+  .sidebar-icon-btn-muted {
+    @apply text-muted-foreground hover:bg-destructive/10 hover:text-destructive;
   }
 
   .sidebar-user-card {
-    @apply flex items-center gap-3 rounded-xl border border-border/50 bg-muted/25 p-2.5;
+    @apply flex items-center gap-2.5 rounded-xl border border-border/50 bg-muted/25 p-2;
   }
 
   .sidebar-user-avatar {
-    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary;
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-semibold text-primary;
   }
 
   .sidebar-legal {
-    @apply flex flex-wrap gap-x-3 gap-y-1 px-2 pt-1 text-[11px] text-muted-foreground;
+    @apply flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground;
   }
 
   .sidebar-legal a {
     @apply rounded-sm transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40;
-  }
-
-  .sidebar-signout {
-    @apply mb-2 flex min-h-11 w-full items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-destructive/8 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar active:scale-[0.98];
   }
 
   .brand-icon {
@@ -1248,45 +1228,51 @@
 
 .dash-stat-card {
   border-radius: 1rem;
-  border: 1px solid hsl(var(--brand-amber) / 0.25);
+  border: 1px solid hsl(var(--border));
   padding: 1.25rem;
-  background: hsl(var(--brand-cream));
-  box-shadow: 0 4px 20px hsl(var(--brand-deep) / 0.06);
+  background: hsl(var(--card));
+  box-shadow: 0 4px 20px hsl(var(--brand-deep) / 0.05);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .dark .dash-stat-card {
-  border-color: hsl(var(--brand-teal) / 0.22);
+  border-color: hsl(var(--border));
   background: hsl(var(--card));
 }
 
 .dash-stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px hsl(var(--brand-deep) / 0.1);
+  box-shadow: 0 8px 28px hsl(var(--brand-deep) / 0.09);
 }
 
 .dash-stat-streak {
-  background: linear-gradient(145deg, hsl(var(--brand-amber) / 0.18) 0%, hsl(var(--card)) 70%);
+  border-color: hsl(var(--brand-amber) / 0.45);
+  background: hsl(var(--pastel-yellow) / 0.55);
 }
 
 .dark .dash-stat-streak {
-  background: linear-gradient(145deg, hsl(var(--brand-amber) / 0.12) 0%, hsl(var(--card)) 70%);
+  border-color: hsl(var(--brand-amber) / 0.3);
+  background: hsl(var(--card));
 }
 
 .dash-stat-xp {
-  background: linear-gradient(145deg, hsl(var(--brand-cream)) 0%, hsl(var(--card)) 70%);
+  border-color: hsl(var(--brand-teal) / 0.4);
+  background: hsl(var(--pastel-mint) / 0.55);
 }
 
 .dark .dash-stat-xp {
-  background: linear-gradient(145deg, hsl(185 30% 14%) 0%, hsl(var(--card)) 70%);
+  border-color: hsl(var(--brand-teal) / 0.32);
+  background: hsl(var(--card));
 }
 
 .dash-stat-rank {
-  background: linear-gradient(145deg, hsl(45 100% 96%) 0%, hsl(var(--card)) 70%);
+  border-color: hsl(32 95% 44% / 0.4);
+  background: hsl(var(--card));
 }
 
 .dark .dash-stat-rank {
-  background: linear-gradient(145deg, hsl(45 30% 14%) 0%, hsl(var(--card)) 70%);
+  border-color: hsl(40 95% 58% / 0.3);
+  background: hsl(var(--card));
 }
 
 .dash-xp-track {
@@ -1320,26 +1306,16 @@
   position: relative;
   overflow: hidden;
   border-radius: 1rem;
-  border: 1px solid hsl(var(--brand-teal) / 0.2);
-  background:
-    linear-gradient(
-      155deg,
-      hsl(var(--brand-cream)) 0%,
-      hsl(var(--pastel-mint) / 0.7) 100%
-    );
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
   padding: 1.25rem;
-  box-shadow: 0 4px 18px hsl(var(--brand-deep) / 0.06);
+  box-shadow: 0 4px 18px hsl(var(--brand-deep) / 0.05);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .dark .dash-mastery-card {
-  border-color: hsl(var(--brand-teal) / 0.25);
-  background:
-    linear-gradient(
-      155deg,
-      hsl(185 26% 13%) 0%,
-      hsl(var(--pastel-mint)) 100%
-    );
+  border-color: hsl(var(--border));
+  background: hsl(var(--card));
 }
 
 .dash-mastery-card:hover {
@@ -1404,25 +1380,16 @@
 
 .dash-mission {
   border-radius: 1rem;
-  border: 2px solid hsl(var(--brand-coral) / 0.28);
-  background:
-    linear-gradient(
-      155deg,
-      hsl(var(--brand-cream)) 0%,
-      hsl(var(--pastel-pink) / 0.65) 100%
-    );
+  border: 1px solid hsl(var(--brand-coral) / 0.4);
+  background: hsl(var(--card));
   padding: 1.25rem;
-  box-shadow: 0 8px 30px hsl(var(--brand-coral) / 0.1);
+  box-shadow: 0 8px 28px hsl(var(--brand-deep) / 0.06);
 }
 
 .dark .dash-mission {
-  border-color: hsl(var(--brand-coral) / 0.3);
-  background:
-    linear-gradient(
-      155deg,
-      hsl(185 26% 13%) 0%,
-      hsl(var(--pastel-pink)) 100%
-    );
+  border-color: hsl(var(--brand-coral) / 0.32);
+  background: hsl(var(--card));
+  box-shadow: 0 8px 28px hsl(0 0% 0% / 0.25);
 }
 
 .dash-mission-header {
@@ -1447,24 +1414,16 @@
 
 .dash-achievements {
   border-radius: 1rem;
-  border: 1px solid hsl(var(--brand-amber) / 0.3);
-  background:
-    linear-gradient(
-      155deg,
-      hsl(var(--brand-cream)) 0%,
-      hsl(var(--pastel-yellow) / 0.75) 100%
-    );
+  border: 1px solid hsl(var(--brand-amber) / 0.4);
+  background: hsl(var(--card));
   padding: 1.25rem;
+  box-shadow: 0 4px 18px hsl(var(--brand-deep) / 0.05);
 }
 
 .dark .dash-achievements {
-  border-color: hsl(var(--brand-amber) / 0.25);
-  background:
-    linear-gradient(
-      155deg,
-      hsl(185 26% 13%) 0%,
-      hsl(var(--pastel-yellow)) 100%
-    );
+  border-color: hsl(var(--brand-amber) / 0.3);
+  background: hsl(var(--card));
+  box-shadow: 0 4px 18px hsl(0 0% 0% / 0.2);
 }
 
 .dash-achievement {
@@ -1477,13 +1436,13 @@
 }
 
 .dash-achievement-unlocked {
-  background: linear-gradient(135deg, hsl(45 100% 96%) 0%, hsl(45 90% 92%) 100%);
-  border: 1px solid hsl(45 80% 75% / 0.5);
+  background: hsl(45 100% 94%);
+  border: 1px solid hsl(45 80% 75% / 0.45);
 }
 
 .dark .dash-achievement-unlocked {
-  background: linear-gradient(135deg, hsl(45 30% 16%) 0%, hsl(45 25% 12%) 100%);
-  border-color: hsl(45 40% 30%);
+  background: hsl(45 22% 16%);
+  border-color: hsl(45 30% 28%);
 }
 
 .dash-achievement-icon {
@@ -1512,27 +1471,15 @@
 
 .dash-insight-card {
   border-radius: 1rem;
-  border: 1px solid hsl(var(--brand-amber) / 0.22);
-  background:
-    linear-gradient(
-      155deg,
-      hsl(var(--brand-cream)) 0%,
-      hsl(40 90% 94%) 50%,
-      hsl(var(--brand-teal) / 0.1) 100%
-    );
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
   overflow: hidden;
-  box-shadow: 0 4px 18px hsl(var(--brand-deep) / 0.06);
+  box-shadow: 0 4px 18px hsl(var(--brand-deep) / 0.05);
 }
 
 .dark .dash-insight-card {
-  border-color: hsl(var(--brand-teal) / 0.22);
-  background:
-    linear-gradient(
-      155deg,
-      hsl(185 28% 14%) 0%,
-      hsl(185 22% 12%) 55%,
-      hsl(var(--brand-teal) / 0.12) 100%
-    );
+  border-color: hsl(var(--border));
+  background: hsl(var(--card));
 }
 
 .dash-insight-card-header {

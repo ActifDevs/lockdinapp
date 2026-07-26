@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { useTheme } from "@/components/theme-provider";
 import {
   BookOpen,
   CalendarDays,
@@ -12,8 +13,10 @@ import {
   Home,
   LogOut,
   Menu,
+  Moon,
   MoreHorizontal,
   Settings,
+  Sun,
   X,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
@@ -116,6 +119,31 @@ function SidebarNavLink({
   );
 }
 
+function useResolvedDark() {
+  const { theme, setTheme } = useTheme();
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const syncTheme = () => {
+      setIsDark(theme === "dark" || (theme === "system" && media.matches));
+    };
+
+    syncTheme();
+    if (theme === "system") {
+      media.addEventListener("change", syncTheme);
+      return () => media.removeEventListener("change", syncTheme);
+    }
+
+    return undefined;
+  }, [theme]);
+
+  return {
+    isDark,
+    toggleTheme: () => setTheme(isDark ? "light" : "dark"),
+  };
+}
+
 function SidebarContent({
   location,
   displayName,
@@ -133,6 +161,9 @@ function SidebarContent({
   onNavigate?: () => void;
   showBrand?: boolean;
 }) {
+  const { isDark, toggleTheme } = useResolvedDark();
+  const settingsActive = isActivePath(location, "/settings");
+
   return (
     <div className="sidebar-inner">
       {showBrand && (
@@ -166,23 +197,40 @@ function SidebarContent({
       </div>
 
       <div className="sidebar-footer">
-        <Link
-          href="/settings"
-          onClick={onNavigate}
-          aria-current={isActivePath(location, "/settings") ? "page" : undefined}
-        >
-          <span
-            className={cn(
-              "sidebar-link cursor-pointer",
-              isActivePath(location, "/settings") && "sidebar-link-active",
-            )}
+        <div className="sidebar-footer-row">
+          <Link
+            href="/settings"
+            onClick={onNavigate}
+            aria-current={settingsActive ? "page" : undefined}
+            className="min-w-0 flex-1"
           >
-            <span className="sidebar-icon sidebar-icon-violet" aria-hidden>
-              <Settings className="h-[18px] w-[18px]" strokeWidth={1.75} />
+            <span
+              className={cn(
+                "sidebar-link mb-0 cursor-pointer",
+                settingsActive && "sidebar-link-active",
+              )}
+            >
+              <span className="sidebar-icon sidebar-icon-violet" aria-hidden>
+                <Settings className="h-[18px] w-[18px]" strokeWidth={1.75} />
+              </span>
+              <span className="truncate">Settings</span>
             </span>
-            <span className="truncate">Settings</span>
-          </span>
-        </Link>
+          </Link>
+
+          <button
+            type="button"
+            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            title={isDark ? "Light mode" : "Dark mode"}
+            onClick={toggleTheme}
+            className="sidebar-icon-btn cursor-pointer"
+          >
+            {isDark ? (
+              <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            ) : (
+              <Moon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            )}
+          </button>
+        </div>
 
         <div className="sidebar-user-card">
           <div className="sidebar-user-avatar" aria-hidden>
@@ -192,26 +240,25 @@ function SidebarContent({
             <p className="truncate text-sm font-semibold text-sidebar-foreground">{displayName}</p>
             {userEmail && <p className="truncate text-xs text-muted-foreground">{userEmail}</p>}
           </div>
+          <button
+            type="button"
+            aria-label="Sign out"
+            title="Sign out"
+            onClick={() => {
+              onNavigate?.();
+              onLogout();
+            }}
+            className="sidebar-icon-btn sidebar-icon-btn-muted cursor-pointer"
+          >
+            <LogOut className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </button>
         </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            onNavigate?.();
-            onLogout();
-          }}
-          className="sidebar-signout cursor-pointer"
-        >
-          <span className="sidebar-icon" aria-hidden>
-            <LogOut className="h-[18px] w-[18px]" strokeWidth={1.75} />
-          </span>
-          Sign out
-        </button>
 
         <div className="sidebar-legal">
           <Link href="/privacy" onClick={onNavigate}>
             Privacy
           </Link>
+          <span aria-hidden>·</span>
           <Link href="/terms" onClick={onNavigate}>
             Terms
           </Link>
