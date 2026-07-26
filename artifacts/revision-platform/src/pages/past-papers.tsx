@@ -13,9 +13,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { RichEmptyState } from "@/components/rich-empty-state";
+import { PageHeader } from "@/components/page-header";
 import { Plus, Trash2, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ChartSkeleton } from "@/components/charts/chart-skeleton";
+import { resolveSubjectAccent } from "@/lib/subject-accent";
 
 const ScoreTrendLineChart = lazy(
   () => import("@/components/charts/score-trend-line-chart"),
@@ -108,22 +110,22 @@ export default function PastPapers() {
   })) || [];
 
   return (
-    <div className="space-y-8 pb-8 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className="page-title">Past papers</h1>
-          <p className="page-subtitle">Log your past paper attempts and track your progress over time.</p>
-        </div>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" /> Log Paper
-        </Button>
-      </div>
+    <div className="app-page animate-in fade-in duration-300">
+      <PageHeader
+        title="Past papers"
+        subtitle="Log timed attempts to unlock trends, predicted grades, and sharper focus."
+        action={
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Plus className="h-4 w-4" strokeWidth={2} aria-hidden /> Log paper
+          </Button>
+        }
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="card-tint-teal lg:col-span-3">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <Card className="card-tint-cream lg:col-span-3 shadow-[var(--elev-2)]">
           <CardHeader className="flex flex-col gap-4 pb-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="text-xl">Performance Trend</CardTitle>
+              <CardTitle className="text-lg font-bold tracking-[-0.01em]">Performance trend</CardTitle>
               <CardDescription>Percentage scores over time</CardDescription>
             </div>
             <div className="w-full sm:w-[180px]">
@@ -144,11 +146,11 @@ export default function PastPapers() {
             {chartData.length < 2 ? (
               <RichEmptyState
                 scene="chart"
-                title="Not enough data yet"
-                description="Log at least two past papers to see your score trend over time."
+                title="Start your paper bank"
+                description="Log at least two past papers to unlock score trends and see which subjects are rising."
                 actionLabel="Log a paper"
                 onAction={() => setIsAddDialogOpen(true)}
-                variant="blue"
+                variant="mint"
                 className="py-10"
               />
             ) : (
@@ -157,7 +159,7 @@ export default function PastPapers() {
                   <ScoreTrendLineChart
                     data={chartData}
                     xKey="name"
-                    stroke="hsl(var(--primary))"
+                    stroke="hsl(var(--semantic-progress))"
                     height={300}
                     tooltipLabelFormatter={(label, items) => {
                       const payload = items[0]?.payload as { subject?: string; date?: string } | undefined;
@@ -173,35 +175,42 @@ export default function PastPapers() {
           </CardContent>
         </Card>
 
-        <Card className="card-tint-amber lg:col-span-3">
+        <Card className="card-tint-cream lg:col-span-3 shadow-[var(--elev-2)]">
           <CardHeader>
-            <CardTitle className="text-xl">Paper Log</CardTitle>
+            <CardTitle className="text-lg font-bold tracking-[-0.01em]">Paper log</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="p-8 space-y-4">
-                {[1,2,3].map(i => <div key={i} className="h-12 bg-muted rounded animate-pulse" />)}
+              <div className="space-y-3 p-6">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="dash-skeleton h-12 rounded-xl" />
+                ))}
               </div>
             ) : !papers || papers.length === 0 ? (
               <RichEmptyState
                 scene="papers"
-                title="No papers logged"
-                description="Keep track of every past paper you attempt to see improvement and weak areas over time."
-                actionLabel="Log a paper"
+                title="Start building your paper bank"
+                description="Every timed paper you log sharpens predicted grades and shows where to focus next."
+                actionLabel="Log your first paper"
                 onAction={() => setIsAddDialogOpen(true)}
-                variant="purple"
+                variant="mint"
               />
             ) : (
               <>
                 <div className="mobile-card-list">
-                  {papers.map((paper) => (
+                  {papers.map((paper) => {
+                    const accent = resolveSubjectAccent({
+                      name: paper.subjectName,
+                      color: paper.subjectColor,
+                    });
+                    return (
                     <div key={paper.id} className="mobile-card-row">
                       <div className="min-w-0 space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge
                             variant="outline"
                             className="rounded-full border-0 font-medium"
-                            style={{ backgroundColor: `${paper.subjectColor}18`, color: paper.subjectColor }}
+                            style={{ backgroundColor: `${accent}18`, color: accent }}
                           >
                             {paper.subjectName}
                           </Badge>
@@ -225,10 +234,11 @@ export default function PastPapers() {
                         aria-label={`Delete paper: ${paper.subjectName} ${paper.paperCode}`}
                         onClick={() => deletePaper.mutate({ pastPaperId: paper.id })}
                       >
-                        <Trash2 className="h-4 w-4" aria-hidden />
+                        <Trash2 className="h-4 w-4" aria-hidden strokeWidth={2} />
                       </Button>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="hidden overflow-x-auto md:block">
                 <table className="w-full text-sm text-left">
@@ -243,10 +253,15 @@ export default function PastPapers() {
                     </tr>
                   </thead>
                   <tbody className="divide-y border-b">
-                    {papers.map(paper => (
+                    {papers.map(paper => {
+                      const accent = resolveSubjectAccent({
+                        name: paper.subjectName,
+                        color: paper.subjectColor,
+                      });
+                      return (
                       <tr key={paper.id} className="bg-card hover:bg-muted/30 transition-colors">
                         <td className="px-6 py-4">
-                          <Badge variant="outline" className="rounded-full border-0 font-medium" style={{ backgroundColor: `${paper.subjectColor}18`, color: paper.subjectColor }}>
+                          <Badge variant="outline" className="rounded-full border-0 font-medium" style={{ backgroundColor: `${accent}18`, color: accent }}>
                             {paper.subjectName}
                           </Badge>
                         </td>
@@ -254,7 +269,7 @@ export default function PastPapers() {
                         <td className="px-6 py-4 text-muted-foreground">{paper.session}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-base">{paper.percentage}%</span>
+                            <span className="font-semibold text-base tabular">{paper.percentage}%</span>
                             <span className="text-xs text-muted-foreground">({paper.score}/{paper.totalMarks})</span>
                           </div>
                         </td>
@@ -269,11 +284,12 @@ export default function PastPapers() {
                             aria-label={`Delete paper: ${paper.subjectName} ${paper.paperCode}`}
                             onClick={() => deletePaper.mutate({ pastPaperId: paper.id })}
                           >
-                            <Trash2 className="h-4 w-4" aria-hidden />
+                            <Trash2 className="h-4 w-4" aria-hidden strokeWidth={2} />
                           </Button>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
                 </div>

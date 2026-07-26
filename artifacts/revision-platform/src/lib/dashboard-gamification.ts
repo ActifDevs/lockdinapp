@@ -105,10 +105,10 @@ export function motivationalLine(
   todayPct: number,
 ): string {
   if (todayPct === 100) return "Mission complete. You're building exam-day confidence.";
-  if (streak >= 14) return "Elite consistency — top grades are built exactly like this.";
-  if (daysToExam !== null && daysToExam <= 14) return "Final stretch mode. Every session counts now.";
-  if (daysToExam !== null && daysToExam <= 45) return "Exam season is approaching — stay sharp and structured.";
-  if (streak >= 7) return "Strong rhythm this week. Keep the momentum rolling.";
+  if (streak >= 14) return "Elite consistency. Top grades are built exactly like this.";
+  if (daysToExam !== null && daysToExam <= 14) return "Final stretch. Every session counts now.";
+  if (daysToExam !== null && daysToExam <= 45) return "Exam season is close. Stay sharp and structured.";
+  if (streak >= 7) return "Strong rhythm this week. Keep the momentum.";
   return "Small focused sessions compound into A-grade performance.";
 }
 
@@ -129,27 +129,27 @@ export function buildAchievements(
       id: "first-a",
       icon: "trophy",
       title: "First A Grade",
-      description: "Score 80%+ on a past paper",
+      description: "Hit 80%+ on a past paper",
       unlocked: hasA,
     },
     {
       id: "streak-30",
       icon: "flame",
       title: "30 Day Streak",
-      description: "Revise 30 days in a row",
+      description: "Protect your streak for a full month",
       unlocked: summary.studyStreakDays >= 30,
     },
     {
       id: "streak-7",
       icon: "flame",
-      title: "Week Warrior",
-      description: "7-day study streak",
+      title: "Streak Protected",
+      description: "7 days of focused revision",
       unlocked: summary.studyStreakDays >= 7,
     },
     {
       id: "syllabus-50",
       icon: "book",
-      title: "Halfway There",
+      title: "Topic Mastered",
       description: "50% syllabus across subjects",
       unlocked: avgSyllabus >= 50,
     },
@@ -163,8 +163,8 @@ export function buildAchievements(
     {
       id: "daily-clear",
       icon: "star",
-      title: "Daily Champion",
-      description: "Clear all tasks today",
+      title: "Daily Goal Complete",
+      description: "Clear every task on your mission",
       unlocked:
         summary.todayTasksTotal > 0 &&
         summary.todayTasksCompleted === summary.todayTasksTotal,

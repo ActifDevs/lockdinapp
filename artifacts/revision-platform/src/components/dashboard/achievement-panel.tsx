@@ -1,4 +1,5 @@
-import { BookOpen, Flame, Star, Target, Trophy } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { BookOpen, Check, Flame, Star, Target, Trophy } from "lucide-react";
 import type { Achievement } from "@/lib/dashboard-gamification";
 import { cn } from "@/lib/utils";
 
@@ -16,53 +17,103 @@ type AchievementPanelProps = {
 };
 
 export function AchievementPanel({ achievements, className }: AchievementPanelProps) {
+  const reduceMotion = useReducedMotion();
   const unlocked = achievements.filter((a) => a.unlocked);
   const locked = achievements.filter((a) => !a.unlocked);
+  const pct = achievements.length > 0 ? (unlocked.length / achievements.length) * 100 : 0;
+  const nextUp = locked.slice(0, Math.max(1, 5 - unlocked.length));
 
   return (
-    <div className={cn("dash-achievements", className)}>
-      <div className="flex items-center justify-between gap-3">
+    <section className={cn("dash-achievements", className)} aria-labelledby="achievements-title">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold tracking-tight">Achievements</h2>
-          <p className="text-xs text-muted-foreground">
-            {unlocked.length} of {achievements.length} unlocked · based on your activity
-          </p>
+          <h2 id="achievements-title" className="text-base font-bold tracking-[-0.01em]">
+            Achievements
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">Milestones from your logged work</p>
         </div>
-        <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-semibold tabular text-amber-900 dark:bg-amber-950 dark:text-amber-100">
-          {unlocked.length} earned
+        <span className="dash-chip dash-chip-gold tabular">
+          {unlocked.length} of {achievements.length}
         </span>
       </div>
 
-      <div className="mt-4 space-y-2">
-        {unlocked.map((item) => {
-          const Icon = ICONS[item.icon];
-          return (
-            <div key={item.id} className="dash-achievement dash-achievement-unlocked">
-              <div className="dash-achievement-icon">
-                <Icon className="h-4 w-4" aria-hidden strokeWidth={2} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold">{item.title}</p>
-                <p className="text-xs text-muted-foreground">{item.description}</p>
-              </div>
-            </div>
-          );
-        })}
-        {locked.slice(0, 3).map((item) => {
-          const Icon = ICONS[item.icon];
-          return (
-            <div key={item.id} className={cn("dash-achievement", "opacity-55")}>
-              <div className="dash-achievement-icon dash-achievement-icon-locked">
-                <Icon className="h-4 w-4" aria-hidden strokeWidth={2} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium">{item.title}</p>
-                <p className="text-xs text-muted-foreground">{item.description}</p>
-              </div>
-            </div>
-          );
-        })}
+      <div
+        className="dash-meter dash-meter-sm mt-3.5"
+        role="progressbar"
+        aria-valuenow={Math.round(pct)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Achievements unlocked"
+      >
+        <div
+          className={cn("dash-meter-fill", pct >= 100 && "dash-meter-fill-complete")}
+          style={{ width: `${pct}%` }}
+          data-complete={pct >= 100 ? "true" : undefined}
+        />
       </div>
-    </div>
+
+      <ul className="mt-4 space-y-1.5">
+        {unlocked.map((item, index) => {
+          const Icon = ICONS[item.icon];
+          return (
+            <motion.li
+              key={item.id}
+              className="dash-achievement dash-achievement-unlocked"
+              initial={reduceMotion ? false : { opacity: 0, transform: "translateY(4px)" }}
+              animate={{ opacity: 1, transform: "translateY(0px)" }}
+              transition={{
+                delay: Math.min(index * 0.03, 0.12),
+                duration: 0.22,
+                ease: [0.23, 1, 0.32, 1],
+              }}
+            >
+              <span
+                className={cn("dash-achievement-icon", `dash-achievement-icon-${item.icon}`)}
+                aria-hidden
+              >
+                <Icon className="h-4 w-4" strokeWidth={2} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold leading-tight">{item.title}</p>
+                <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
+              <Check
+                className="dash-achievement-check h-4 w-4 shrink-0"
+                aria-label="Unlocked"
+                strokeWidth={2.5}
+              />
+            </motion.li>
+          );
+        })}
+
+        {nextUp.map((item) => {
+          const Icon = ICONS[item.icon];
+          return (
+            <li key={item.id} className="dash-achievement dash-achievement-locked">
+              <span
+                className={cn(
+                  "dash-achievement-icon",
+                  `dash-achievement-icon-${item.icon}`,
+                  "dash-achievement-icon-locked",
+                )}
+                aria-hidden
+              >
+                <Icon className="h-4 w-4" strokeWidth={2} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium leading-tight text-muted-foreground">
+                  {item.title}
+                </p>
+                <p className="mt-0.5 text-xs leading-snug text-muted-foreground/75">
+                  {item.description}
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

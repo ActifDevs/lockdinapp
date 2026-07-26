@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -24,11 +25,12 @@ type InsightCardProps = {
 export function InsightCard({ title, action, children, className, tint = "cream" }: InsightCardProps) {
   return (
     <div className={cn("dash-insight-card", TINT_CLASS[tint], className)}>
-      <div className="dash-insight-card-header flex items-center justify-between gap-3">
-        <span className="text-sm font-semibold tracking-tight">{title}</span>
+      <div className="dash-insight-card-header">
+        <h3 className="min-w-0 flex-1 text-[0.9375rem] font-bold tracking-[-0.01em]">{title}</h3>
         {action && (
-          <Link href={action.href} className="shrink-0 text-xs font-medium text-primary hover:underline">
+          <Link href={action.href} className="dash-insight-action">
             {action.label}
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden strokeWidth={2.25} />
           </Link>
         )}
       </div>

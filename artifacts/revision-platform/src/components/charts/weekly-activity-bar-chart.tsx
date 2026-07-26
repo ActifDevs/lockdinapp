@@ -27,11 +27,18 @@ export default function WeeklyActivityBarChart({
   const margin = compact
     ? { top: 4, right: 4, left: -28, bottom: 0 }
     : { top: 10, right: 10, left: -20, bottom: 0 };
+  const gradientId = "weekProgressFill";
 
   return (
     <div className="w-full" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={margin}>
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="hsl(var(--semantic-progress))" stopOpacity={0.95} />
+              <stop offset="100%" stopColor="hsl(var(--semantic-progress))" stopOpacity={0.55} />
+            </linearGradient>
+          </defs>
           <CartesianGrid strokeDasharray="3 3" vertical={false} className="opacity-10" />
           <XAxis
             dataKey="date"
@@ -65,7 +72,7 @@ export default function WeeklyActivityBarChart({
           />
           <Bar
             dataKey="tasksCompleted"
-            fill="hsl(var(--primary))"
+            fill={`url(#${gradientId})`}
             radius={compact ? [6, 6, 0, 0] : [8, 8, 0, 0]}
             maxBarSize={compact ? 28 : 48}
           />

@@ -23,6 +23,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { TaskRow } from "@/components/task-row";
 import { RichEmptyState } from "@/components/rich-empty-state";
+import { PageHeader } from "@/components/page-header";
 import { Plus, Trash2, Calendar as CalendarIcon } from "lucide-react";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -143,7 +144,7 @@ export default function StudyPlan() {
                   deadlineStr === "Today" ? "font-medium text-destructive" : "text-muted-foreground",
                 )}
               >
-                <CalendarIcon className="h-3 w-3" strokeWidth={1.75} /> {deadlineStr}
+                <CalendarIcon className="h-3 w-3" strokeWidth={2} /> {deadlineStr}
               </span>
             )}
             <Button
@@ -153,7 +154,7 @@ export default function StudyPlan() {
               aria-label={`Delete task: ${task.title}`}
               onClick={() => deleteTask.mutate({ taskId: task.id })}
             >
-              <Trash2 className="h-4 w-4" aria-hidden strokeWidth={1.75} />
+              <Trash2 className="h-4 w-4" aria-hidden strokeWidth={2} />
             </Button>
           </div>
         }
@@ -162,16 +163,16 @@ export default function StudyPlan() {
   };
 
   return (
-    <div className="space-y-8 pb-8 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className="page-title">Study plan</h1>
-          <p className="page-subtitle">Organise revision sessions and track what needs doing.</p>
-        </div>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" /> Add task
-        </Button>
-      </div>
+    <div className="app-page animate-in fade-in duration-300">
+      <PageHeader
+        title="Study plan"
+        subtitle="Build today's mission, protect your streak, and keep revision finishable."
+        action={
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Plus className="h-4 w-4" strokeWidth={2} aria-hidden /> Add task
+          </Button>
+        }
+      />
 
       {actionError && (
         <div
@@ -182,10 +183,10 @@ export default function StudyPlan() {
         </div>
       )}
 
-      <Card className="card-tint-cream border-border/60">
+      <Card className="card-tint-cream overflow-hidden border-[hsl(var(--card-border))] shadow-[var(--elev-2)]">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <CardHeader className="pb-0 border-b">
-            <TabsList className="tabs-scroll rounded-none border-b bg-transparent p-0">
+          <CardHeader className="border-b border-border/60 pb-0">
+            <TabsList className="tabs-scroll rounded-none border-b-0 bg-transparent p-0">
               <TabsTrigger
                 value="today"
                 className="rounded-none border-b-2 border-transparent px-1 pb-3 pt-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
@@ -208,41 +209,37 @@ export default function StudyPlan() {
                 value="all"
                 className="rounded-none border-b-2 border-transparent px-1 pb-3 pt-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
               >
-                All Tasks
+                All tasks
               </TabsTrigger>
             </TabsList>
           </CardHeader>
           <CardContent className="p-0">
             {tasksLoading ? (
-              <div className="p-8 space-y-4">
-                {[1,2,3].map(i => <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />)}
+              <div className="space-y-3 p-6">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="dash-skeleton h-16 rounded-xl" />
+                ))}
               </div>
             ) : !tasks || tasks.length === 0 ? (
               <RichEmptyState
-                scene={
-                  activeTab === "completed"
-                    ? "calm"
-                    : activeTab === "today"
-                      ? "tasks"
-                      : "tasks"
-                }
+                scene={activeTab === "completed" ? "calm" : "tasks"}
                 title={
                   activeTab === "today"
-                    ? "No tasks for today yet"
+                    ? "Ready to make progress?"
                     : activeTab === "completed"
-                      ? "No completed tasks yet"
-                      : "Your study plan is empty"
+                      ? "Your first checkmark is waiting"
+                      : "Build your revision plan"
                 }
                 description={
                   activeTab === "today"
-                    ? "Add today's first task to protect your streak and unlock Daily Champion."
+                    ? "Plan your first study block. Every completed session earns XP, protects your streak, and improves your predicted grade."
                     : activeTab === "completed"
-                      ? "You haven't completed any tasks yet — your first checkmark is waiting."
+                      ? "Finish a mission task and it will show up here as proof of momentum."
                       : "Break revision into small, finishable blocks and schedule the next session."
                 }
-                actionLabel={activeTab !== "completed" ? "Create a task" : undefined}
+                actionLabel={activeTab !== "completed" ? "Create today's mission" : undefined}
                 onAction={activeTab !== "completed" ? () => setIsAddDialogOpen(true) : undefined}
-                variant={activeTab === "today" ? "purple" : activeTab === "completed" ? "mint" : "blue"}
+                variant="mint"
               />
             ) : (
               <div className="list-divider group">

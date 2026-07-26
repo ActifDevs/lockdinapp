@@ -1,16 +1,19 @@
 import { useGetSubject, getGetSubjectQueryKey, useGetSubjectSyllabus, getGetSubjectSyllabusQueryKey, useGetSubjectPerformance, getGetSubjectPerformanceQueryKey, useListTasks, getListTasksQueryKey, useListPastPapers, getListPastPapersQueryKey, useUpdateSyllabusTopic, useUpdateTask } from "@workspace/api-client-react";
 import { Link, useRoute } from "wouter";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, type CSSProperties } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProgressRing } from "@/components/progress-ring";
 import { TaskRow } from "@/components/task-row";
 import { RichEmptyState } from "@/components/rich-empty-state";
-import { BarChart, Clock, CheckCircle2, Circle, ArrowUpRight, ChevronLeft } from "lucide-react";
+import { InsightCard } from "@/components/insight-card";
+import { BarChart, CheckCircle2, Circle, ChevronLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 import { ChartSkeleton } from "@/components/charts/chart-skeleton";
 import { useQueryClient } from "@tanstack/react-query";
+import { resolveSubjectAccent } from "@/lib/subject-accent";
+import { subjectMark } from "@/lib/subject-mark";
 import { cn } from "@/lib/utils";
 
 const ScoreTrendLineChart = lazy(
@@ -69,10 +72,10 @@ export default function SubjectDetail() {
 
   if (subjectLoading || !subject) {
     return (
-      <div className="space-y-8 animate-pulse">
-        <div className="h-20 bg-muted rounded-xl" />
-        <div className="h-10 w-full bg-muted rounded" />
-        <div className="h-96 bg-muted rounded-xl" />
+      <div className="app-page animate-pulse">
+        <div className="h-20 rounded-xl bg-muted" />
+        <div className="h-10 w-full rounded bg-muted" />
+        <div className="h-96 rounded-xl bg-muted" />
       </div>
     );
   }
@@ -91,9 +94,9 @@ export default function SubjectDetail() {
 
   const getStatusIcon = (status: string) => {
     switch(status) {
-      case 'completed': return <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden />;
-      case 'in_progress': return <Circle className="h-5 w-5 text-orange-500 fill-orange-500/20" aria-hidden />;
-      default: return <Circle className="h-5 w-5 text-muted-foreground/30" aria-hidden />;
+      case 'completed': return <CheckCircle2 className="h-5 w-5 text-[hsl(var(--semantic-complete))]" aria-hidden strokeWidth={2} />;
+      case 'in_progress': return <Circle className="h-5 w-5 text-[hsl(var(--semantic-attention))] fill-[hsl(var(--semantic-attention)/0.2)]" aria-hidden strokeWidth={2} />;
+      default: return <Circle className="h-5 w-5 text-muted-foreground/30" aria-hidden strokeWidth={2} />;
     }
   };
 
@@ -114,53 +117,67 @@ export default function SubjectDetail() {
   };
 
   const pendingTasks = tasks?.filter(t => !t.completed) || [];
+  const accent = resolveSubjectAccent({
+    code: subject.code,
+    name: subject.name,
+    color: subject.color,
+  });
+  const Mark = subjectMark(subject.name);
 
   return (
-    <div className="space-y-8 pb-8 animate-in fade-in duration-500">
+    <div className="app-page animate-in fade-in duration-300">
       <Link
         href="/subjects"
         className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
-        <ChevronLeft className="h-4 w-4" aria-hidden strokeWidth={1.75} />
+        <ChevronLeft className="h-4 w-4" aria-hidden strokeWidth={2} />
         All subjects
       </Link>
 
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl border border-[hsl(var(--brand-teal)/0.22)] bg-card p-4 shadow-sm sm:p-8">
-        <div className="absolute right-0 top-0 h-64 w-64 rounded-bl-[100px] opacity-5" style={{ backgroundColor: subject.color }} />
-        
+      <div
+        className="dash-mastery-card relative overflow-hidden p-4 sm:p-8"
+        style={{ "--subject-accent": accent } as CSSProperties}
+      >
+        <span className="dash-mastery-accent" aria-hidden />
+        <span className="dash-mastery-glow" aria-hidden />
+
         <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-2xl font-bold text-white shadow-md sm:h-16 sm:w-16" style={{ backgroundColor: subject.color }}>
-            {subject.name.charAt(0)}
+          <div
+            className="dash-mastery-mark flex h-14 w-14 shrink-0 items-center justify-center sm:h-16 sm:w-16"
+            style={{ color: accent }}
+            aria-hidden
+          >
+            <Mark className="h-7 w-7" strokeWidth={2} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h1 className="page-title">{subject.name}</h1>
               <span className="font-medium text-muted-foreground">{subject.code}</span>
             </div>
-            
+
             <div className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:gap-6">
               <div className="flex items-center gap-4">
                 <ProgressRing
                   value={subject.syllabusProgress}
                   label={`${subject.name} syllabus`}
-                  color={subject.color}
+                  color={accent}
                   size={56}
                   strokeWidth={5}
                 />
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Syllabus</p>
+                  <p className="card-label">Syllabus</p>
                   <p className="text-2xl font-bold tabular-nums">{subject.syllabusProgress}%</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 rounded-xl border border-border/50 bg-muted/20 p-4 sm:border-l sm:border-border/50 sm:bg-transparent sm:p-0 sm:pl-6 lg:border-l">
                 <div>
-                  <p className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tasks</p>
+                  <p className="card-label mb-0.5">Tasks</p>
                   <p className="text-base font-bold">{subject.upcomingTasksCount} <span className="text-xs font-normal text-muted-foreground">pending</span></p>
                 </div>
                 <div>
-                  <p className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Latest score</p>
-                  <p className="text-base font-bold">{subject.recentPaperScore !== null ? `${subject.recentPaperScore}%` : "N/A"}</p>
+                  <p className="card-label mb-0.5">Latest score</p>
+                  <p className="text-base font-bold tabular">{subject.recentPaperScore !== null ? `${subject.recentPaperScore}%` : "N/A"}</p>
                 </div>
               </div>
             </div>
@@ -181,27 +198,40 @@ export default function SubjectDetail() {
             <div className="md:col-span-2 space-y-6">
               {/* Insight if available */}
               {performance?.insight && (
-                <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 text-sm leading-relaxed text-foreground/90">
-                  <div className="flex gap-2 mb-2 text-primary font-semibold items-center">
-                    <BarChart className="h-4 w-4" /> Performance Insight
-                  </div>
-                  {performance.insight}
-                </div>
+                <InsightCard
+                  tint="cream"
+                  title={
+                    <span className="flex items-center gap-2">
+                      <BarChart className="h-4 w-4 text-[hsl(var(--semantic-progress))]" strokeWidth={2} aria-hidden />
+                      Performance insight
+                    </span>
+                  }
+                >
+                  <p className="text-sm leading-relaxed text-foreground/90">{performance.insight}</p>
+                </InsightCard>
               )}
               
-              <Card className="card-tint-coral">
+              <Card className="card-tint-cream shadow-[var(--elev-2)]">
                 <CardHeader>
-                  <CardTitle className="text-lg">Upcoming Tasks</CardTitle>
+                  <CardTitle className="text-lg font-bold tracking-[-0.01em]">Upcoming tasks</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                   {pendingTasks.length === 0 ? (
-                    <div className="p-6 text-center text-muted-foreground text-sm">No tasks pending for {subject.name}.</div>
+                    <RichEmptyState
+                      scene="tasks"
+                      title="No pending tasks"
+                      description={`Clear runway for ${subject.name} — add a finishable block from your study plan.`}
+                      actionHref="/study-plan"
+                      actionLabel="Open study plan"
+                      variant="mint"
+                      className="py-8"
+                    />
                   ) : (
                     <div className="divide-y border-t">
                       {pendingTasks.slice(0, 5).map(task => (
-                        <div key={task.id} className="p-4 flex items-center justify-between hover:bg-muted/30">
+                        <div key={task.id} className="flex items-center justify-between p-4 hover:bg-muted/30">
                           <div>
-                            <p className="font-medium text-sm">{task.title}</p>
+                            <p className="text-sm font-medium">{task.title}</p>
                             {task.topicTitle && <p className="text-xs text-muted-foreground">{task.topicTitle}</p>}
                           </div>
                           {task.deadline && (
@@ -218,22 +248,22 @@ export default function SubjectDetail() {
             </div>
 
             <div className="space-y-6">
-              <Card className="card-tint-teal">
+              <Card className="card-tint-cream shadow-[var(--elev-2)]">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Stats</CardTitle>
+                  <CardTitle className="text-lg font-bold tracking-[-0.01em]">Stats</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center border-b pb-3">
-                    <span className="text-sm text-muted-foreground">Papers Completed</span>
-                    <span className="font-semibold text-lg">{performance?.papersCompleted || 0}</span>
+                  <div className="flex items-center justify-between border-b pb-3">
+                    <span className="text-sm text-muted-foreground">Papers completed</span>
+                    <span className="text-lg font-semibold tabular">{performance?.papersCompleted || 0}</span>
                   </div>
-                  <div className="flex justify-between items-center border-b pb-3">
-                    <span className="text-sm text-muted-foreground">Average Score</span>
-                    <span className="font-semibold text-lg">{performance?.averageScore ? `${performance.averageScore}%` : '-'}</span>
+                  <div className="flex items-center justify-between border-b pb-3">
+                    <span className="text-sm text-muted-foreground">Average score</span>
+                    <span className="text-lg font-semibold tabular">{performance?.averageScore ? `${performance.averageScore}%` : '-'}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Best Score</span>
-                    <span className="font-semibold text-lg text-primary">{performance?.bestScore ? `${performance.bestScore}%` : '-'}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Best score</span>
+                    <span className="text-lg font-semibold tabular text-[hsl(var(--semantic-progress))]">{performance?.bestScore ? `${performance.bestScore}%` : '-'}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -242,10 +272,10 @@ export default function SubjectDetail() {
         </TabsContent>
 
         <TabsContent value="syllabus" className="space-y-4">
-          <Card className="card-tint-amber">
+          <Card className="card-tint-cream shadow-[var(--elev-2)]">
             <CardHeader>
-              <CardTitle className="text-xl">Syllabus Progress</CardTitle>
-              <CardDescription>Click the circle icon to update a topic's status.</CardDescription>
+              <CardTitle className="text-xl font-bold tracking-[-0.01em]">Syllabus progress</CardTitle>
+              <CardDescription>Tap the circle to cycle a topic's status.</CardDescription>
             </CardHeader>
             <CardContent className="p-0 border-t">
               {syllabus?.length === 0 ? (
@@ -290,19 +320,19 @@ export default function SubjectDetail() {
         </TabsContent>
 
         <TabsContent value="tasks">
-          <Card className="card-tint-deep">
+          <Card className="card-tint-cream shadow-[var(--elev-2)]">
             <CardHeader>
-              <CardTitle className="text-xl">Subject Tasks</CardTitle>
+              <CardTitle className="text-xl font-bold tracking-[-0.01em]">Subject tasks</CardTitle>
             </CardHeader>
             <CardContent className="p-0 border-t">
               {!tasks || tasks.length === 0 ? (
                 <RichEmptyState
                   scene="tasks"
-                  title="No tasks for this subject"
-                  description="Add revision tasks from your study plan and link them to this subject."
+                  title="Ready to schedule this subject?"
+                  description="Add revision tasks from your study plan and link them here to keep momentum."
                   actionHref="/study-plan"
                   actionLabel="Go to study plan"
-                  variant="blue"
+                  variant="mint"
                 />
               ) : (
                 <div className="list-divider">
@@ -333,19 +363,19 @@ export default function SubjectDetail() {
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-6">
-          <Card className="card-tint-teal">
+          <Card className="card-tint-cream shadow-[var(--elev-2)]">
             <CardHeader>
-              <CardTitle className="text-xl">Score Trend</CardTitle>
+              <CardTitle className="text-xl font-bold tracking-[-0.01em]">Score trend</CardTitle>
             </CardHeader>
             <CardContent>
               {!performance || performance.trend.length < 2 ? (
                 <RichEmptyState
                   scene="chart"
-                  title="Not enough data yet"
-                  description="Log at least two past papers for this subject to see your score trend."
+                  title="Log two papers to unlock trends"
+                  description="Timed attempts reveal your score trajectory and sharpen predicted grades."
                   actionHref="/past-papers"
                   actionLabel="Log a paper"
-                  variant="purple"
+                  variant="mint"
                   className="py-10"
                 />
               ) : (
@@ -353,7 +383,7 @@ export default function SubjectDetail() {
                   <ScoreTrendLineChart
                     data={performance.trend}
                     xKey="label"
-                    stroke={subject.color}
+                    stroke={accent}
                     height={300}
                   />
                 </Suspense>
@@ -361,13 +391,21 @@ export default function SubjectDetail() {
             </CardContent>
           </Card>
 
-          <Card className="card-tint-coral">
+          <Card className="card-tint-cream shadow-[var(--elev-2)]">
             <CardHeader>
-              <CardTitle className="text-xl">Component Breakdown</CardTitle>
+              <CardTitle className="text-xl font-bold tracking-[-0.01em]">Component breakdown</CardTitle>
             </CardHeader>
             <CardContent className="p-0 border-t">
               {!performance || performance.componentBreakdown.length === 0 ? (
-                <div className="p-6 text-center text-muted-foreground text-sm">No component data.</div>
+                <RichEmptyState
+                  scene="chart"
+                  title="No component data yet"
+                  description="As you log papers with paper codes, component averages will appear here."
+                  actionHref="/past-papers"
+                  actionLabel="Log a paper"
+                  variant="mint"
+                  className="py-8"
+                />
               ) : (
                 <div className="overflow-x-auto">
                 <table className="w-full min-w-[320px] text-left text-sm">

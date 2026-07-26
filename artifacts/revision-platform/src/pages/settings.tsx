@@ -21,6 +21,8 @@ import { useNotificationPrefs } from "@/hooks/use-notification-prefs";
 import { SUBJECT_CATALOG } from "@/lib/subject-catalog";
 import { toast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
+import { PageHeader } from "@/components/page-header";
+import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 import {
@@ -61,7 +63,7 @@ function ThemeOption({
     >
       {preview}
       <span className="text-sm font-medium">{label}</span>
-      {selected && <Check className="absolute right-2 top-2 h-4 w-4 text-primary" aria-hidden />}
+      {selected && <Check className="absolute right-2 top-2 h-4 w-4 text-primary" aria-hidden strokeWidth={2} />}
     </button>
   );
 }
@@ -166,11 +168,11 @@ export default function Settings() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 pb-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="page-title">Settings</h1>
-        <p className="page-subtitle">Manage your account, preferences, and workspace.</p>
-      </div>
+    <div className="app-page mx-auto max-w-4xl animate-in fade-in duration-300">
+      <PageHeader
+        title="Settings"
+        subtitle="Manage your account, preferences, and workspace."
+      />
 
       <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 lg:w-auto tabs-scroll lg:overflow-visible">
@@ -181,10 +183,10 @@ export default function Settings() {
         </TabsList>
 
         <TabsContent value="account" className="mt-6 space-y-6">
-          <Card className="card-tint-cream">
+          <Card className="card-tint-cream shadow-[var(--elev-2)]">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <User className="h-5 w-5" aria-hidden /> Profile
+              <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-[-0.01em]">
+                <User className="h-5 w-5" aria-hidden strokeWidth={2} /> Profile
               </CardTitle>
               <CardDescription>Update your personal information.</CardDescription>
             </CardHeader>
@@ -243,25 +245,31 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="subjects" className="mt-6 space-y-6">
-          <Card className="card-tint-teal">
+          <Card className="card-tint-cream shadow-[var(--elev-2)]">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <BookOpen className="h-5 w-5" aria-hidden /> Active subjects
+              <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-[-0.01em]">
+                <BookOpen className="h-5 w-5" aria-hidden strokeWidth={2} /> Active subjects
               </CardTitle>
               <CardDescription>Add or remove the subjects on your dashboard.</CardDescription>
             </CardHeader>
             <CardContent>
               {subjects && subjects.length > 0 ? (
                 <div className="mb-6 grid gap-4 sm:grid-cols-2">
-                  {subjects.map((subject) => (
+                  {subjects.map((subject) => {
+                    const accent = resolveSubjectAccent({
+                      code: subject.code,
+                      name: subject.name,
+                      color: subject.color,
+                    });
+                    return (
                     <div
                       key={subject.id}
-                      className="flex items-center justify-between gap-2 rounded-md border bg-card p-3"
+                      className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-card/80 p-3 shadow-[var(--elev-1)]"
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         <div
                           className="h-3 w-3 shrink-0 rounded-full"
-                          style={{ backgroundColor: subject.color }}
+                          style={{ backgroundColor: accent }}
                           aria-hidden
                         />
                         <div className="min-w-0">
@@ -289,21 +297,24 @@ export default function Settings() {
                             }
                           }}
                         >
-                          <Trash2 className="h-4 w-4" aria-hidden />
+                          <Trash2 className="h-4 w-4" aria-hidden strokeWidth={2} />
                         </Button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
-                <p className="mb-6 text-sm text-muted-foreground">No subjects on your workspace yet.</p>
+                <p className="mb-6 text-sm text-muted-foreground">
+                  No subjects yet — add your A-Levels to unlock syllabus tracking and predicted grades.
+                </p>
               )}
               <Button
                 onClick={() => setAddOpen(true)}
                 disabled={availableToAdd.length === 0}
                 className="gap-2"
               >
-                <Plus className="h-4 w-4" aria-hidden />
+                <Plus className="h-4 w-4" aria-hidden strokeWidth={2} />
                 Add subject
               </Button>
               {availableToAdd.length === 0 && (
@@ -314,10 +325,10 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="appearance" className="mt-6 space-y-6">
-          <Card className="card-tint-amber">
+          <Card className="card-tint-cream shadow-[var(--elev-2)]">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Palette className="h-5 w-5" aria-hidden /> Theme
+              <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-[-0.01em]">
+                <Palette className="h-5 w-5" aria-hidden strokeWidth={2} /> Theme
               </CardTitle>
               <CardDescription>Select your preferred visual style.</CardDescription>
             </CardHeader>
@@ -364,10 +375,10 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="notifications" className="mt-6 space-y-6">
-          <Card className="card-tint-coral">
+          <Card className="card-tint-cream shadow-[var(--elev-2)]">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Bell className="h-5 w-5" aria-hidden /> Study reminders
+              <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-[-0.01em]">
+                <Bell className="h-5 w-5" aria-hidden strokeWidth={2} /> Study reminders
               </CardTitle>
               <CardDescription>
                 Local reminders in this browser (and desktop notifications when allowed). Prefs save on this device.
@@ -414,10 +425,10 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          <Card className="card-tint-deep">
+          <Card className="card-tint-cream shadow-[var(--elev-2)]">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <CalendarIcon className="h-5 w-5" aria-hidden /> Integrations
+              <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-[-0.01em]">
+                <CalendarIcon className="h-5 w-5" aria-hidden strokeWidth={2} /> Integrations
               </CardTitle>
               <CardDescription>Connect Scholr with your other tools.</CardDescription>
             </CardHeader>

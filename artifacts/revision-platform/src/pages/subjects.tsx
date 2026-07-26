@@ -1,11 +1,13 @@
+import type { CSSProperties } from "react";
 import { useListSubjects, getListSubjectsQueryKey } from "@workspace/api-client-react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { ProgressRing } from "@/components/progress-ring";
 import { RichEmptyState } from "@/components/rich-empty-state";
+import { PageHeader } from "@/components/page-header";
 import { Link } from "wouter";
-import { ChevronRight, Clock, BarChart } from "lucide-react";
+import { ChevronRight, Clock, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, useReducedMotion } from "framer-motion";
+import { resolveSubjectAccent } from "@/lib/subject-accent";
+import { subjectMark } from "@/lib/subject-mark";
 import { cn } from "@/lib/utils";
 
 export default function Subjects() {
@@ -19,110 +21,135 @@ export default function Subjects() {
   }
 
   return (
-    <div className="space-y-8 pb-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="page-title">My subjects</h1>
-          <p className="page-subtitle">
-            Track syllabus coverage and monitor progress across your A-Level subjects.
-          </p>
-        </div>
-        <Button asChild className="shrink-0">
-          <Link href="/settings?tab=subjects">Add subject</Link>
-        </Button>
-      </div>
+    <div className="app-page">
+      <PageHeader
+        title="My subjects"
+        subtitle="Cambridge readiness across every syllabus you track."
+        action={
+          <Button asChild>
+            <Link href="/settings?tab=subjects">Add subject</Link>
+          </Button>
+        }
+      />
 
       {!subjects || subjects.length === 0 ? (
-        <Card className="card-tint-teal">
-          <CardContent>
-            <RichEmptyState
-              scene="books"
-              title="No subjects added"
-              description="Add the subjects you're taking so Scholr can track syllabus coverage and past papers for each one."
-              actionLabel="Add subjects"
-              actionHref="/settings?tab=subjects"
-              variant="mint"
-            />
-          </CardContent>
-        </Card>
+        <div className="dash-insight-card card-tint-cream">
+          <RichEmptyState
+            scene="books"
+            title="Ready to build your subject map?"
+            description="Add the A-Level subjects you're taking so Scholr can track syllabus coverage, papers, and predicted grades."
+            actionLabel="Add your subjects"
+            actionHref="/settings?tab=subjects"
+            variant="mint"
+          />
+        </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           {subjects.map((subject, index) => {
-            const tintClass = [
-              "card-tint-cream",
-              "card-tint-teal",
-              "card-tint-amber",
-              "card-tint-coral",
-              "card-tint-deep",
-            ][index % 5];
+            const accent = resolveSubjectAccent({
+              code: subject.code,
+              name: subject.name,
+              color: subject.color,
+            });
+            const Mark = subjectMark(subject.name);
             return (
-            <motion.div
-              key={subject.id}
-              initial={reduceMotion ? false : { opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: reduceMotion ? 0 : index * 0.05, duration: 0.25 }}
-            >
-              <Link href={`/subjects/${subject.id}`}>
-                <Card className={cn("group h-full cursor-pointer overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-md", tintClass)}>
-                  <div
-                    className="h-2 w-full"
-                    style={{ background: `linear-gradient(90deg, ${subject.color}, ${subject.color}88)` }}
-                  />
-                  <CardHeader className="pb-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-4">
-                        <ProgressRing
-                          value={subject.syllabusProgress}
-                          label={subject.name}
-                          color={subject.color}
-                          size={56}
-                          strokeWidth={5}
-                        />
-                        <div>
-                          <CardTitle className="text-xl transition-colors group-hover:text-primary">
-                            {subject.name}
-                          </CardTitle>
-                          <p className="text-sm text-muted-foreground">{subject.code}</p>
-                        </div>
-                      </div>
-                      <ChevronRight className="h-5 w-5 -translate-x-1 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0 group-hover:text-primary group-hover:opacity-100" />
-                    </div>
-                  </CardHeader>
+              <motion.div
+                key={subject.id}
+                initial={reduceMotion ? false : { opacity: 0, transform: "translateY(8px)" }}
+                animate={{ opacity: 1, transform: "translateY(0px)" }}
+                transition={{
+                  delay: reduceMotion ? 0 : Math.min(index * 0.04, 0.16),
+                  duration: 0.28,
+                  ease: [0.23, 1, 0.32, 1],
+                }}
+              >
+                <Link
+                  href={`/subjects/${subject.id}`}
+                  className="dash-mastery-card group"
+                  style={{ "--subject-accent": accent } as CSSProperties}
+                >
+                  <span className="dash-mastery-accent" aria-hidden />
+                  <span className="dash-mastery-glow" aria-hidden />
 
-                  <CardContent className="space-y-5">
-                    <p className="text-sm text-muted-foreground">
-                      <span className="font-semibold text-foreground tabular">{subject.topicsCompleted}</span> of{" "}
-                      <span className="tabular">{subject.topicsTotal}</span> topics covered
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-4 border-t border-border/40 pt-4">
-                      <div>
-                        <p className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Clock className="h-3.5 w-3.5" strokeWidth={1.75} /> Upcoming tasks
-                        </p>
-                        <p className="text-2xl font-bold tabular">{subject.upcomingTasksCount}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2.5">
+                        <span className="dash-mastery-mark" aria-hidden>
+                          <Mark className="h-4 w-4" strokeWidth={2} />
+                        </span>
+                        <p className="dash-mastery-name truncate">{subject.name}</p>
                       </div>
-                      <div>
-                        <p className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <BarChart className="h-3.5 w-3.5" strokeWidth={1.75} /> Recent score
-                        </p>
-                        <p className="text-2xl font-bold tabular">
-                          {subject.recentPaperScore !== null ? `${subject.recentPaperScore}%` : "—"}
-                        </p>
-                        {subject.recentPaperLabel && (
-                          <p className="truncate text-xs text-muted-foreground">{subject.recentPaperLabel}</p>
-                        )}
-                      </div>
+                      <p className="mt-1 pl-9 text-xs font-medium tracking-wide text-muted-foreground">
+                        Cambridge {subject.code}
+                      </p>
                     </div>
-                  </CardContent>
-                  <CardFooter className="border-t border-border/40 bg-muted/20 px-6 py-3">
-                    <span className="text-xs font-medium text-muted-foreground group-hover:text-primary">
-                      Open subject workspace
+                    <span className="dash-mastery-go" aria-hidden>
+                      <ChevronRight className="h-4 w-4" strokeWidth={2} />
                     </span>
-                  </CardFooter>
-                </Card>
-              </Link>
-            </motion.div>
+                  </div>
+
+                  <div className="dash-mastery-progress">
+                    <div className="mb-2.5 flex items-baseline justify-between gap-3">
+                      <span className="card-label">Mastery</span>
+                      <span className="dash-mastery-pct tabular">{subject.syllabusProgress}%</span>
+                    </div>
+                    <div className="dash-meter dash-meter-mastery">
+                      <div
+                        className="dash-meter-fill dash-meter-fill-subject"
+                        style={{
+                          width: "100%",
+                          transform: `scaleX(${Math.max(subject.syllabusProgress, 1) / 100})`,
+                          transformOrigin: "left center",
+                        }}
+                      />
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      <span className="font-semibold text-foreground tabular">
+                        {subject.topicsCompleted}
+                      </span>{" "}
+                      of <span className="tabular">{subject.topicsTotal}</span> topics covered
+                    </p>
+                  </div>
+
+                  <div className="dash-mastery-metrics">
+                    <div>
+                      <p className="card-label inline-flex items-center gap-1">
+                        <Clock className="h-3 w-3" aria-hidden strokeWidth={2} />
+                        Tasks
+                      </p>
+                      <p className="mt-1.5 text-[0.9375rem] font-bold tabular leading-none">
+                        {subject.upcomingTasksCount}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="card-label inline-flex items-center gap-1">
+                        <FileText className="h-3 w-3" aria-hidden strokeWidth={2} />
+                        Latest paper
+                      </p>
+                      <p className="mt-1.5 text-[0.9375rem] font-bold tabular leading-none">
+                        {subject.recentPaperScore !== null
+                          ? `${subject.recentPaperScore}%`
+                          : "—"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="dash-mastery-focus">
+                    <p className="text-sm font-semibold text-muted-foreground group-hover:text-foreground">
+                      Open subject workspace
+                    </p>
+                    <span
+                      className={cn(
+                        "dash-mastery-go",
+                        "group-hover:translate-x-0.5",
+                      )}
+                      aria-hidden
+                    >
+                      <ChevronRight className="h-4 w-4" strokeWidth={2} />
+                    </span>
+                  </div>
+                </Link>
+              </motion.div>
             );
           })}
         </div>
@@ -133,14 +160,14 @@ export default function Subjects() {
 
 function SubjectsSkeleton() {
   return (
-    <div className="space-y-8 pb-8">
+    <div className="app-page">
       <div className="space-y-3">
-        <div className="h-10 w-48 animate-pulse rounded-xl bg-muted" />
-        <div className="h-5 w-96 animate-pulse rounded-xl bg-muted" />
+        <div className="dash-skeleton h-10 w-48 rounded-xl" />
+        <div className="dash-skeleton h-5 w-96 max-w-full rounded-xl" />
       </div>
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-64 animate-pulse rounded-2xl bg-muted" />
+          <div key={i} className="dash-skeleton h-64 rounded-[var(--surface-radius)]" />
         ))}
       </div>
     </div>

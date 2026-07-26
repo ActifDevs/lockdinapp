@@ -25,8 +25,8 @@ interface NavItem {
   title: string;
   href: string;
   icon: React.ElementType;
-  /** Brand tint class for the icon chip */
-  tint?: string;
+  /** Soft icon accent — meaning, not decoration */
+  tone: "home" | "plan" | "subjects" | "papers" | "progress" | "calendar" | "settings";
 }
 
 interface NavGroup {
@@ -38,53 +38,37 @@ const navGroups: NavGroup[] = [
   {
     label: "Today",
     items: [
-      { title: "Dashboard", href: "/dashboard", icon: Home, tint: "sidebar-icon-deep" },
-      { title: "Study plan", href: "/study-plan", icon: ClipboardList, tint: "sidebar-icon-coral" },
+      { title: "Dashboard", href: "/dashboard", icon: Home, tone: "home" },
+      { title: "Study plan", href: "/study-plan", icon: ClipboardList, tone: "plan" },
     ],
   },
   {
     label: "Revision",
     items: [
-      { title: "Subjects", href: "/subjects", icon: BookOpen, tint: "sidebar-icon-teal" },
-      { title: "Past papers", href: "/past-papers", icon: FileText, tint: "sidebar-icon-amber" },
-      { title: "Progress", href: "/progress", icon: ChartBar, tint: "sidebar-icon-sea" },
-      { title: "Calendar", href: "/calendar", icon: CalendarDays, tint: "sidebar-icon-sun" },
+      { title: "Subjects", href: "/subjects", icon: BookOpen, tone: "subjects" },
+      { title: "Past papers", href: "/past-papers", icon: FileText, tone: "papers" },
+      { title: "Progress", href: "/progress", icon: ChartBar, tone: "progress" },
+      { title: "Calendar", href: "/calendar", icon: CalendarDays, tone: "calendar" },
     ],
   },
 ];
 
 const bottomPrimary: NavItem[] = [
-  {
-    title: "Home",
-    href: "/dashboard",
-    icon: Home,
-    tint: "text-[hsl(var(--brand-deep))] dark:text-[hsl(185_70%_68%)]",
-  },
-  {
-    title: "Plan",
-    href: "/study-plan",
-    icon: ClipboardList,
-    tint: "text-[hsl(353_75%_48%)] dark:text-[hsl(353_100%_76%)]",
-  },
-  {
-    title: "Progress",
-    href: "/progress",
-    icon: ChartBar,
-    tint: "text-[hsl(200_90%_34%)] dark:text-[hsl(200_90%_70%)]",
-  },
-  {
-    title: "Subjects",
-    href: "/subjects",
-    icon: BookOpen,
-    tint: "text-[hsl(175_100%_26%)] dark:text-[hsl(175_80%_62%)]",
-  },
+  { title: "Home", href: "/dashboard", icon: Home, tone: "home" },
+  { title: "Plan", href: "/study-plan", icon: ClipboardList, tone: "plan" },
+  { title: "Progress", href: "/progress", icon: ChartBar, tone: "progress" },
+  { title: "Subjects", href: "/subjects", icon: BookOpen, tone: "subjects" },
 ];
 
 const bottomMore: NavItem[] = [
-  { title: "Past papers", href: "/past-papers", icon: FileText },
-  { title: "Calendar", href: "/calendar", icon: CalendarDays },
-  { title: "Settings", href: "/settings", icon: Settings },
+  { title: "Past papers", href: "/past-papers", icon: FileText, tone: "papers" },
+  { title: "Calendar", href: "/calendar", icon: CalendarDays, tone: "calendar" },
+  { title: "Settings", href: "/settings", icon: Settings, tone: "settings" },
 ];
+
+function navToneClass(tone: NavItem["tone"]) {
+  return `sidebar-icon-${tone}`;
+}
 
 function isActivePath(location: string, href: string) {
   return location === href || (href !== "/dashboard" && location.startsWith(href));
@@ -110,7 +94,7 @@ function SidebarNavLink({
   return (
     <Link href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined}>
       <span className={cn("sidebar-link cursor-pointer", active && "sidebar-link-active")}>
-        <span className={cn("sidebar-icon", item.tint)} aria-hidden>
+        <span className={cn("sidebar-icon", navToneClass(item.tone))} aria-hidden>
           <item.icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.25 : 1.75} />
         </span>
         <span className="truncate">{item.title}</span>
@@ -210,8 +194,8 @@ function SidebarContent({
                 settingsActive && "sidebar-link-active",
               )}
             >
-              <span className="sidebar-icon sidebar-icon-violet" aria-hidden>
-                <Settings className="h-[18px] w-[18px]" strokeWidth={1.75} />
+              <span className={cn("sidebar-icon", navToneClass("settings"))} aria-hidden>
+                <Settings className="h-[18px] w-[18px]" strokeWidth={settingsActive ? 2.25 : 1.75} />
               </span>
               <span className="truncate">Settings</span>
             </span>
@@ -334,7 +318,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           id="main-content"
           className="flex-1 overflow-x-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-[env(safe-area-inset-bottom,0px)]"
         >
-          <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+          <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-9 lg:px-8 lg:py-12">
             {children}
           </div>
         </main>
@@ -352,12 +336,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined}>
                 <span
                   className={cn(
-                    "flex min-h-14 cursor-pointer flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium transition-colors",
+                    "relative flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 px-1 text-[10px] font-medium transition-colors duration-200",
                     active ? "text-foreground" : "text-muted-foreground",
                   )}
                 >
+                  {active && (
+                    <span
+                      className="absolute inset-x-[38%] top-0 h-0.5 rounded-full bg-primary"
+                      aria-hidden
+                    />
+                  )}
                   <item.icon
-                    className={cn("h-5 w-5", active && (item.tint ?? "text-primary"))}
+                    className={cn(
+                      "h-5 w-5",
+                      navToneClass(item.tone),
+                      active && "sidebar-icon-active",
+                    )}
                     strokeWidth={active ? 2.25 : 1.75}
                     aria-hidden
                   />
@@ -370,7 +364,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={() => setMoreOpen((open) => !open)}
             className={cn(
-              "flex min-h-14 cursor-pointer flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium transition-colors",
+              "flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 px-1 text-[10px] font-medium transition-colors duration-200",
               moreOpen || moreActive ? "text-foreground" : "text-muted-foreground",
             )}
             aria-expanded={moreOpen}
@@ -403,7 +397,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
                       )}
                     >
-                      <item.icon className="h-4 w-4" aria-hidden />
+                      <item.icon
+                        className={cn("h-4 w-4", navToneClass(item.tone), active && "sidebar-icon-active")}
+                        aria-hidden
+                      />
                       {item.title}
                     </span>
                   </Link>
