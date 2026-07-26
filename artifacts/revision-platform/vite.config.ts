@@ -56,6 +56,14 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    // In production the API is served from /api on the same origin, so dev
+    // forwards /api to the locally running api-server instead of CORS.
+    proxy: {
+      '/api': {
+        target: process.env.API_PROXY_TARGET ?? 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     port,

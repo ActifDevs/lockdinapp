@@ -21,75 +21,92 @@ const features = [
 
 function ProductHeroVisual() {
   return (
-    <div
-      className="absolute inset-0 bg-[hsl(220_18%_12%)]"
-      aria-hidden
-    >
+    <div className="absolute inset-0 bg-[hsl(220_18%_12%)]" aria-hidden>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,hsl(220_15%_22%/0.9),transparent_55%),radial-gradient(ellipse_at_80%_70%,hsl(40_12%_18%/0.5),transparent_50%)]" />
       <div className="absolute inset-x-0 bottom-0 top-[18%] mx-auto max-w-5xl px-4 sm:px-8">
-        <div className="h-full overflow-hidden rounded-t-xl border border-[hsl(40_20%_96%/0.12)] bg-[hsl(40_20%_98%/0.97)] shadow-2xl">
-          <div className="flex h-10 items-center gap-2 border-b border-[hsl(240_5%_90%)] bg-[hsl(40_20%_96%)] px-4">
-            <span className="font-serif text-sm font-bold tracking-tight text-[hsl(240_10%_15%)]">Scholr</span>
-            <div className="ml-6 hidden gap-1 sm:flex">
+        <div className="flex h-full overflow-hidden rounded-t-xl border border-[hsl(40_20%_96%/0.12)] bg-[hsl(40_20%_98%/0.97)] shadow-2xl">
+          <div className="hidden w-44 shrink-0 flex-col border-r border-[hsl(240_5%_90%)] bg-[hsl(40_20%_96%)] sm:flex">
+            <div className="flex h-12 items-center px-4">
+              <span className="font-serif text-sm font-bold tracking-tight text-[hsl(240_10%_15%)]">Scholr</span>
+            </div>
+            <div className="space-y-1 px-2">
               {["Dashboard", "Study plan", "Subjects", "Past papers"].map((label, i) => (
-                <span
+                <div
                   key={label}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium ${
+                  className={`rounded-md px-2.5 py-2 text-xs font-medium ${
                     i === 0
                       ? "bg-[hsl(40_10%_92%)] text-[hsl(240_10%_15%)]"
                       : "text-[hsl(240_5%_45%)]"
                   }`}
                 >
                   {label}
-                </span>
+                </div>
               ))}
             </div>
-            <div className="ml-auto h-6 w-6 rounded-md bg-[hsl(220_15%_30%/0.12)]" />
-          </div>
-          <div className="grid h-[calc(100%-2.5rem)] grid-cols-1 gap-4 p-4 sm:grid-cols-3 sm:p-6">
-            <div className="space-y-3 sm:col-span-2">
-              <div className="space-y-1">
-                <div className="h-3 w-40 rounded bg-[hsl(240_5%_90%)]" />
-                <div className="h-6 w-56 rounded bg-[hsl(240_10%_15%/0.12)]" />
+            <div className="mt-4 space-y-1 px-2">
+              <div className="px-2.5 text-[9px] font-medium uppercase tracking-wider text-[hsl(240_5%_55%)]">
+                Insights
               </div>
-              <div className="rounded-lg border border-[hsl(240_5%_90%)] bg-white p-3">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="h-3 w-24 rounded bg-[hsl(240_5%_90%)]" />
-                  <div className="h-2 w-16 rounded bg-[hsl(240_5%_90%)]" />
+              {["Progress", "Calendar"].map((label) => (
+                <div key={label} className="rounded-md px-2.5 py-2 text-xs font-medium text-[hsl(240_5%_45%)]">
+                  {label}
                 </div>
-                <div className="mb-3 h-1 rounded-full bg-[hsl(240_5%_92%)]">
-                  <div className="h-full w-2/5 rounded-full bg-[hsl(220_15%_30%)]" />
-                </div>
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="flex items-center gap-3 border-t border-[hsl(240_5%_92%)] py-2.5">
-                    <div className="h-4 w-4 rounded-full border-2 border-[hsl(220_15%_30%/0.35)]" />
-                    <div className="flex-1 space-y-1.5">
-                      <div className={`h-2.5 rounded bg-[hsl(240_10%_15%/0.14)] ${i === 0 ? "w-3/4" : i === 1 ? "w-2/3" : "w-1/2"}`} />
-                      <div className="h-2 w-20 rounded bg-[hsl(220_15%_40%/0.15)]" />
-                    </div>
-                    <div className="h-2 w-8 rounded bg-[hsl(240_5%_90%)]" />
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
-            <div className="hidden space-y-3 sm:block">
-              <div className="rounded-lg border border-[hsl(240_5%_90%)] bg-white p-3">
-                <div className="mb-3 h-3 w-28 rounded bg-[hsl(240_5%_90%)]" />
-                {[72, 54, 41].map((pct, i) => (
-                  <div key={i} className="mb-3 space-y-1.5 last:mb-0">
-                    <div className="flex justify-between">
-                      <div className="h-2 w-16 rounded bg-[hsl(240_5%_88%)]" />
-                      <div className="h-2 w-6 rounded bg-[hsl(240_5%_88%)]" />
-                    </div>
-                    <div className="h-1 rounded-full bg-[hsl(240_5%_92%)]">
-                      <div className="h-full rounded-full bg-[hsl(220_15%_40%)]" style={{ width: `${pct}%` }} />
-                    </div>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex h-10 items-center border-b border-[hsl(240_5%_90%)] bg-white px-4 sm:hidden">
+              <span className="font-serif text-sm font-bold tracking-tight text-[hsl(240_10%_15%)]">Scholr</span>
+            </div>
+            <div className="grid flex-1 grid-cols-1 gap-4 p-4 sm:grid-cols-3 sm:p-6">
+              <div className="space-y-3 sm:col-span-2">
+                <div className="space-y-1">
+                  <div className="h-3 w-40 rounded bg-[hsl(240_5%_90%)]" />
+                  <div className="h-6 w-56 rounded bg-[hsl(240_10%_15%/0.12)]" />
+                </div>
+                <div className="rounded-lg border border-[hsl(240_5%_90%)] bg-white p-3">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="h-3 w-24 rounded bg-[hsl(240_5%_90%)]" />
+                    <div className="h-2 w-16 rounded bg-[hsl(240_5%_90%)]" />
                   </div>
-                ))}
+                  <div className="mb-3 h-1 rounded-full bg-[hsl(240_5%_92%)]">
+                    <div className="h-full w-2/5 rounded-full bg-[hsl(220_15%_30%)]" />
+                  </div>
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="flex items-center gap-3 border-t border-[hsl(240_5%_92%)] py-2.5">
+                      <div className="h-4 w-4 rounded-full border-2 border-[hsl(220_15%_30%/0.35)]" />
+                      <div className="flex-1 space-y-1.5">
+                        <div
+                          className={`h-2.5 rounded bg-[hsl(240_10%_15%/0.14)] ${
+                            i === 0 ? "w-3/4" : i === 1 ? "w-2/3" : "w-1/2"
+                          }`}
+                        />
+                        <div className="h-2 w-20 rounded bg-[hsl(220_15%_40%/0.15)]" />
+                      </div>
+                      <div className="h-2 w-8 rounded bg-[hsl(240_5%_90%)]" />
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="rounded-lg border border-[hsl(220_15%_30%/0.12)] bg-[hsl(220_15%_30%/0.05)] p-3">
-                <div className="mb-2 h-3 w-24 rounded bg-[hsl(220_15%_30%/0.2)]" />
-                <div className="h-8 w-20 rounded bg-[hsl(220_15%_30%/0.18)]" />
+              <div className="hidden space-y-3 sm:block">
+                <div className="rounded-lg border border-[hsl(240_5%_90%)] bg-white p-3">
+                  <div className="mb-3 h-3 w-28 rounded bg-[hsl(240_5%_90%)]" />
+                  {[72, 54, 41].map((pct, i) => (
+                    <div key={i} className="mb-3 space-y-1.5 last:mb-0">
+                      <div className="flex justify-between">
+                        <div className="h-2 w-16 rounded bg-[hsl(240_5%_88%)]" />
+                        <div className="h-2 w-6 rounded bg-[hsl(240_5%_88%)]" />
+                      </div>
+                      <div className="h-1 rounded-full bg-[hsl(240_5%_92%)]">
+                        <div className="h-full rounded-full bg-[hsl(220_15%_40%)]" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-lg border border-[hsl(220_15%_30%/0.12)] bg-[hsl(220_15%_30%/0.05)] p-3">
+                  <div className="mb-2 h-3 w-24 rounded bg-[hsl(220_15%_30%/0.2)]" />
+                  <div className="h-8 w-20 rounded bg-[hsl(220_15%_30%/0.18)]" />
+                </div>
               </div>
             </div>
           </div>
