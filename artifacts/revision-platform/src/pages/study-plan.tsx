@@ -186,7 +186,7 @@ export default function StudyPlan() {
 
       <Card className="card-tint-cream overflow-hidden border-[hsl(var(--card-border))] shadow-[var(--elev-2)]">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <CardHeader className="border-b border-border/60 pb-0">
+          <CardHeader className="bg-muted/10 pb-0">
             <TabsList className="tabs-scroll rounded-none border-b-0 bg-transparent p-0">
               <TabsTrigger
                 value="today"

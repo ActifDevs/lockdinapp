@@ -777,7 +777,6 @@
   }
 
   .dash-mastery-card:hover .dash-mastery-accent {
-    height: 3px;
     opacity: 1;
   }
 
@@ -804,14 +803,17 @@
 }
 
 .dash-mastery-accent {
+  pointer-events: none;
   position: absolute;
   inset: 0 0 auto 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--subject-accent) 0%, transparent 78%);
-  opacity: 0.95;
-  transition:
-    height var(--dur-fast) var(--ease-out),
-    opacity var(--dur-fast) var(--ease-out);
+  height: 4.5rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--subject-accent) 12%, transparent) 0%,
+    transparent 100%
+  );
+  opacity: 0.85;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .dash-mastery-mark {

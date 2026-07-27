@@ -61,7 +61,7 @@ function SettingsSectionCard({
         className,
       )}
     >
-      <CardHeader className="border-b border-border/40 bg-muted/20 pb-5">
+      <CardHeader className="bg-muted/15 pb-5">
         <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-[-0.01em]">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Icon className="h-4 w-4" aria-hidden strokeWidth={2} />

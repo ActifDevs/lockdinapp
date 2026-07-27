@@ -338,8 +338,8 @@ export default function SubjectDetail() {
                       className="py-8"
                     />
                   ) : (
-                    <div className="divide-y border-t">
-                      {pendingTasks.slice(0, 5).map(task => (
+                    <div className="divide-y divide-border/30">
+                      {pendingTasks.slice(0, 5).map((task) => (
                         <div key={task.id} className="flex items-center justify-between p-4 hover:bg-muted/30">
                           <div>
                             <p className="text-sm font-medium">{task.title}</p>
@@ -390,7 +390,7 @@ export default function SubjectDetail() {
                 Expand a topic to update subtopics. Checking a main topic marks every subtopic done.
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-0 border-t">
+            <CardContent className="p-0">
               {syllabus?.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">Syllabus data unavailable.</div>
               ) : (
@@ -406,15 +406,9 @@ export default function SubjectDetail() {
                     return (
                       <div
                         key={unit.id}
-                        className="relative bg-card"
+                        className="bg-card"
                         style={{ "--subject-accent": accent } as CSSProperties}
                       >
-                        <span
-                          className="absolute inset-y-0 left-0 w-1 rounded-r-full"
-                          style={{ backgroundColor: accent }}
-                          aria-hidden
-                        />
-
                         <div className="flex items-center gap-1 py-1 pl-3 pr-2 sm:pl-4 sm:pr-3">
                           <button
                             type="button"
@@ -441,8 +435,11 @@ export default function SubjectDetail() {
                             className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors hover:bg-muted/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                           >
                             <span
-                              className="w-7 shrink-0 text-sm font-semibold tabular-nums"
-                              style={{ color: accent }}
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-semibold tabular-nums"
+                              style={{
+                                color: accent,
+                                backgroundColor: `color-mix(in oklab, ${accent} 14%, transparent)`,
+                              }}
                             >
                               {indexLabel}
                             </span>
@@ -471,7 +468,7 @@ export default function SubjectDetail() {
                         </div>
 
                         {expanded && (
-                          <div className="border-t border-border/40 bg-muted/15 pb-2 pl-3 pr-2 pt-1 sm:pl-4 sm:pr-3">
+                          <div className="bg-muted/15 pb-2 pl-3 pr-2 pt-1 sm:pl-4 sm:pr-3">
                             {unit.topics.length === 0 ? (
                               <p className="px-3 py-3 text-sm text-muted-foreground">No subtopics yet.</p>
                             ) : (
@@ -524,7 +521,7 @@ export default function SubjectDetail() {
             <CardHeader>
               <CardTitle className="text-xl font-bold tracking-[-0.01em]">Subject tasks</CardTitle>
             </CardHeader>
-            <CardContent className="p-0 border-t">
+            <CardContent className="p-0">
               {!tasks || tasks.length === 0 ? (
                 <RichEmptyState
                   scene="tasks"
@@ -595,7 +592,7 @@ export default function SubjectDetail() {
             <CardHeader>
               <CardTitle className="text-xl font-bold tracking-[-0.01em]">Component breakdown</CardTitle>
             </CardHeader>
-            <CardContent className="p-0 border-t">
+            <CardContent className="p-0">
               {!performance || performance.componentBreakdown.length === 0 ? (
                 <RichEmptyState
                   scene="chart"
