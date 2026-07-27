@@ -1023,6 +1023,73 @@ html:has(.landing-page) {
   scroll-snap-stop: normal;
 }
 
+.landing-hero-mock-frame {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  top: calc(var(--landing-header-h) + 0.75rem);
+  margin-inline: auto;
+  max-width: 72rem;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .landing-hero-mock-frame {
+    top: 12%;
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .landing-hero-mock-frame {
+    padding-inline: 2rem;
+  }
+}
+
+/* On phones the mock peeks above the copy card, then fades under it */
+@media (max-width: 639px) {
+  .landing-section-hero .landing-section-inner-end {
+    justify-content: flex-end;
+    min-height: calc(100dvh - var(--landing-header-h));
+    padding-top: calc(var(--landing-header-h) + 0.75rem);
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .landing-hero-mock-frame {
+    top: calc(var(--landing-header-h) + 0.5rem);
+    bottom: 42%;
+    padding-inline: 0.75rem;
+    mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+  }
+
+  .landing-hero-mock {
+    border-bottom: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .landing-hero-copy {
+    max-width: none;
+  }
+}
+
+.landing-hero-title {
+  font-family: var(--app-font-serif);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: hsl(var(--foreground));
+  text-wrap: balance;
+  font-size: clamp(1.5rem, 6.2vw, 2.25rem);
+}
+
+@media (min-width: 640px) {
+  .landing-hero-title {
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    line-height: 1.12;
+  }
+}
+
 /* Hero product mock — scoped dark palette with stronger text/surface contrast */
 .landing-hero-mock {
   --background: 185 20% 9%;

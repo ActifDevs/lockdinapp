@@ -46,11 +46,11 @@ const navItems = [
 
 function ProductHeroVisual() {
   return (
-    <div className="pointer-events-none absolute inset-0 bg-background" aria-hidden>
+    <div className="landing-hero-visual pointer-events-none absolute inset-0 bg-background" aria-hidden>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_15%_0%,hsl(var(--brand-teal)/0.22),transparent_45%),radial-gradient(ellipse_at_90%_20%,hsl(var(--brand-amber)/0.2),transparent_40%),radial-gradient(ellipse_at_80%_85%,hsl(var(--brand-coral)/0.14),transparent_45%)]" />
-      <div className="absolute inset-x-0 bottom-0 top-[12%] mx-auto max-w-5xl px-4 sm:px-8">
+      <div className="landing-hero-mock-frame">
         <div className="dark landing-hero-mock flex h-full overflow-hidden rounded-t-2xl border border-border/70 bg-card shadow-[0_24px_80px_-12px_hsl(var(--primary)/0.28)]">
-          <div className="hidden w-48 shrink-0 flex-col border-r border-border/60 bg-card p-4 sm:flex">
+          <div className="hidden w-48 shrink-0 flex-col border-r border-border/60 bg-card p-4 md:flex">
             <div className="mb-5 flex items-center gap-2 px-1">
               <div className="brand-icon-sm">
                 <GraduationCap className="h-4 w-4" strokeWidth={2} />
@@ -78,36 +78,41 @@ function ProductHeroVisual() {
             </div>
           </div>
           <div className="min-w-0 flex-1 bg-background/80">
-            <div className="flex h-11 items-center border-b border-border/60 bg-card px-4 sm:hidden">
+            <div className="flex h-10 items-center border-b border-border/60 bg-card px-3 md:hidden">
               <span className="text-sm font-bold tracking-tight text-foreground"><BrandName /></span>
             </div>
-            <div className="grid h-full grid-cols-1 gap-3 p-4 sm:grid-cols-[minmax(0,1.35fr)_minmax(0,0.85fr)] sm:gap-4 sm:p-6">
-              <div className="flex flex-col gap-3 sm:gap-4">
-                <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/90 p-5 text-primary-foreground shadow-sm">
-                  <div className="mb-1 text-xs font-medium text-primary-foreground/90">Good afternoon</div>
-                  <div className="text-lg font-bold">Today&apos;s revision</div>
-                  <div className="mt-3 inline-flex rounded-md bg-primary-foreground/20 px-3 py-1 text-xs font-semibold text-primary-foreground">
+            <div className="grid h-full grid-cols-1 gap-2.5 p-3 sm:gap-3 sm:p-4 md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.85fr)] md:gap-4 md:p-6">
+              <div className="flex flex-col gap-2.5 sm:gap-3 md:gap-4">
+                <div className="rounded-xl bg-gradient-to-br from-primary to-primary/90 p-3.5 text-primary-foreground shadow-sm sm:rounded-2xl sm:p-5">
+                  <div className="mb-0.5 text-[11px] font-medium text-primary-foreground/90 sm:mb-1 sm:text-xs">
+                    Good afternoon
+                  </div>
+                  <div className="text-base font-bold sm:text-lg">Today&apos;s revision</div>
+                  <div className="mt-2 inline-flex rounded-md bg-primary-foreground/20 px-2.5 py-1 text-[11px] font-semibold text-primary-foreground sm:mt-3 sm:px-3 sm:text-xs">
                     3 tasks · 2h planned
                   </div>
                 </div>
-                <div className="flex-1 rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="text-xs font-semibold text-foreground/85">Today&apos;s tasks</div>
-                    <div className="text-xs font-semibold text-primary">40% done</div>
+                <div className="flex-1 rounded-xl border border-border/60 bg-card p-3 shadow-sm sm:rounded-2xl sm:p-4">
+                  <div className="mb-2 flex items-center justify-between sm:mb-3">
+                    <div className="text-[11px] font-semibold text-foreground/85 sm:text-xs">Today&apos;s tasks</div>
+                    <div className="text-[11px] font-semibold text-primary sm:text-xs">40% done</div>
                   </div>
                   {[["Mechanics review", "Physics"], ["Integration practice", "Maths"], ["Organic reactions", "Chemistry"]].map(
                     ([title, subject], i) => (
                       <div
                         key={title}
-                        className="flex items-center gap-3 border-t border-border/50 py-3 first:border-t-0 first:pt-0"
+                        className={cn(
+                          "flex items-center gap-3 border-t border-border/50 py-2.5 first:border-t-0 first:pt-0 sm:py-3",
+                          i === 2 && "hidden sm:flex",
+                        )}
                       >
                         <div
                           className={`h-4 w-4 rounded-full border-2 ${
                             i === 0 ? "border-primary bg-primary" : "border-primary/65"
                           }`}
                         />
-                        <div className="flex-1">
-                          <div className="text-xs font-semibold text-foreground">{title}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-xs font-semibold text-foreground">{title}</div>
                           <div className="text-xs text-foreground/72">{subject}</div>
                         </div>
                       </div>
@@ -115,8 +120,8 @@ function ProductHeroVisual() {
                   )}
                 </div>
               </div>
-              <div className="flex flex-col gap-3 sm:gap-4">
-                <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm sm:flex-1">
+              <div className="hidden flex-col gap-3 sm:gap-4 md:flex">
+                <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm md:flex-1">
                   <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-foreground/85">
                     <TrendingUp className="h-3.5 w-3.5 text-primary" /> Syllabus
                   </div>
@@ -164,14 +169,14 @@ export default function LandingPage() {
       </a>
 
       <header className="landing-header fixed inset-x-0 top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight sm:text-2xl">
-            <span className="brand-icon-sm">
+        <div className="mx-auto flex h-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+          <Link href="/" className="flex min-w-0 items-center gap-2 text-lg font-bold tracking-tight sm:text-2xl">
+            <span className="brand-icon-sm shrink-0">
               <GraduationCap className="h-4 w-4" strokeWidth={2} />
             </span>
             <BrandName />
           </Link>
-          <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-4">
             {isAuthenticated ? (
               <Link
                 href="/dashboard"
@@ -206,21 +211,21 @@ export default function LandingPage() {
           center={false}
           background={<ProductHeroVisual />}
         >
-          <div className="relative z-10 max-w-2xl rounded-2xl border border-border/50 bg-card/90 p-8 shadow-[0_20px_60px_-20px_hsl(var(--primary)/0.2)] backdrop-blur-sm sm:p-10">
-            <p className="mb-3 text-sm font-semibold tracking-wide text-primary">
+          <div className="landing-hero-copy relative z-10 w-full max-w-2xl rounded-2xl border border-border/50 bg-card/95 p-5 shadow-[0_20px_60px_-20px_hsl(var(--primary)/0.2)] backdrop-blur-sm sm:p-8 md:p-10">
+            <p className="mb-2 text-xs font-semibold tracking-wide text-primary sm:mb-3 sm:text-sm">
               Cambridge A-Level revision
             </p>
-            <h1 className="display-title mb-4">
+            <h1 className="landing-hero-title mb-3 sm:mb-4">
               Syllabus, papers, and today&apos;s plan — in one workspace.
             </h1>
-            <p className="mb-8 max-w-lg text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
+            <p className="mb-5 max-w-lg text-pretty text-sm leading-relaxed text-muted-foreground sm:mb-8 sm:text-base md:text-lg">
               Built around how A-Levels are actually structured. See what you&apos;ve covered, what you&apos;ve sat, and what to do next.
             </p>
-            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-              <Link href={isAuthenticated ? "/dashboard" : "/signup"}>
+            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+              <Link href={isAuthenticated ? "/dashboard" : "/signup"} className="w-full sm:w-auto">
                 <Button
                   size="lg"
-                  className="h-12 cursor-pointer px-7 text-base active:scale-[0.98]"
+                  className="h-12 w-full cursor-pointer px-7 text-base active:scale-[0.98] sm:w-auto"
                 >
                   {isAuthenticated ? "Open workspace" : "Create your workspace"}
                   <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
@@ -229,7 +234,7 @@ export default function LandingPage() {
               {!isAuthenticated && (
                 <Link
                   href="/login"
-                  className="text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+                  className="text-center text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline sm:text-left"
                 >
                   Already revising here? Log in
                 </Link>
