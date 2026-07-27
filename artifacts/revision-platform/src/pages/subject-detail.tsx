@@ -1,6 +1,6 @@
-import { useGetSubject, getGetSubjectQueryKey, useGetSubjectSyllabus, getGetSubjectSyllabusQueryKey, useGetSubjectPerformance, getGetSubjectPerformanceQueryKey, useListTasks, getListTasksQueryKey, useListPastPaperAttempts, getListPastPaperAttemptsQueryKey, useUpdateSyllabusTopic, useUpdateTask } from "@workspace/api-client-react";
+import { useGetSubject, getGetSubjectQueryKey, useGetSubjectSyllabus, getGetSubjectSyllabusQueryKey, useGetSubjectPerformance, getGetSubjectPerformanceQueryKey, useListTasks, getListTasksQueryKey, useListPastPaperAttempts, getListPastPaperAttemptsQueryKey, useUpdateSyllabusTopic, useUpdateTask, type SyllabusUnit, type SyllabusTopic } from "@workspace/api-client-react";
 import { Link, useRoute } from "wouter";
-import { lazy, Suspense, useEffect, type CSSProperties } from "react";
+import { lazy, Suspense, useEffect, useState, type CSSProperties } from "react";
 import { APP_NAME } from "@/lib/app-config";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,7 +8,7 @@ import { ProgressRing } from "@/components/progress-ring";
 import { TaskRow } from "@/components/task-row";
 import { RichEmptyState } from "@/components/rich-empty-state";
 import { InsightCard } from "@/components/insight-card";
-import { BarChart, CheckCircle2, Circle } from "lucide-react";
+import { BarChart, CheckCircle2, ChevronDown, Circle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,10 +31,24 @@ const ScoreTrendLineChart = lazy(
   () => import("@/components/charts/score-trend-line-chart"),
 );
 
+/** Strip leading "1 ", "01.", "2)" etc. so UI can own the 01/02 index. */
+function stripLeadingIndex(title: string): string {
+  return title.replace(/^\s*\d+[\.\:\)]?\s+/, "").trim() || title;
+}
+
+function unitProgressStatus(topics: SyllabusTopic[]): "not_started" | "in_progress" | "completed" {
+  if (topics.length === 0) return "not_started";
+  if (topics.every((t) => t.status === "completed")) return "completed";
+  if (topics.some((t) => t.status === "completed" || t.status === "in_progress")) return "in_progress";
+  return "not_started";
+}
+
 export default function SubjectDetail() {
   const [, params] = useRoute("/subjects/:id");
   const subjectId = params?.id ? parseInt(params.id) : null;
   const queryClient = useQueryClient();
+  const [expandedUnits, setExpandedUnits] = useState<Set<number>>(() => new Set());
+  const [unitBusyId, setUnitBusyId] = useState<number | null>(null);
 
   // Queries
   const {
@@ -151,6 +165,36 @@ export default function SubjectDetail() {
       topicId,
       data: { status: nextStatus }
     });
+  };
+
+  const toggleUnitExpanded = (unitId: number) => {
+    setExpandedUnits((prev) => {
+      const next = new Set(prev);
+      if (next.has(unitId)) next.delete(unitId);
+      else next.add(unitId);
+      return next;
+    });
+  };
+
+  const toggleUnitComplete = async (unit: SyllabusUnit) => {
+    const allDone = unit.topics.length > 0 && unit.topics.every((t) => t.status === "completed");
+    const nextStatus = allDone ? "not_started" : "completed";
+    const targets = unit.topics.filter((t) => t.status !== nextStatus);
+    if (targets.length === 0) return;
+
+    setUnitBusyId(unit.id);
+    try {
+      await Promise.all(
+        targets.map((topic) =>
+          updateTopic.mutateAsync({
+            topicId: topic.id,
+            data: { status: nextStatus },
+          }),
+        ),
+      );
+    } finally {
+      setUnitBusyId(null);
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -342,44 +386,133 @@ export default function SubjectDetail() {
           <Card className="card-tint-cream shadow-[var(--elev-2)]">
             <CardHeader>
               <CardTitle className="text-xl font-bold tracking-[-0.01em]">Syllabus progress</CardTitle>
-              <CardDescription>Tap the circle to cycle a topic's status.</CardDescription>
+              <CardDescription>
+                Expand a topic to update subtopics. Checking a main topic marks every subtopic done.
+              </CardDescription>
             </CardHeader>
             <CardContent className="p-0 border-t">
               {syllabus?.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">Syllabus data unavailable.</div>
               ) : (
                 <div className="divide-y divide-border/50">
-                  {syllabus?.map((unit, uIdx) => (
-                    <div key={unit.id} className="p-4 sm:p-6 bg-card">
-                      <h3 className="font-bold text-base mb-4 flex items-center gap-2">
-                        <span className="text-muted-foreground font-normal text-sm w-6">{(uIdx + 1).toString().padStart(2, '0')}</span> 
-                        {unit.title}
-                      </h3>
-                      <div className="space-y-1 ml-8">
-                        {unit.topics.map(topic => (
-                          <div key={topic.id} className="flex items-start gap-3 py-2 group hover:bg-muted/30 -ml-2 pl-2 rounded-md transition-colors">
-                            <button
-                              type="button"
-                              onClick={() => cycleTopicStatus(topic.id, topic.status)}
-                              aria-label={`${topic.title}: ${topicStatusLabel(topic.status)}. ${topicStatusAction(topic.status)}.`}
-                              aria-pressed={topic.status === 'completed'}
-                              className="mt-0.5 flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  {syllabus?.map((unit, uIdx) => {
+                    const expanded = expandedUnits.has(unit.id);
+                    const unitStatus = unitProgressStatus(unit.topics);
+                    const doneCount = unit.topics.filter((t) => t.status === "completed").length;
+                    const indexLabel = (uIdx + 1).toString().padStart(2, "0");
+                    const title = stripLeadingIndex(unit.title);
+                    const busy = unitBusyId === unit.id;
+
+                    return (
+                      <div
+                        key={unit.id}
+                        className="relative bg-card"
+                        style={{ "--subject-accent": accent } as CSSProperties}
+                      >
+                        <span
+                          className="absolute inset-y-0 left-0 w-1 rounded-r-full"
+                          style={{ backgroundColor: accent }}
+                          aria-hidden
+                        />
+
+                        <div className="flex items-center gap-1 py-1 pl-3 pr-2 sm:pl-4 sm:pr-3">
+                          <button
+                            type="button"
+                            disabled={busy || unit.topics.length === 0 || updateTopic.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void toggleUnitComplete(unit);
+                            }}
+                            aria-label={
+                              unitStatus === "completed"
+                                ? `Mark all subtopics in ${title} as not started`
+                                : `Mark all subtopics in ${title} as completed`
+                            }
+                            aria-pressed={unitStatus === "completed"}
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
+                          >
+                            {getStatusIcon(unitStatus)}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => toggleUnitExpanded(unit.id)}
+                            aria-expanded={expanded}
+                            className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors hover:bg-muted/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                          >
+                            <span
+                              className="w-7 shrink-0 text-sm font-semibold tabular-nums"
+                              style={{ color: accent }}
                             >
-                              {getStatusIcon(topic.status)}
-                            </button>
-                            <div>
-                              <p className={cn("text-sm font-medium transition-colors", topic.status === 'completed' && "text-muted-foreground")}>
-                                {topic.title}
-                              </p>
-                              {topic.notes && (
-                                <p className="text-xs text-muted-foreground mt-1 bg-muted/50 p-2 rounded inline-block">{topic.notes}</p>
+                              {indexLabel}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span
+                                className={cn(
+                                  "block truncate text-sm font-semibold leading-5 tracking-[-0.01em]",
+                                  unitStatus === "completed" && "text-muted-foreground",
+                                )}
+                              >
+                                {title}
+                              </span>
+                              <span className="mt-0.5 block text-xs text-muted-foreground tabular-nums">
+                                {doneCount}/{unit.topics.length} subtopics
+                              </span>
+                            </span>
+                            <ChevronDown
+                              className={cn(
+                                "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                                expanded && "rotate-180",
                               )}
-                            </div>
+                              strokeWidth={2}
+                              aria-hidden
+                            />
+                          </button>
+                        </div>
+
+                        {expanded && (
+                          <div className="border-t border-border/40 bg-muted/15 pb-2 pl-3 pr-2 pt-1 sm:pl-4 sm:pr-3">
+                            {unit.topics.length === 0 ? (
+                              <p className="px-3 py-3 text-sm text-muted-foreground">No subtopics yet.</p>
+                            ) : (
+                              unit.topics.map((topic) => (
+                                <div
+                                  key={topic.id}
+                                  className="flex items-center gap-1 rounded-lg py-0.5 pl-1 hover:bg-muted/40"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => cycleTopicStatus(topic.id, topic.status)}
+                                    disabled={updateTopic.isPending}
+                                    aria-label={`${topic.title}: ${topicStatusLabel(topic.status)}. ${topicStatusAction(topic.status)}.`}
+                                    aria-pressed={topic.status === "completed"}
+                                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
+                                  >
+                                    {getStatusIcon(topic.status)}
+                                  </button>
+                                  <div className="min-w-0 flex-1 py-2 pr-2">
+                                    <p
+                                      className={cn(
+                                        "text-sm font-medium leading-5",
+                                        topic.status === "completed" && "text-muted-foreground",
+                                      )}
+                                    >
+                                      {stripLeadingIndex(topic.title)}
+                                    </p>
+                                    {topic.notes && (
+                                      <p className="mt-1 inline-block rounded bg-muted/50 p-2 text-xs text-muted-foreground">
+                                        {topic.notes}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))
+                            )}
                           </div>
-                        ))}
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
