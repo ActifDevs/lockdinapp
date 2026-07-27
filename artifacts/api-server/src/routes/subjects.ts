@@ -1,12 +1,15 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, desc } from "drizzle-orm";
 import {
   db,
   subjectsTable,
   syllabusUnitsTable,
   syllabusTopicsTable,
+  syllabusLearningOutcomesTable,
+  syllabusVersionsTable,
+  assessmentComponentsTable,
   tasksTable,
-  pastPapersTable,
+  pastPaperAttemptsTable,
 } from "@workspace/db";
 import {
   ListSubjectsResponse,
@@ -19,7 +22,10 @@ import {
   GetSubjectSyllabusResponse,
   GetSubjectPerformanceParams,
   GetSubjectPerformanceResponse,
+  ListAssessmentComponentsParams,
+  ListAssessmentComponentsResponse,
 } from "@workspace/api-zod";
+import { computePaperLabel } from "../lib/paper-label";
 
 const router: IRouter = Router();
 
@@ -40,13 +46,25 @@ async function enrichSubject(subject: typeof subjectsTable.$inferSelect) {
     .where(eq(tasksTable.subjectId, subject.id));
   const upcomingTasksCount = upcomingTasks.filter((t) => !t.completed).length;
 
-  const papers = await db
+  const [recentPaper] = await db
     .select()
-    .from(pastPapersTable)
-    .where(eq(pastPapersTable.subjectId, subject.id))
-    .orderBy(pastPapersTable.dateAttempted);
+    .from(pastPaperAttemptsTable)
+    .where(eq(pastPaperAttemptsTable.subjectId, subject.id))
+    .orderBy(desc(pastPaperAttemptsTable.dateAttempted))
+    .limit(1);
 
-  const recentPaper = papers[papers.length - 1] ?? null;
+  let recentPaperLabel: string | null = null;
+  if (recentPaper) {
+    const [component] = recentPaper.componentId
+      ? await db.select().from(assessmentComponentsTable).where(eq(assessmentComponentsTable.id, recentPaper.componentId))
+      : [null];
+    recentPaperLabel = computePaperLabel({
+      subjectCode: subject.code,
+      component: component ?? null,
+      variant: recentPaper.variant,
+      session: recentPaper.session,
+    });
+  }
 
   return {
     ...subject,
@@ -56,43 +74,8 @@ async function enrichSubject(subject: typeof subjectsTable.$inferSelect) {
     topicsInProgress,
     upcomingTasksCount,
     recentPaperScore: recentPaper ? recentPaper.percentage : null,
-    recentPaperLabel: recentPaper ? recentPaper.paperCode : null,
+    recentPaperLabel,
   };
-}
-
-async function seedStarterSyllabus(subjectId: number, subjectName: string) {
-  const [unit] = await db
-    .insert(syllabusUnitsTable)
-    .values({
-      subjectId,
-      title: `${subjectName} foundations`,
-      orderIndex: 0,
-    })
-    .returning();
-
-  await db.insert(syllabusTopicsTable).values([
-    {
-      unitId: unit.id,
-      subjectId,
-      title: "Syllabus overview & exam format",
-      status: "not_started",
-      orderIndex: 0,
-    },
-    {
-      unitId: unit.id,
-      subjectId,
-      title: "Core topic review",
-      status: "not_started",
-      orderIndex: 1,
-    },
-    {
-      unitId: unit.id,
-      subjectId,
-      title: "Past paper technique",
-      status: "not_started",
-      orderIndex: 2,
-    },
-  ]);
 }
 
 router.get("/subjects", async (_req, res): Promise<void> => {
@@ -122,12 +105,13 @@ router.post("/subjects", async (req, res): Promise<void> => {
     return;
   }
 
+  // Syllabus content (units/topics/learning outcomes/components) is populated exclusively
+  // by the syllabus importer against SYLLABUS_IMPORT_MANIFEST — subject creation no longer
+  // seeds placeholder syllabus content now that validated CSV data is the canonical dataset.
   const [created] = await db
     .insert(subjectsTable)
     .values({ name, code, color })
     .returning();
-
-  await seedStarterSyllabus(created.id, created.name);
 
   res.status(201).json(CreateSubjectResponse.parse(await enrichSubject(created)));
 });
@@ -185,19 +169,65 @@ router.get("/subjects/:subjectId/syllabus", async (req, res): Promise<void> => {
     .where(eq(syllabusUnitsTable.subjectId, params.data.subjectId))
     .orderBy(syllabusUnitsTable.orderIndex);
 
-  const result = await Promise.all(
-    units.map(async (unit) => {
-      const topics = await db
-        .select()
-        .from(syllabusTopicsTable)
-        .where(eq(syllabusTopicsTable.unitId, unit.id))
-        .orderBy(syllabusTopicsTable.orderIndex);
+  const unitIds = units.map((u) => u.id);
+  const topics = unitIds.length
+    ? await db.select().from(syllabusTopicsTable).where(inArray(syllabusTopicsTable.unitId, unitIds)).orderBy(syllabusTopicsTable.orderIndex)
+    : [];
 
-      return { ...unit, topics };
-    })
-  );
+  const topicIds = topics.map((t) => t.id);
+  const outcomes = topicIds.length
+    ? await db
+        .select()
+        .from(syllabusLearningOutcomesTable)
+        .where(inArray(syllabusLearningOutcomesTable.topicId, topicIds))
+        .orderBy(syllabusLearningOutcomesTable.orderIndex)
+    : [];
+
+  const outcomesByTopicId = new Map<number, string[]>();
+  for (const outcome of outcomes) {
+    const list = outcomesByTopicId.get(outcome.topicId) ?? [];
+    list.push(outcome.outcome);
+    outcomesByTopicId.set(outcome.topicId, list);
+  }
+
+  const result = units.map((unit) => ({
+    ...unit,
+    topics: topics
+      .filter((t) => t.unitId === unit.id)
+      .map((topic) => ({ ...topic, learningOutcomes: outcomesByTopicId.get(topic.id) ?? [] })),
+  }));
 
   res.json(GetSubjectSyllabusResponse.parse(result));
+});
+
+router.get("/subjects/:subjectId/assessment-components", async (req, res): Promise<void> => {
+  const params = ListAssessmentComponentsParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [currentVersion] = await db
+    .select()
+    .from(syllabusVersionsTable)
+    .where(and(eq(syllabusVersionsTable.subjectId, params.data.subjectId), eq(syllabusVersionsTable.isCurrent, true)));
+
+  if (!currentVersion) {
+    res.json(ListAssessmentComponentsResponse.parse([]));
+    return;
+  }
+
+  const components = await db
+    .select()
+    .from(assessmentComponentsTable)
+    .where(eq(assessmentComponentsTable.syllabusVersionId, currentVersion.id))
+    .orderBy(assessmentComponentsTable.orderIndex);
+
+  res.json(
+    ListAssessmentComponentsResponse.parse(
+      components.map((c) => ({ ...c, subjectId: params.data.subjectId })),
+    ),
+  );
 });
 
 router.get("/subjects/:subjectId/performance", async (req, res): Promise<void> => {
@@ -219,9 +249,9 @@ router.get("/subjects/:subjectId/performance", async (req, res): Promise<void> =
 
   const papers = await db
     .select()
-    .from(pastPapersTable)
-    .where(eq(pastPapersTable.subjectId, params.data.subjectId))
-    .orderBy(pastPapersTable.dateAttempted);
+    .from(pastPaperAttemptsTable)
+    .where(eq(pastPaperAttemptsTable.subjectId, params.data.subjectId))
+    .orderBy(pastPaperAttemptsTable.dateAttempted);
 
   const latestScore = papers.length > 0 ? papers[papers.length - 1].percentage : null;
   const averageScore =
@@ -234,16 +264,23 @@ router.get("/subjects/:subjectId/performance", async (req, res): Promise<void> =
     session: p.session,
   }));
 
-  const componentMap = new Map<string, { percentages: number[] }>();
+  const componentIds = [...new Set(papers.map((p) => p.componentId).filter((id): id is number => id !== null))];
+  const components = componentIds.length
+    ? await db.select().from(assessmentComponentsTable).where(inArray(assessmentComponentsTable.id, componentIds))
+    : [];
+  const componentById = new Map(components.map((c) => [c.id, c]));
+
+  const componentMap = new Map<string, { componentId: number | null; componentName: string; percentages: number[] }>();
   for (const p of papers) {
-    const parts = p.paperCode.split("/");
-    const component = parts.length >= 2 ? `Paper ${parts[1][0]}` : p.paperCode;
-    if (!componentMap.has(component)) componentMap.set(component, { percentages: [] });
-    componentMap.get(component)!.percentages.push(p.percentage);
+    const key = p.componentId !== null ? String(p.componentId) : "unknown";
+    const componentName = p.componentId !== null ? componentById.get(p.componentId)?.componentName ?? "Unknown component" : "Unknown component";
+    if (!componentMap.has(key)) componentMap.set(key, { componentId: p.componentId, componentName, percentages: [] });
+    componentMap.get(key)!.percentages.push(p.percentage);
   }
 
-  const componentBreakdown = Array.from(componentMap.entries()).map(([component, data]) => ({
-    component,
+  const componentBreakdown = Array.from(componentMap.values()).map((data) => ({
+    componentId: data.componentId,
+    componentName: data.componentName,
     latestPercentage: data.percentages[data.percentages.length - 1] ?? null,
     attempts: data.percentages.length,
   }));

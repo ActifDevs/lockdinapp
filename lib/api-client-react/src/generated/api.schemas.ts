@@ -52,6 +52,7 @@ export interface SyllabusTopic {
   /** @nullable */
   notes: string | null;
   orderIndex: number;
+  learningOutcomes: string[];
 }
 
 export interface SyllabusUnit {
@@ -142,13 +143,29 @@ export interface TaskUpdate {
   estimatedMinutes?: number;
 }
 
-export interface PastPaper {
+export type PastPaperAttemptSession = typeof PastPaperAttemptSession[keyof typeof PastPaperAttemptSession];
+
+
+export const PastPaperAttemptSession = {
+  'May/June': 'May/June',
+  'Oct/Nov': 'Oct/Nov',
+  'Feb/Mar': 'Feb/Mar',
+  Specimen: 'Specimen',
+} as const;
+
+export interface PastPaperAttempt {
   id: number;
   subjectId: number;
   subjectName: string;
   subjectColor: string;
-  paperCode: string;
-  session: string;
+  /** @nullable */
+  componentId: number | null;
+  /** @nullable */
+  componentName: string | null;
+  /** @nullable */
+  variant: number | null;
+  session: PastPaperAttemptSession;
+  paperLabel: string;
   score: number;
   totalMarks: number;
   percentage: number;
@@ -160,15 +177,45 @@ export interface PastPaper {
   createdAt: string;
 }
 
-export interface PastPaperInput {
+export type PastPaperAttemptInputSession = typeof PastPaperAttemptInputSession[keyof typeof PastPaperAttemptInputSession];
+
+
+export const PastPaperAttemptInputSession = {
+  'May/June': 'May/June',
+  'Oct/Nov': 'Oct/Nov',
+  'Feb/Mar': 'Feb/Mar',
+  Specimen: 'Specimen',
+} as const;
+
+export interface PastPaperAttemptInput {
   subjectId: number;
-  paperCode: string;
-  session: string;
+  componentId: number;
+  /**
+     * @minimum 1
+     * @maximum 5
+     */
+  variant?: number;
+  session: PastPaperAttemptInputSession;
   score: number;
   totalMarks: number;
   dateAttempted: string;
   timeTakenMinutes?: number;
   notes?: string;
+}
+
+export interface AssessmentComponent {
+  id: number;
+  subjectId: number;
+  paperCode: string;
+  level: string;
+  componentName: string;
+  /** @nullable */
+  durationMinutes: number | null;
+  /** @nullable */
+  totalMarks: number | null;
+  /** @nullable */
+  weightingPercent: number | null;
+  orderIndex: number;
 }
 
 export interface ExamDate {
@@ -200,7 +247,7 @@ export interface RecentPerformanceItem {
   subjectId: number;
   subjectName: string;
   subjectColor: string;
-  paperCode: string;
+  paperLabel: string;
   /** @nullable */
   previousPercentage: number | null;
   latestPercentage: number;
@@ -227,7 +274,9 @@ export interface PaperTrendPoint {
 }
 
 export interface ComponentBreakdown {
-  component: string;
+  /** @nullable */
+  componentId: number | null;
+  componentName: string;
   /** @nullable */
   latestPercentage: number | null;
   attempts: number;
@@ -288,7 +337,7 @@ export const ListTasksFilter = {
   all: 'all',
 } as const;
 
-export type ListPastPapersParams = {
+export type ListPastPaperAttemptsParams = {
 subjectId?: number;
 };
 

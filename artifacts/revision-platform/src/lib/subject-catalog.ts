@@ -20,6 +20,12 @@ export const SUBJECT_CATALOG: SubjectCatalogItem[] = [
     swatchClass: "bg-[hsl(252_96%_68%)]",
   },
   {
+    code: "9231",
+    name: "Further Mathematics",
+    color: "#DC2626",
+    swatchClass: "bg-[hsl(0_72%_51%)]",
+  },
+  {
     code: "9702",
     name: "Physics",
     color: "#3B82F6",

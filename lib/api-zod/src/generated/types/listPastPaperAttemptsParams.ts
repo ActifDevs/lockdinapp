@@ -6,6 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ListPastPapersParams = {
+export type ListPastPaperAttemptsParams = {
 subjectId?: number;
 };

@@ -115,7 +115,8 @@ export const GetSubjectSyllabusResponseItem = zod.object({
   "title": zod.string(),
   "status": zod.enum(['not_started', 'in_progress', 'completed']),
   "notes": zod.string().nullable(),
-  "orderIndex": zod.number()
+  "orderIndex": zod.number(),
+  "learningOutcomes": zod.array(zod.string())
 }))
 })
 export const GetSubjectSyllabusResponse = zod.array(GetSubjectSyllabusResponseItem)
@@ -141,12 +142,34 @@ export const GetSubjectPerformanceResponse = zod.object({
   "session": zod.string()
 })),
   "componentBreakdown": zod.array(zod.object({
-  "component": zod.string(),
+  "componentId": zod.number().nullable(),
+  "componentName": zod.string(),
   "latestPercentage": zod.number().nullable(),
   "attempts": zod.number()
 })),
   "insight": zod.string().nullable()
 })
+
+
+/**
+ * @summary List assessment components (papers) for a subject's current syllabus version, for the Log Paper Component dropdown
+ */
+export const ListAssessmentComponentsParams = zod.object({
+  "subjectId": zod.coerce.number()
+})
+
+export const ListAssessmentComponentsResponseItem = zod.object({
+  "id": zod.number(),
+  "subjectId": zod.number(),
+  "paperCode": zod.string(),
+  "level": zod.string(),
+  "componentName": zod.string(),
+  "durationMinutes": zod.number().nullable(),
+  "totalMarks": zod.number().nullable(),
+  "weightingPercent": zod.number().nullable(),
+  "orderIndex": zod.number()
+})
+export const ListAssessmentComponentsResponse = zod.array(ListAssessmentComponentsResponseItem)
 
 
 /**
@@ -168,7 +191,8 @@ export const UpdateSyllabusTopicResponse = zod.object({
   "title": zod.string(),
   "status": zod.enum(['not_started', 'in_progress', 'completed']),
   "notes": zod.string().nullable(),
-  "orderIndex": zod.number()
+  "orderIndex": zod.number(),
+  "learningOutcomes": zod.array(zod.string())
 })
 
 
@@ -275,17 +299,20 @@ export const DeleteTaskResponse = zod.void()
 /**
  * @summary List past paper attempts
  */
-export const ListPastPapersQueryParams = zod.object({
+export const ListPastPaperAttemptsQueryParams = zod.object({
   "subjectId": zod.coerce.number().optional()
 })
 
-export const ListPastPapersResponseItem = zod.object({
+export const ListPastPaperAttemptsResponseItem = zod.object({
   "id": zod.number(),
   "subjectId": zod.number(),
   "subjectName": zod.string(),
   "subjectColor": zod.string(),
-  "paperCode": zod.string(),
-  "session": zod.string(),
+  "componentId": zod.number().nullable(),
+  "componentName": zod.string().nullable(),
+  "variant": zod.number().nullable(),
+  "session": zod.enum(['May/June', 'Oct/Nov', 'Feb/Mar', 'Specimen']),
+  "paperLabel": zod.string(),
   "score": zod.number(),
   "totalMarks": zod.number(),
   "percentage": zod.number(),
@@ -294,16 +321,21 @@ export const ListPastPapersResponseItem = zod.object({
   "notes": zod.string().nullable(),
   "createdAt": zod.string()
 })
-export const ListPastPapersResponse = zod.array(ListPastPapersResponseItem)
+export const ListPastPaperAttemptsResponse = zod.array(ListPastPaperAttemptsResponseItem)
 
 
 /**
- * @summary Log a past paper attempt
+ * @summary Log a past paper attempt (Subject + Component + Variant + Session)
  */
-export const CreatePastPaperBody = zod.object({
+export const createPastPaperAttemptBodyVariantMax = 5;
+
+
+
+export const CreatePastPaperAttemptBody = zod.object({
   "subjectId": zod.number(),
-  "paperCode": zod.string(),
-  "session": zod.string(),
+  "componentId": zod.number(),
+  "variant": zod.number().min(1).max(createPastPaperAttemptBodyVariantMax).optional(),
+  "session": zod.enum(['May/June', 'Oct/Nov', 'Feb/Mar', 'Specimen']),
   "score": zod.number(),
   "totalMarks": zod.number(),
   "dateAttempted": zod.string(),
@@ -311,13 +343,16 @@ export const CreatePastPaperBody = zod.object({
   "notes": zod.string().optional()
 })
 
-export const CreatePastPaperResponse = zod.object({
+export const CreatePastPaperAttemptResponse = zod.object({
   "id": zod.number(),
   "subjectId": zod.number(),
   "subjectName": zod.string(),
   "subjectColor": zod.string(),
-  "paperCode": zod.string(),
-  "session": zod.string(),
+  "componentId": zod.number().nullable(),
+  "componentName": zod.string().nullable(),
+  "variant": zod.number().nullable(),
+  "session": zod.enum(['May/June', 'Oct/Nov', 'Feb/Mar', 'Specimen']),
+  "paperLabel": zod.string(),
   "score": zod.number(),
   "totalMarks": zod.number(),
   "percentage": zod.number(),
@@ -329,13 +364,13 @@ export const CreatePastPaperResponse = zod.object({
 
 
 /**
- * @summary Delete a past paper entry
+ * @summary Delete a past paper attempt
  */
-export const DeletePastPaperParams = zod.object({
-  "pastPaperId": zod.coerce.number()
+export const DeletePastPaperAttemptParams = zod.object({
+  "pastPaperAttemptId": zod.coerce.number()
 })
 
-export const DeletePastPaperResponse = zod.void()
+export const DeletePastPaperAttemptResponse = zod.void()
 
 
 /**
@@ -432,7 +467,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "subjectId": zod.number(),
   "subjectName": zod.string(),
   "subjectColor": zod.string(),
-  "paperCode": zod.string(),
+  "paperLabel": zod.string(),
   "previousPercentage": zod.number().nullable(),
   "latestPercentage": zod.number(),
   "change": zod.number().nullable()

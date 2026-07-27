@@ -430,7 +430,7 @@ export default function Dashboard() {
                         <p className="truncate text-sm font-semibold leading-tight">
                           {perf.subjectName}
                         </p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{perf.paperCode}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{perf.paperLabel}</p>
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">

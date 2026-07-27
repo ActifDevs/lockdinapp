@@ -20,14 +20,15 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AssessmentComponent,
   DashboardSummary,
   ExamDate,
   ExamDateInput,
   HealthStatus,
-  ListPastPapersParams,
+  ListPastPaperAttemptsParams,
   ListTasksParams,
-  PastPaper,
-  PastPaperInput,
+  PastPaperAttempt,
+  PastPaperAttemptInput,
   ProgressOverview,
   Subject,
   SubjectInput,
@@ -594,6 +595,83 @@ export function useGetSubjectPerformance<TData = Awaited<ReturnType<typeof getSu
 
 
 
+export const getListAssessmentComponentsUrl = (subjectId: number,) => {
+
+
+
+
+  return `/api/subjects/${subjectId}/assessment-components`
+}
+
+/**
+ * @summary List assessment components (papers) for a subject's current syllabus version, for the Log Paper Component dropdown
+ */
+export const listAssessmentComponents = async (subjectId: number, options?: RequestInit): Promise<AssessmentComponent[]> => {
+
+  return customFetch<AssessmentComponent[]>(getListAssessmentComponentsUrl(subjectId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAssessmentComponentsQueryKey = (subjectId: number,) => {
+    return [
+    `/api/subjects/${subjectId}/assessment-components`
+    ] as const;
+    }
+
+
+export const getListAssessmentComponentsQueryOptions = <TData = Awaited<ReturnType<typeof listAssessmentComponents>>, TError = ErrorType<unknown>>(subjectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAssessmentComponents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAssessmentComponentsQueryKey(subjectId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAssessmentComponents>>> = ({ signal }) => listAssessmentComponents(subjectId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: subjectId !== null && subjectId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAssessmentComponents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAssessmentComponentsQueryResult = NonNullable<Awaited<ReturnType<typeof listAssessmentComponents>>>
+export type ListAssessmentComponentsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List assessment components (papers) for a subject's current syllabus version, for the Log Paper Component dropdown
+ */
+
+export function useListAssessmentComponents<TData = Awaited<ReturnType<typeof listAssessmentComponents>>, TError = ErrorType<unknown>>(
+ subjectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAssessmentComponents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAssessmentComponentsQueryOptions(subjectId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getUpdateSyllabusTopicUrl = (topicId: number,) => {
 
 
@@ -964,7 +1042,7 @@ export const useDeleteTask = <TError = ErrorType<unknown>,
       return useMutation(getDeleteTaskMutationOptions(options));
     }
 
-export const getListPastPapersUrl = (params?: ListPastPapersParams,) => {
+export const getListPastPaperAttemptsUrl = (params?: ListPastPaperAttemptsParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -976,15 +1054,15 @@ export const getListPastPapersUrl = (params?: ListPastPapersParams,) => {
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/past-papers?${stringifiedParams}` : `/api/past-papers`
+  return stringifiedParams.length > 0 ? `/api/past-paper-attempts?${stringifiedParams}` : `/api/past-paper-attempts`
 }
 
 /**
  * @summary List past paper attempts
  */
-export const listPastPapers = async (params?: ListPastPapersParams, options?: RequestInit): Promise<PastPaper[]> => {
+export const listPastPaperAttempts = async (params?: ListPastPaperAttemptsParams, options?: RequestInit): Promise<PastPaperAttempt[]> => {
 
-  return customFetch<PastPaper[]>(getListPastPapersUrl(params),
+  return customFetch<PastPaperAttempt[]>(getListPastPaperAttemptsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -997,45 +1075,45 @@ export const listPastPapers = async (params?: ListPastPapersParams, options?: Re
 
 
 
-export const getListPastPapersQueryKey = (params?: ListPastPapersParams,) => {
+export const getListPastPaperAttemptsQueryKey = (params?: ListPastPaperAttemptsParams,) => {
     return [
-    `/api/past-papers`, ...(params ? [params] : [])
+    `/api/past-paper-attempts`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListPastPapersQueryOptions = <TData = Awaited<ReturnType<typeof listPastPapers>>, TError = ErrorType<unknown>>(params?: ListPastPapersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPastPapers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListPastPaperAttemptsQueryOptions = <TData = Awaited<ReturnType<typeof listPastPaperAttempts>>, TError = ErrorType<unknown>>(params?: ListPastPaperAttemptsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPastPaperAttempts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListPastPapersQueryKey(params);
+  const queryKey =  queryOptions?.queryKey ?? getListPastPaperAttemptsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPastPapers>>> = ({ signal }) => listPastPapers(params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPastPaperAttempts>>> = ({ signal }) => listPastPaperAttempts(params, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPastPapers>>, TError, TData> & { queryKey: QueryKey }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPastPaperAttempts>>, TError, TData> & { queryKey: QueryKey }
 }
 
-export type ListPastPapersQueryResult = NonNullable<Awaited<ReturnType<typeof listPastPapers>>>
-export type ListPastPapersQueryError = ErrorType<unknown>
+export type ListPastPaperAttemptsQueryResult = NonNullable<Awaited<ReturnType<typeof listPastPaperAttempts>>>
+export type ListPastPaperAttemptsQueryError = ErrorType<unknown>
 
 
 /**
  * @summary List past paper attempts
  */
 
-export function useListPastPapers<TData = Awaited<ReturnType<typeof listPastPapers>>, TError = ErrorType<unknown>>(
- params?: ListPastPapersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPastPapers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export function useListPastPaperAttempts<TData = Awaited<ReturnType<typeof listPastPaperAttempts>>, TError = ErrorType<unknown>>(
+ params?: ListPastPaperAttemptsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPastPaperAttempts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListPastPapersQueryOptions(params,options)
+  const queryOptions = getListPastPaperAttemptsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -1048,25 +1126,25 @@ export function useListPastPapers<TData = Awaited<ReturnType<typeof listPastPape
 
 
 
-export const getCreatePastPaperUrl = () => {
+export const getCreatePastPaperAttemptUrl = () => {
 
 
 
 
-  return `/api/past-papers`
+  return `/api/past-paper-attempts`
 }
 
 /**
- * @summary Log a past paper attempt
+ * @summary Log a past paper attempt (Subject + Component + Variant + Session)
  */
-export const createPastPaper = async (pastPaperInput: PastPaperInput, options?: RequestInit): Promise<PastPaper> => {
+export const createPastPaperAttempt = async (pastPaperAttemptInput: PastPaperAttemptInput, options?: RequestInit): Promise<PastPaperAttempt> => {
 
-  return customFetch<PastPaper>(getCreatePastPaperUrl(),
+  return customFetch<PastPaperAttempt>(getCreatePastPaperAttemptUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(pastPaperInput)
+    body: JSON.stringify(pastPaperAttemptInput)
   }
 );}
 
@@ -1074,11 +1152,11 @@ export const createPastPaper = async (pastPaperInput: PastPaperInput, options?: 
 
 
 
-export const getCreatePastPaperMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPastPaper>>, TError,{data: BodyType<PastPaperInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createPastPaper>>, TError,{data: BodyType<PastPaperInput>}, TContext> => {
+export const getCreatePastPaperAttemptMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPastPaperAttempt>>, TError,{data: BodyType<PastPaperAttemptInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPastPaperAttempt>>, TError,{data: BodyType<PastPaperAttemptInput>}, TContext> => {
 
-const mutationKey = ['createPastPaper'];
+const mutationKey = ['createPastPaperAttempt'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1088,10 +1166,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPastPaper>>, {data: BodyType<PastPaperInput>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPastPaperAttempt>>, {data: BodyType<PastPaperAttemptInput>}> = (props) => {
           const {data} = props ?? {};
 
-          return  createPastPaper(data,requestOptions)
+          return  createPastPaperAttempt(data,requestOptions)
         }
 
 
@@ -1101,38 +1179,38 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type CreatePastPaperMutationResult = NonNullable<Awaited<ReturnType<typeof createPastPaper>>>
-    export type CreatePastPaperMutationBody = BodyType<PastPaperInput>
-    export type CreatePastPaperMutationError = ErrorType<unknown>
+    export type CreatePastPaperAttemptMutationResult = NonNullable<Awaited<ReturnType<typeof createPastPaperAttempt>>>
+    export type CreatePastPaperAttemptMutationBody = BodyType<PastPaperAttemptInput>
+    export type CreatePastPaperAttemptMutationError = ErrorType<unknown>
 
     /**
- * @summary Log a past paper attempt
+ * @summary Log a past paper attempt (Subject + Component + Variant + Session)
  */
-export const useCreatePastPaper = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPastPaper>>, TError,{data: BodyType<PastPaperInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useCreatePastPaperAttempt = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPastPaperAttempt>>, TError,{data: BodyType<PastPaperAttemptInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof createPastPaper>>,
+        Awaited<ReturnType<typeof createPastPaperAttempt>>,
         TError,
-        {data: BodyType<PastPaperInput>},
+        {data: BodyType<PastPaperAttemptInput>},
         TContext
       > => {
-      return useMutation(getCreatePastPaperMutationOptions(options));
+      return useMutation(getCreatePastPaperAttemptMutationOptions(options));
     }
 
-export const getDeletePastPaperUrl = (pastPaperId: number,) => {
+export const getDeletePastPaperAttemptUrl = (pastPaperAttemptId: number,) => {
 
 
 
 
-  return `/api/past-papers/${pastPaperId}`
+  return `/api/past-paper-attempts/${pastPaperAttemptId}`
 }
 
 /**
- * @summary Delete a past paper entry
+ * @summary Delete a past paper attempt
  */
-export const deletePastPaper = async (pastPaperId: number, options?: RequestInit): Promise<void> => {
+export const deletePastPaperAttempt = async (pastPaperAttemptId: number, options?: RequestInit): Promise<void> => {
 
-  return customFetch<void>(getDeletePastPaperUrl(pastPaperId),
+  return customFetch<void>(getDeletePastPaperAttemptUrl(pastPaperAttemptId),
   {
     ...options,
     method: 'DELETE'
@@ -1145,11 +1223,11 @@ export const deletePastPaper = async (pastPaperId: number, options?: RequestInit
 
 
 
-export const getDeletePastPaperMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePastPaper>>, TError,{pastPaperId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof deletePastPaper>>, TError,{pastPaperId: number}, TContext> => {
+export const getDeletePastPaperAttemptMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePastPaperAttempt>>, TError,{pastPaperAttemptId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePastPaperAttempt>>, TError,{pastPaperAttemptId: number}, TContext> => {
 
-const mutationKey = ['deletePastPaper'];
+const mutationKey = ['deletePastPaperAttempt'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1159,10 +1237,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePastPaper>>, {pastPaperId: number}> = (props) => {
-          const {pastPaperId} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePastPaperAttempt>>, {pastPaperAttemptId: number}> = (props) => {
+          const {pastPaperAttemptId} = props ?? {};
 
-          return  deletePastPaper(pastPaperId,requestOptions)
+          return  deletePastPaperAttempt(pastPaperAttemptId,requestOptions)
         }
 
 
@@ -1172,22 +1250,22 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type DeletePastPaperMutationResult = NonNullable<Awaited<ReturnType<typeof deletePastPaper>>>
+    export type DeletePastPaperAttemptMutationResult = NonNullable<Awaited<ReturnType<typeof deletePastPaperAttempt>>>
 
-    export type DeletePastPaperMutationError = ErrorType<unknown>
+    export type DeletePastPaperAttemptMutationError = ErrorType<unknown>
 
     /**
- * @summary Delete a past paper entry
+ * @summary Delete a past paper attempt
  */
-export const useDeletePastPaper = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePastPaper>>, TError,{pastPaperId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useDeletePastPaperAttempt = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePastPaperAttempt>>, TError,{pastPaperAttemptId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof deletePastPaper>>,
+        Awaited<ReturnType<typeof deletePastPaperAttempt>>,
         TError,
-        {pastPaperId: number},
+        {pastPaperAttemptId: number},
         TContext
       > => {
-      return useMutation(getDeletePastPaperMutationOptions(options));
+      return useMutation(getDeletePastPaperAttemptMutationOptions(options));
     }
 
 export const getListExamDatesUrl = () => {

@@ -1,21 +1,30 @@
-import { useListPastPapers, getListPastPapersQueryKey, useListSubjects, getListSubjectsQueryKey, useCreatePastPaper, useDeletePastPaper } from "@workspace/api-client-react";
-import { useState, lazy, Suspense } from "react";
+import {
+  useListPastPaperAttempts,
+  getListPastPaperAttemptsQueryKey,
+  useListSubjects,
+  getListSubjectsQueryKey,
+  useListAssessmentComponents,
+  getListAssessmentComponentsQueryKey,
+  useCreatePastPaperAttempt,
+  useDeletePastPaperAttempt,
+} from "@workspace/api-client-react";
+import { PastPaperAttemptInputSession } from "@workspace/api-client-react";
+import { useState, lazy, Suspense, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { DialogFooter } from "@/components/ui/dialog";
 import { ResponsiveFormPanel } from "@/components/responsive-form-panel";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { RichEmptyState } from "@/components/rich-empty-state";
 import { PageHeader } from "@/components/page-header";
-import { Plus, Trash2, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ChartSkeleton } from "@/components/charts/chart-skeleton";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
@@ -24,15 +33,20 @@ const ScoreTrendLineChart = lazy(
   () => import("@/components/charts/score-trend-line-chart"),
 );
 
+const SESSIONS = Object.values(PastPaperAttemptInputSession);
+const VARIANTS = [1, 2, 3, 4, 5];
+const NO_VARIANT = "none";
+
 const paperSchema = z.object({
   subjectId: z.coerce.number().min(1, "Subject is required"),
-  paperCode: z.string().min(1, "Paper code is required (e.g. 9709/12)"),
-  session: z.string().min(1, "Session is required (e.g. M/J 23)"),
+  componentId: z.coerce.number().min(1, "Component is required"),
+  variant: z.string().default(NO_VARIANT),
+  session: z.string().min(1, "Session is required"),
   score: z.coerce.number().min(0, "Score cannot be negative"),
   totalMarks: z.coerce.number().min(1, "Total marks must be > 0"),
   dateAttempted: z.string().min(1, "Date is required"),
   timeTakenMinutes: z.coerce.number().optional().or(z.literal("")),
-  notes: z.string().optional()
+  notes: z.string().optional(),
 }).refine(data => data.score <= data.totalMarks, {
   message: "Score cannot exceed total marks",
   path: ["score"]
@@ -49,15 +63,15 @@ export default function PastPapers() {
     query: { queryKey: getListSubjectsQueryKey() }
   });
 
-  const { data: papers, isLoading } = useListPastPapers(
+  const { data: papers, isLoading } = useListPastPaperAttempts(
     filterSubject !== "all" ? { subjectId: Number(filterSubject) } : {},
-    { query: { queryKey: getListPastPapersQueryKey(filterSubject !== "all" ? { subjectId: Number(filterSubject) } : {}) } }
+    { query: { queryKey: getListPastPaperAttemptsQueryKey(filterSubject !== "all" ? { subjectId: Number(filterSubject) } : {}) } }
   );
 
-  const createPaper = useCreatePastPaper({
+  const createAttempt = useCreatePastPaperAttempt({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListPastPapersQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getListPastPaperAttemptsQueryKey() });
         queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] }); // update dashboard recent
         queryClient.invalidateQueries({ queryKey: ["/api/progress"] });
         setIsAddDialogOpen(false);
@@ -66,10 +80,10 @@ export default function PastPapers() {
     }
   });
 
-  const deletePaper = useDeletePastPaper({
+  const deleteAttempt = useDeletePastPaperAttempt({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListPastPapersQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getListPastPaperAttemptsQueryKey() });
         queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       }
     }
@@ -78,7 +92,7 @@ export default function PastPapers() {
   const form = useForm<PaperFormValues>({
     resolver: zodResolver(paperSchema),
     defaultValues: {
-      paperCode: "",
+      variant: NO_VARIANT,
       session: "",
       dateAttempted: new Date().toISOString().split('T')[0],
       timeTakenMinutes: "",
@@ -86,12 +100,33 @@ export default function PastPapers() {
     }
   });
 
+  const selectedSubjectId = form.watch("subjectId");
+  const selectedSession = form.watch("session");
+
+  const { data: components } = useListAssessmentComponents(
+    selectedSubjectId,
+    {
+      query: {
+        queryKey: getListAssessmentComponentsQueryKey(selectedSubjectId),
+        enabled: !!selectedSubjectId,
+      },
+    }
+  );
+
+  // Component belongs to a specific subject — clear it (and any dependent
+  // variant/session selection) whenever the subject changes so a stale
+  // component from a different subject can never be submitted.
+  useEffect(() => {
+    form.setValue("componentId", undefined as unknown as number);
+  }, [selectedSubjectId]);
+
   const onSubmit = (data: PaperFormValues) => {
-    createPaper.mutate({
+    createAttempt.mutate({
       data: {
         subjectId: data.subjectId,
-        paperCode: data.paperCode,
-        session: data.session,
+        componentId: data.componentId,
+        variant: data.variant !== NO_VARIANT ? Number(data.variant) : undefined,
+        session: data.session as PastPaperAttemptInputSession,
         score: data.score,
         totalMarks: data.totalMarks,
         dateAttempted: new Date(data.dateAttempted).toISOString(),
@@ -215,9 +250,9 @@ export default function PastPapers() {
                           >
                             {paper.subjectName}
                           </Badge>
-                          <span className="text-sm font-semibold">{paper.paperCode}</span>
+                          <span className="text-sm font-semibold">{paper.paperLabel}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">{paper.session}</p>
+                        <p className="text-xs text-muted-foreground">{paper.componentName ?? "Component removed"}</p>
                         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                           <span className="text-lg font-bold tabular">{paper.percentage}%</span>
                           <span className="text-xs text-muted-foreground">
@@ -232,8 +267,8 @@ export default function PastPapers() {
                         variant="ghost"
                         size="icon"
                         className="h-11 w-11 shrink-0 self-end text-muted-foreground hover:text-destructive sm:self-center"
-                        aria-label={`Delete paper: ${paper.subjectName} ${paper.paperCode}`}
-                        onClick={() => deletePaper.mutate({ pastPaperId: paper.id })}
+                        aria-label={`Delete paper: ${paper.subjectName} ${paper.paperLabel}`}
+                        onClick={() => deleteAttempt.mutate({ pastPaperAttemptId: paper.id })}
                       >
                         <Trash2 className="h-4 w-4" aria-hidden strokeWidth={2} />
                       </Button>
@@ -246,7 +281,7 @@ export default function PastPapers() {
                   <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b">
                     <tr>
                       <th className="px-6 py-3 font-medium">Subject</th>
-                      <th className="px-6 py-3 font-medium">Paper Code</th>
+                      <th className="px-6 py-3 font-medium">Paper</th>
                       <th className="px-6 py-3 font-medium">Session</th>
                       <th className="px-6 py-3 font-medium">Score</th>
                       <th className="px-6 py-3 font-medium">Date</th>
@@ -266,7 +301,10 @@ export default function PastPapers() {
                             {paper.subjectName}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4 font-medium">{paper.paperCode}</td>
+                        <td className="px-6 py-4 font-medium">
+                          <div>{paper.paperLabel}</div>
+                          <div className="text-xs text-muted-foreground">{paper.componentName ?? "Component removed"}</div>
+                        </td>
                         <td className="px-6 py-4 text-muted-foreground">{paper.session}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
@@ -282,8 +320,8 @@ export default function PastPapers() {
                             variant="ghost" 
                             size="icon" 
                             className="h-11 w-11 text-muted-foreground hover:text-destructive"
-                            aria-label={`Delete paper: ${paper.subjectName} ${paper.paperCode}`}
-                            onClick={() => deletePaper.mutate({ pastPaperId: paper.id })}
+                            aria-label={`Delete paper: ${paper.subjectName} ${paper.paperLabel}`}
+                            onClick={() => deleteAttempt.mutate({ pastPaperAttemptId: paper.id })}
                           >
                             <Trash2 className="h-4 w-4" aria-hidden strokeWidth={2} />
                           </Button>
@@ -332,29 +370,79 @@ export default function PastPapers() {
                 )}
               />
 
-              <div className="form-grid-2">
-                <FormField
-                  control={form.control}
-                  name="paperCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Paper Code</FormLabel>
+              <FormField
+                control={form.control}
+                name="componentId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Component</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value?.toString() ?? ""}
+                      disabled={!selectedSubjectId}
+                    >
                       <FormControl>
-                        <Input placeholder="e.g. 9709/12" {...field} />
+                        <SelectTrigger>
+                          <SelectValue placeholder={selectedSubjectId ? "Select a component" : "Select a subject first"} />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      <SelectContent>
+                        {components?.map(c => (
+                          <SelectItem key={c.id} value={c.id.toString()}>{c.componentName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="form-grid-2">
                 <FormField
                   control={form.control}
                   name="session"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Session</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. May/June 2023" {...field} />
-                      </FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a session" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {SESSIONS.map(s => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="variant"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Variant (optional)</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={selectedSession === PastPaperAttemptInputSession.Specimen}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="None" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={NO_VARIANT}>None</SelectItem>
+                          {VARIANTS.map(v => (
+                            <SelectItem key={v} value={v.toString()}>{v}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -430,8 +518,8 @@ export default function PastPapers() {
 
               <DialogFooter className="pt-4">
                 <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={createPaper.isPending}>
-                  {createPaper.isPending ? "Logging..." : "Log Paper"}
+                <Button type="submit" disabled={createAttempt.isPending}>
+                  {createAttempt.isPending ? "Logging..." : "Log Paper"}
                 </Button>
               </DialogFooter>
             </form>

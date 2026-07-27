@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, subjectsTable, syllabusTopicsTable, tasksTable, pastPapersTable } from "@workspace/db";
+import { db, subjectsTable, syllabusTopicsTable, tasksTable, pastPaperAttemptsTable } from "@workspace/db";
 import { GetProgressOverviewResponse } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -50,9 +50,9 @@ router.get("/progress/overview", async (req, res): Promise<void> => {
     subjects.map(async (subject) => {
       const papers = await db
         .select()
-        .from(pastPapersTable)
-        .where(eq(pastPapersTable.subjectId, subject.id))
-        .orderBy(pastPapersTable.dateAttempted);
+        .from(pastPaperAttemptsTable)
+        .where(eq(pastPaperAttemptsTable.subjectId, subject.id))
+        .orderBy(pastPaperAttemptsTable.dateAttempted);
 
       const topics = await db
         .select()
@@ -87,7 +87,7 @@ router.get("/progress/overview", async (req, res): Promise<void> => {
   );
 
   const totalTasksCompleted = allTasks.filter((t) => t.completed).length;
-  const allPapers = await db.select().from(pastPapersTable);
+  const allPapers = await db.select().from(pastPaperAttemptsTable);
   const totalPapersLogged = allPapers.length;
 
   res.json(

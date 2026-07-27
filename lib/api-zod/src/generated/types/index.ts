@@ -6,18 +6,21 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './assessmentComponent';
 export * from './attentionItem';
 export * from './componentBreakdown';
 export * from './dashboardSummary';
 export * from './examDate';
 export * from './examDateInput';
 export * from './healthStatus';
-export * from './listPastPapersParams';
+export * from './listPastPaperAttemptsParams';
 export * from './listTasksFilter';
 export * from './listTasksParams';
 export * from './paperTrendPoint';
-export * from './pastPaper';
-export * from './pastPaperInput';
+export * from './pastPaperAttempt';
+export * from './pastPaperAttemptInput';
+export * from './pastPaperAttemptInputSession';
+export * from './pastPaperAttemptSession';
 export * from './progressOverview';
 export * from './recentPerformanceItem';
 export * from './subject';

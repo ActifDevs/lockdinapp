@@ -16,4 +16,5 @@ export interface SyllabusTopic {
   /** @nullable */
   notes: string | null;
   orderIndex: number;
+  learningOutcomes: string[];
 }

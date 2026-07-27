@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1785172719598,
+      "tag": "0000_syllabus_reference_and_paper_attempts",
+      "breakpoints": true
+    }
+  ]
+}

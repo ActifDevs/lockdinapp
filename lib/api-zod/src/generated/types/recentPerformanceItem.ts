@@ -10,7 +10,7 @@ export interface RecentPerformanceItem {
   subjectId: number;
   subjectName: string;
   subjectColor: string;
-  paperCode: string;
+  paperLabel: string;
   /** @nullable */
   previousPercentage: number | null;
   latestPercentage: number;

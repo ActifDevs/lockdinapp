@@ -5,10 +5,24 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "syllabus:validate": "tsx ./src/syllabus/cli.ts --mode=validate",
+    "syllabus:import": "tsx ./src/syllabus/cli.ts --mode=import",
+    "syllabus:cleanup-placeholders": "tsx ./src/syllabus/cleanup-placeholder-syllabus.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run src/syllabus/__tests__/parse-csv.test.ts src/syllabus/__tests__/normalize.test.ts",
+    "test:db": "vitest run src/syllabus/__tests__/db-upsert.test.ts"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*",
+    "csv-parse": "^5.6.0",
+    "drizzle-orm": "catalog:",
+    "pg": "^8.22.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "tsx": "catalog:"
+    "@types/pg": "^8.20.0",
+    "tsx": "catalog:",
+    "vitest": "^4.1.10"
   }
 }

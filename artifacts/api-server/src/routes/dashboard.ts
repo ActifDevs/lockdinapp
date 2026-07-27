@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, subjectsTable, syllabusTopicsTable, tasksTable, pastPapersTable, examDatesTable } from "@workspace/db";
+import { db, subjectsTable, syllabusTopicsTable, tasksTable, pastPaperAttemptsTable, assessmentComponentsTable, examDatesTable } from "@workspace/db";
 import { GetDashboardSummaryResponse } from "@workspace/api-zod";
+import { computePaperLabel } from "../lib/paper-label";
 
 const router: IRouter = Router();
 
@@ -68,9 +69,9 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
     subjects.map(async (subject) => {
       const papers = await db
         .select()
-        .from(pastPapersTable)
-        .where(eq(pastPapersTable.subjectId, subject.id))
-        .orderBy(pastPapersTable.dateAttempted);
+        .from(pastPaperAttemptsTable)
+        .where(eq(pastPaperAttemptsTable.subjectId, subject.id))
+        .orderBy(pastPaperAttemptsTable.dateAttempted);
 
       if (papers.length === 0) return null;
 
@@ -78,11 +79,20 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
       const previousPaper = papers.length >= 2 ? papers[papers.length - 2] : null;
       const change = previousPaper ? latestPaper.percentage - previousPaper.percentage : null;
 
+      const [latestComponent] = latestPaper.componentId
+        ? await db.select().from(assessmentComponentsTable).where(eq(assessmentComponentsTable.id, latestPaper.componentId))
+        : [null];
+
       return {
         subjectId: subject.id,
         subjectName: subject.name,
         subjectColor: subject.color,
-        paperCode: latestPaper.paperCode,
+        paperLabel: computePaperLabel({
+          subjectCode: subject.code,
+          component: latestComponent ?? null,
+          variant: latestPaper.variant,
+          session: latestPaper.session,
+        }),
         previousPercentage: previousPaper?.percentage ?? null,
         latestPercentage: latestPaper.percentage,
         change,

@@ -16,8 +16,8 @@ tags:
     description: Syllabus topic operations
   - name: tasks
     description: Revision task operations
-  - name: pastPapers
-    description: Past paper operations
+  - name: pastPaperAttempts
+    description: Past paper attempt operations (Subject + Component + Variant + Session)
   - name: examDates
     description: Exam date operations
   - name: dashboard
@@ -153,6 +153,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/SubjectPerformance"
 
+  /subjects/{subjectId}/assessment-components:
+    get:
+      operationId: listAssessmentComponents
+      tags: [subjects]
+      summary: List assessment components (papers) for a subject's current syllabus version, for the Log Paper Component dropdown
+      parameters:
+        - name: subjectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of assessment components
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AssessmentComponent"
+
   /syllabus-topics/{topicId}:
     patch:
       operationId: updateSyllabusTopic
@@ -260,10 +281,10 @@ paths:
         "204":
           description: Deleted
 
-  /past-papers:
+  /past-paper-attempts:
     get:
-      operationId: listPastPapers
-      tags: [pastPapers]
+      operationId: listPastPaperAttempts
+      tags: [pastPaperAttempts]
       summary: List past paper attempts
       parameters:
         - name: subjectId
@@ -279,32 +300,32 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/PastPaper"
+                  $ref: "#/components/schemas/PastPaperAttempt"
     post:
-      operationId: createPastPaper
-      tags: [pastPapers]
-      summary: Log a past paper attempt
+      operationId: createPastPaperAttempt
+      tags: [pastPaperAttempts]
+      summary: Log a past paper attempt (Subject + Component + Variant + Session)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PastPaperInput"
+              $ref: "#/components/schemas/PastPaperAttemptInput"
       responses:
         "201":
-          description: Created past paper entry
+          description: Created past paper attempt
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PastPaper"
+                $ref: "#/components/schemas/PastPaperAttempt"
 
-  /past-papers/{pastPaperId}:
+  /past-paper-attempts/{pastPaperAttemptId}:
     delete:
-      operationId: deletePastPaper
-      tags: [pastPapers]
-      summary: Delete a past paper entry
+      operationId: deletePastPaperAttempt
+      tags: [pastPaperAttempts]
+      summary: Delete a past paper attempt
       parameters:
-        - name: pastPaperId
+        - name: pastPaperAttemptId
           in: path
           required: true
           schema:
@@ -491,6 +512,10 @@ components:
           type: ["string", "null"]
         orderIndex:
           type: integer
+        learningOutcomes:
+          type: array
+          items:
+            type: string
       required:
         - id
         - unitId
@@ -499,6 +524,7 @@ components:
         - status
         - notes
         - orderIndex
+        - learningOutcomes
 
     SyllabusTopicUpdate:
       type: object
@@ -591,7 +617,7 @@ components:
         estimatedMinutes:
           type: integer
 
-    PastPaper:
+    PastPaperAttempt:
       type: object
       properties:
         id:
@@ -602,9 +628,18 @@ components:
           type: string
         subjectColor:
           type: string
-        paperCode:
-          type: string
+        componentId:
+          type: ["integer", "null"]
+        componentName:
+          type: ["string", "null"]
+        variant:
+          type: ["integer", "null"]
         session:
+          type: string
+          enum: [May/June, Oct/Nov, Feb/Mar, Specimen]
+        # Derived display string, e.g. "9700/42 — May/June". Never stored or typed by
+        # hand — constructed server-side from subject + component + variant + session.
+        paperLabel:
           type: string
         score:
           type: number
@@ -625,8 +660,11 @@ components:
         - subjectId
         - subjectName
         - subjectColor
-        - paperCode
+        - componentId
+        - componentName
+        - variant
         - session
+        - paperLabel
         - score
         - totalMarks
         - percentage
@@ -635,15 +673,20 @@ components:
         - notes
         - createdAt
 
-    PastPaperInput:
+    PastPaperAttemptInput:
       type: object
       properties:
         subjectId:
           type: integer
-        paperCode:
-          type: string
+        componentId:
+          type: integer
+        variant:
+          type: integer
+          minimum: 1
+          maximum: 5
         session:
           type: string
+          enum: [May/June, Oct/Nov, Feb/Mar, Specimen]
         score:
           type: number
         totalMarks:
@@ -656,11 +699,43 @@ components:
           type: string
       required:
         - subjectId
-        - paperCode
+        - componentId
         - session
         - score
         - totalMarks
         - dateAttempted
+
+    AssessmentComponent:
+      type: object
+      properties:
+        id:
+          type: integer
+        subjectId:
+          type: integer
+        paperCode:
+          type: string
+        level:
+          type: string
+        componentName:
+          type: string
+        durationMinutes:
+          type: ["integer", "null"]
+        totalMarks:
+          type: ["integer", "null"]
+        weightingPercent:
+          type: ["number", "null"]
+        orderIndex:
+          type: integer
+      required:
+        - id
+        - subjectId
+        - paperCode
+        - level
+        - componentName
+        - durationMinutes
+        - totalMarks
+        - weightingPercent
+        - orderIndex
 
     ExamDate:
       type: object
@@ -772,7 +847,7 @@ components:
           type: string
         subjectColor:
           type: string
-        paperCode:
+        paperLabel:
           type: string
         previousPercentage:
           type: ["number", "null"]
@@ -784,7 +859,7 @@ components:
         - subjectId
         - subjectName
         - subjectColor
-        - paperCode
+        - paperLabel
         - previousPercentage
         - latestPercentage
         - change
@@ -842,14 +917,17 @@ components:
     ComponentBreakdown:
       type: object
       properties:
-        component:
+        componentId:
+          type: ["integer", "null"]
+        componentName:
           type: string
         latestPercentage:
           type: ["number", "null"]
         attempts:
           type: integer
       required:
-        - component
+        - componentId
+        - componentName
         - latestPercentage
         - attempts
 

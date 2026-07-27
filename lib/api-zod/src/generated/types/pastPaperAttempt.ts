@@ -5,14 +5,21 @@
  * A-Level Revision Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { PastPaperAttemptSession } from './pastPaperAttemptSession';
 
-export interface PastPaper {
+export interface PastPaperAttempt {
   id: number;
   subjectId: number;
   subjectName: string;
   subjectColor: string;
-  paperCode: string;
-  session: string;
+  /** @nullable */
+  componentId: number | null;
+  /** @nullable */
+  componentName: string | null;
+  /** @nullable */
+  variant: number | null;
+  session: PastPaperAttemptSession;
+  paperLabel: string;
   score: number;
   totalMarks: number;
   percentage: number;

@@ -7,7 +7,9 @@
  */
 
 export interface ComponentBreakdown {
-  component: string;
+  /** @nullable */
+  componentId: number | null;
+  componentName: string;
   /** @nullable */
   latestPercentage: number | null;
   attempts: number;

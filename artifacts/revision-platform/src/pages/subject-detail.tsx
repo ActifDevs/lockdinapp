@@ -1,4 +1,4 @@
-import { useGetSubject, getGetSubjectQueryKey, useGetSubjectSyllabus, getGetSubjectSyllabusQueryKey, useGetSubjectPerformance, getGetSubjectPerformanceQueryKey, useListTasks, getListTasksQueryKey, useListPastPapers, getListPastPapersQueryKey, useUpdateSyllabusTopic, useUpdateTask } from "@workspace/api-client-react";
+import { useGetSubject, getGetSubjectQueryKey, useGetSubjectSyllabus, getGetSubjectSyllabusQueryKey, useGetSubjectPerformance, getGetSubjectPerformanceQueryKey, useListTasks, getListTasksQueryKey, useListPastPaperAttempts, getListPastPaperAttemptsQueryKey, useUpdateSyllabusTopic, useUpdateTask } from "@workspace/api-client-react";
 import { Link, useRoute } from "wouter";
 import { lazy, Suspense, useEffect, type CSSProperties } from "react";
 import { APP_NAME } from "@/lib/app-config";
@@ -59,8 +59,8 @@ export default function SubjectDetail() {
     query: { enabled: !!subjectId, queryKey: getListTasksQueryKey({ subjectId: subjectId! }) }
   });
 
-  const { data: papers } = useListPastPapers({ subjectId: subjectId! }, {
-    query: { enabled: !!subjectId, queryKey: getListPastPapersQueryKey({ subjectId: subjectId! }) }
+  const { data: papers } = useListPastPaperAttempts({ subjectId: subjectId! }, {
+    query: { enabled: !!subjectId, queryKey: getListPastPaperAttemptsQueryKey({ subjectId: subjectId! }) }
   });
 
   const updateTopic = useUpdateSyllabusTopic({
@@ -486,7 +486,7 @@ export default function SubjectDetail() {
                   <tbody className="divide-y">
                     {performance.componentBreakdown.map((cb, idx) => (
                       <tr key={idx}>
-                        <td className="px-6 py-4 font-medium">{cb.component}</td>
+                        <td className="px-6 py-4 font-medium">{cb.componentName}</td>
                         <td className="px-6 py-4 text-center text-muted-foreground">{cb.attempts}</td>
                         <td className="px-6 py-4 text-right font-semibold">{cb.latestPercentage ? `${cb.latestPercentage}%` : '-'}</td>
                       </tr>
