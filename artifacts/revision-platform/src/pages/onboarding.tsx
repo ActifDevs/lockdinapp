@@ -1,3 +1,4 @@
+import { BrandName } from "@/components/brand-name";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -73,7 +74,7 @@ export default function Onboarding() {
   return (
     <div className="grain flex min-h-[100dvh] flex-col items-center justify-center bg-muted/30 px-4 py-12">
       <div className="relative z-10 mb-8 w-full max-w-2xl text-center">
-        <span className="text-3xl font-bold tracking-tight">Scholr</span>
+        <BrandName className="text-3xl font-bold tracking-tight" />
       </div>
 
       <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-2xl border bg-card shadow-[0_20px_60px_-20px_hsl(185_100%_23%/0.18)]">
@@ -89,7 +90,7 @@ export default function Onboarding() {
             <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6 duration-500">
               <IllustCalm className="mb-2 max-w-[12rem]" />
               <h1 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-                Welcome to Scholr, {greetingName}.
+                Welcome to <BrandName />, {greetingName}.
               </h1>
               <p className="max-w-md text-pretty text-lg leading-relaxed text-muted-foreground">
                 A short setup so your workspace matches your subjects and exam timing.

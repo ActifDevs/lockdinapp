@@ -43,27 +43,24 @@ import {
   pickMissionFocus,
   syncLongestStreak,
 } from "@/lib/dashboard-gamification";
+import { getQueryErrorMessage } from "@/lib/query-error-message";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 
 const WeeklyActivityBarChart = lazy(
   () => import("@/components/charts/weekly-activity-bar-chart"),
 );
 
-function getDashboardErrorMessage(error: unknown): string {
-  if (!(error instanceof Error)) {
-    return "Please check your connection and try again.";
-  }
+function achievementToastTitle(icon: string, title: string): string {
+  const labels: Record<string, string> = {
+    flame: "Streak unlocked",
+    star: "Milestone reached",
+    trophy: "Achievement unlocked",
+    target: "Goal hit",
+    trend: "Progress update",
+  };
 
-  const message = error.message.trim();
-  if (message === "HTTP 500 Internal Server Error" || /^HTTP 5\d\d/.test(message)) {
-    return "The API server is not running or returned an error. From the project root, run pnpm dev to start the frontend and API together.";
-  }
-
-  if (/fetch failed|Failed to fetch|NetworkError|ECONNREFUSED/i.test(message)) {
-    return "Could not reach the API. Make sure the API server is running (pnpm dev from the project root).";
-  }
-
-  return message;
+  const label = labels[icon] ?? "Progress update";
+  return `${label}: ${title}`;
 }
 
 function SectionHeader({
@@ -217,18 +214,8 @@ export default function Dashboard() {
     for (const achievement of fresh) {
       if (celebratedRef.current.has(achievement.id)) continue;
       celebratedRef.current.add(achievement.id);
-      const prefix =
-        achievement.icon === "flame"
-          ? "🔥"
-          : achievement.icon === "star"
-            ? "⭐"
-            : achievement.icon === "trophy"
-              ? "🏆"
-              : achievement.icon === "target"
-                ? "🎯"
-                : "📈";
       toast({
-        title: `${prefix} ${achievement.title}`,
+        title: achievementToastTitle(achievement.icon, achievement.title),
         description: achievement.description,
       });
     }
@@ -244,7 +231,7 @@ export default function Dashboard() {
     const gained = next - prev;
     const cleared = next >= summary.todayTasksTotal && summary.todayTasksTotal > 0;
     toast({
-      title: cleared ? "🔥 Streak protected" : `⭐ +${gained * 75} XP earned`,
+      title: cleared ? "Daily goal complete" : `+${gained * 75} XP earned`,
       description: cleared
         ? "Daily goal complete. Every session sharpens your predicted grade."
         : "Progress logged. Keep the momentum going.",
@@ -257,7 +244,7 @@ export default function Dashboard() {
     return (
       <div className="dash-panel flex min-h-[40vh] flex-col items-center justify-center gap-4">
         <h2 className="text-2xl font-bold tracking-tight">Could not load dashboard</h2>
-        <p className="max-w-md text-muted-foreground">{getDashboardErrorMessage(error)}</p>
+        <p className="max-w-md text-muted-foreground">{getQueryErrorMessage(error)}</p>
         <Button onClick={() => refetch()}>Retry</Button>
       </div>
     );

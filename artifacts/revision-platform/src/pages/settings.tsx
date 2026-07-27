@@ -20,23 +20,58 @@ import { useAuth } from "@/hooks/use-auth";
 import { useNotificationPrefs } from "@/hooks/use-notification-prefs";
 import { SUBJECT_CATALOG } from "@/lib/subject-catalog";
 import { toast } from "@/hooks/use-toast";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ElementType } from "react";
 import { PageHeader } from "@/components/page-header";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ResponsiveFormPanel } from "@/components/responsive-form-panel";
 
 function ComingSoonBadge() {
   return (
-    <Badge variant="secondary" className="shrink-0 text-[10px] uppercase tracking-wide">
+    <Badge variant="secondary" className="shrink-0 text-xs font-medium">
       Coming soon
     </Badge>
+  );
+}
+
+function SettingsSectionCard({
+  icon: Icon,
+  title,
+  description,
+  tint = "cream",
+  children,
+  className,
+}: {
+  icon: ElementType;
+  title: string;
+  description: string;
+  tint?: "cream" | "teal" | "coral" | "amber";
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card
+      className={cn(
+        "dash-stat-card overflow-hidden border-0 shadow-[var(--elev-2)]",
+        tint === "cream" && "card-tint-cream",
+        tint === "teal" && "card-tint-teal",
+        tint === "coral" && "card-tint-coral",
+        tint === "amber" && "card-tint-amber",
+        className,
+      )}
+    >
+      <CardHeader className="border-b border-border/40 bg-muted/20 pb-5">
+        <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-[-0.01em]">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Icon className="h-4 w-4" aria-hidden strokeWidth={2} />
+          </span>
+          {title}
+        </CardTitle>
+        <CardDescription className="max-w-prose">{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="pt-6">{children}</CardContent>
+    </Card>
   );
 }
 
@@ -175,22 +210,40 @@ export default function Settings() {
       />
 
       <Tabs defaultValue={defaultTab} className="w-full">
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 lg:w-auto tabs-scroll lg:overflow-visible">
-          <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="subjects">Subjects</TabsTrigger>
-          <TabsTrigger value="appearance">Appearance</TabsTrigger>
-          <TabsTrigger value="notifications">Alerts</TabsTrigger>
+        <TabsList className="settings-tabs-list flex h-auto w-full flex-wrap justify-start gap-1 lg:w-auto tabs-scroll lg:overflow-visible">
+          <TabsTrigger
+            value="account"
+            className="settings-tabs-trigger data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+          >
+            Account
+          </TabsTrigger>
+          <TabsTrigger
+            value="subjects"
+            className="settings-tabs-trigger data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+          >
+            Subjects
+          </TabsTrigger>
+          <TabsTrigger
+            value="appearance"
+            className="settings-tabs-trigger data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+          >
+            Appearance
+          </TabsTrigger>
+          <TabsTrigger
+            value="notifications"
+            className="settings-tabs-trigger data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+          >
+            Alerts
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="account" className="mt-6 space-y-6">
-          <Card className="card-tint-cream shadow-[var(--elev-2)]">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-[-0.01em]">
-                <User className="h-5 w-5" aria-hidden strokeWidth={2} /> Profile
-              </CardTitle>
-              <CardDescription>Update your personal information.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <SettingsSectionCard
+            icon={User}
+            title="Profile"
+            description="Update your personal information and exam session details."
+          >
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full name</Label>
                 <Input
@@ -240,19 +293,17 @@ export default function Settings() {
                   </span>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </SettingsSectionCard>
         </TabsContent>
 
         <TabsContent value="subjects" className="mt-6 space-y-6">
-          <Card className="card-tint-cream shadow-[var(--elev-2)]">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-[-0.01em]">
-                <BookOpen className="h-5 w-5" aria-hidden strokeWidth={2} /> Active subjects
-              </CardTitle>
-              <CardDescription>Add or remove the subjects on your dashboard.</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <SettingsSectionCard
+            icon={BookOpen}
+            title="Active subjects"
+            description="Add or remove the subjects on your dashboard."
+            tint="teal"
+          >
               {subjects && subjects.length > 0 ? (
                 <div className="mb-6 grid gap-4 sm:grid-cols-2">
                   {subjects.map((subject) => {
@@ -264,7 +315,7 @@ export default function Settings() {
                     return (
                     <div
                       key={subject.id}
-                      className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-card/80 p-3 shadow-[var(--elev-1)]"
+                      className="dash-list-row !items-center rounded-xl border border-border/50 bg-muted/20 px-3 py-3"
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         <div
@@ -320,19 +371,17 @@ export default function Settings() {
               {availableToAdd.length === 0 && (
                 <p className="mt-3 text-sm text-muted-foreground">All catalog subjects are already added.</p>
               )}
-            </CardContent>
-          </Card>
+            </SettingsSectionCard>
         </TabsContent>
 
         <TabsContent value="appearance" className="mt-6 space-y-6">
-          <Card className="card-tint-cream shadow-[var(--elev-2)]">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-[-0.01em]">
-                <Palette className="h-5 w-5" aria-hidden strokeWidth={2} /> Theme
-              </CardTitle>
-              <CardDescription>Select your preferred visual style.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-3">
+          <SettingsSectionCard
+            icon={Palette}
+            title="Theme"
+            description="Select your preferred visual style for the workspace."
+            tint="cream"
+          >
+            <div className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-3">
               <ThemeOption
                 label="Light"
                 selected={theme === "light"}
@@ -370,21 +419,18 @@ export default function Settings() {
                   </div>
                 }
               />
-            </CardContent>
-          </Card>
+            </div>
+          </SettingsSectionCard>
         </TabsContent>
 
         <TabsContent value="notifications" className="mt-6 space-y-6">
-          <Card className="card-tint-cream shadow-[var(--elev-2)]">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-[-0.01em]">
-                <Bell className="h-5 w-5" aria-hidden strokeWidth={2} /> Study reminders
-              </CardTitle>
-              <CardDescription>
-                Local reminders in this browser (and desktop notifications when allowed). Prefs save on this device.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+          <SettingsSectionCard
+            icon={Bell}
+            title="Study reminders"
+            description="Local reminders in this browser (and desktop notifications when allowed). Prefs save on this device."
+            tint="coral"
+          >
+            <div className="dash-list-rows divide-y divide-border/50 rounded-xl border border-border/50 bg-muted/15">
               {[
                 {
                   id: "morning-summary" as const,
@@ -405,8 +451,8 @@ export default function Settings() {
                   description: "Reminders when an exam is within 30 days.",
                 },
               ].map(({ id, key, label, description }) => (
-                <div key={id} className="flex items-center justify-between gap-4">
-                  <div className="space-y-0.5">
+                <div key={id} className="dash-list-row !items-center gap-4 px-4 py-4">
+                  <div className="min-w-0 flex-1 space-y-0.5">
                     <Label htmlFor={id} className="text-base font-medium">
                       {label}
                     </Label>
@@ -419,21 +465,19 @@ export default function Settings() {
                   />
                 </div>
               ))}
-              <p className="text-xs text-muted-foreground">
-                Email delivery is not available yet — these alerts run while Scholr is open in your browser.
-              </p>
-            </CardContent>
-          </Card>
+            </div>
+            <p className="mt-4 text-xs text-muted-foreground">
+              Email delivery is not available yet — these alerts run while Lockdin is open in your browser.
+            </p>
+          </SettingsSectionCard>
 
-          <Card className="card-tint-cream shadow-[var(--elev-2)]">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-[-0.01em]">
-                <CalendarIcon className="h-5 w-5" aria-hidden strokeWidth={2} /> Integrations
-              </CardTitle>
-              <CardDescription>Connect Scholr with your other tools.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+          <SettingsSectionCard
+            icon={CalendarIcon}
+            title="Integrations"
+            description="Connect Lockdin with your other tools."
+            tint="cream"
+          >
+            <div className="flex flex-col gap-4 rounded-xl border border-border/50 bg-muted/15 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
                   <div className="flex h-10 w-10 items-center justify-center rounded border bg-card shadow-sm">
                     <svg className="h-6 w-6" viewBox="0 0 24 24" aria-hidden>
@@ -455,16 +499,16 @@ export default function Settings() {
                   Connect
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+          </SettingsSectionCard>
         </TabsContent>
       </Tabs>
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add a subject</DialogTitle>
-          </DialogHeader>
+      <ResponsiveFormPanel
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        title="Add a subject"
+        className="sm:max-w-md"
+      >
           <div className="grid max-h-[60vh] gap-2 overflow-y-auto py-2">
             {availableToAdd.map((item) => (
               <button
@@ -489,8 +533,7 @@ export default function Settings() {
               </button>
             ))}
           </div>
-        </DialogContent>
-      </Dialog>
+      </ResponsiveFormPanel>
     </div>
   );
 }

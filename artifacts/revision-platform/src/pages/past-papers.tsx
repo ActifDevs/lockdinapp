@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { DialogFooter } from "@/components/ui/dialog";
+import { ResponsiveFormPanel } from "@/components/responsive-form-panel";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
@@ -209,7 +210,7 @@ export default function PastPapers() {
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge
                             variant="outline"
-                            className="rounded-full border-0 font-medium"
+                            className="border-0 font-medium"
                             style={{ backgroundColor: `${accent}18`, color: accent }}
                           >
                             {paper.subjectName}
@@ -261,7 +262,7 @@ export default function PastPapers() {
                       return (
                       <tr key={paper.id} className="bg-card hover:bg-muted/30 transition-colors">
                         <td className="px-6 py-4">
-                          <Badge variant="outline" className="rounded-full border-0 font-medium" style={{ backgroundColor: `${accent}18`, color: accent }}>
+                          <Badge variant="outline" className="border-0 font-medium" style={{ backgroundColor: `${accent}18`, color: accent }}>
                             {paper.subjectName}
                           </Badge>
                         </td>
@@ -299,12 +300,13 @@ export default function PastPapers() {
         </Card>
       </div>
 
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="font-bold">Log Past Paper Attempt</DialogTitle>
-            <DialogDescription>Record your score to track your progress.</DialogDescription>
-          </DialogHeader>
+      <ResponsiveFormPanel
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        title="Log past paper attempt"
+        description="Record your score to track your progress."
+        className="sm:max-w-[500px]"
+      >
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2">
               <FormField
@@ -434,8 +436,7 @@ export default function PastPapers() {
               </DialogFooter>
             </form>
           </Form>
-        </DialogContent>
-      </Dialog>
+      </ResponsiveFormPanel>
     </div>
   );
 }

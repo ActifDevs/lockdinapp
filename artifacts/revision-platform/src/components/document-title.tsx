@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
+import { APP_FULL_TITLE, APP_NAME } from "@/lib/app-config";
 
-const APP_NAME = "Scholr";
-const DEFAULT_TITLE = `${APP_NAME} — A-Level Revision Workspace`;
+const DEFAULT_TITLE = APP_FULL_TITLE;
 
 const ROUTE_TITLES: Array<{ match: (path: string) => boolean; title: string }> = [
   { match: (path) => path === "/", title: DEFAULT_TITLE },

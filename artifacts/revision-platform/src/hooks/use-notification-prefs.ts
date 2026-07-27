@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-const PREFS_KEY = "scholr_notification_prefs";
+const PREFS_KEY = "lockdin_notification_prefs";
 
 export type NotificationPrefs = {
   morningSummary: boolean;

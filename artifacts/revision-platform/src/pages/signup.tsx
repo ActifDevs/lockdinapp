@@ -1,3 +1,4 @@
+import { BrandName } from "@/components/brand-name";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,7 +75,7 @@ export default function Signup() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_20%,rgba(255,255,255,0.15),transparent_55%)]" />
         <div className="relative z-10 flex h-full flex-col justify-between p-10 text-primary-foreground">
           <Link href="/" className="font-bold tracking-tight">
-            Scholr
+            <BrandName />
           </Link>
           <div className="flex flex-1 flex-col items-center justify-center py-8">
             <IllustBooks onBrand className="w-full max-w-[18rem]" />
@@ -95,7 +96,7 @@ export default function Signup() {
           href="/"
           className="absolute left-4 top-6 font-bold tracking-tight lg:hidden"
         >
-          Scholr
+          <BrandName />
         </Link>
 
         <div className="mx-auto w-full max-w-sm">

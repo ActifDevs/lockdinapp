@@ -30,6 +30,7 @@ import type {
   PastPaperInput,
   ProgressOverview,
   Subject,
+  SubjectInput,
   SubjectPerformance,
   SyllabusTopic,
   SyllabusTopicUpdate,
@@ -220,6 +221,77 @@ export function useListSubjects<TData = Awaited<ReturnType<typeof listSubjects>>
 
 
 
+export const getCreateSubjectUrl = () => {
+
+
+
+
+  return `/api/subjects`
+}
+
+/**
+ * @summary Add a subject to the workspace (idempotent by code)
+ */
+export const createSubject = async (subjectInput: SubjectInput, options?: RequestInit): Promise<Subject> => {
+
+  return customFetch<Subject>(getCreateSubjectUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(subjectInput)
+  }
+);}
+
+
+
+
+
+export const getCreateSubjectMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubject>>, TError,{data: BodyType<SubjectInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSubject>>, TError,{data: BodyType<SubjectInput>}, TContext> => {
+
+const mutationKey = ['createSubject'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSubject>>, {data: BodyType<SubjectInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSubject(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSubjectMutationResult = NonNullable<Awaited<ReturnType<typeof createSubject>>>
+    export type CreateSubjectMutationBody = BodyType<SubjectInput>
+    export type CreateSubjectMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Add a subject to the workspace (idempotent by code)
+ */
+export const useCreateSubject = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubject>>, TError,{data: BodyType<SubjectInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSubject>>,
+        TError,
+        {data: BodyType<SubjectInput>},
+        TContext
+      > => {
+      return useMutation(getCreateSubjectMutationOptions(options));
+    }
+
 export const getGetSubjectUrl = (subjectId: number,) => {
 
 
@@ -296,6 +368,77 @@ export function useGetSubject<TData = Awaited<ReturnType<typeof getSubject>>, TE
 
 
 
+
+export const getDeleteSubjectUrl = (subjectId: number,) => {
+
+
+
+
+  return `/api/subjects/${subjectId}`
+}
+
+/**
+ * @summary Remove a subject and its related data
+ */
+export const deleteSubject = async (subjectId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteSubjectUrl(subjectId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteSubjectMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSubject>>, TError,{subjectId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteSubject>>, TError,{subjectId: number}, TContext> => {
+
+const mutationKey = ['deleteSubject'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSubject>>, {subjectId: number}> = (props) => {
+          const {subjectId} = props ?? {};
+
+          return  deleteSubject(subjectId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteSubjectMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSubject>>>
+
+    export type DeleteSubjectMutationError = ErrorType<void>
+
+    /**
+ * @summary Remove a subject and its related data
+ */
+export const useDeleteSubject = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSubject>>, TError,{subjectId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteSubject>>,
+        TError,
+        {subjectId: number},
+        TContext
+      > => {
+      return useMutation(getDeleteSubjectMutationOptions(options));
+    }
 
 export const getGetSubjectSyllabusUrl = (subjectId: number,) => {
 

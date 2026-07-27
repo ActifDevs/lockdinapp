@@ -6,7 +6,7 @@ import type {
 } from "@workspace/api-client-react";
 import { percentageToGrade } from "./cambridge-grades";
 
-const LONGEST_STREAK_KEY = "scholr_longest_streak";
+const LONGEST_STREAK_KEY = "lockdin_longest_streak";
 
 const SCHOLAR_TITLES = [
   "Novice",
@@ -172,8 +172,8 @@ export function buildAchievements(
   ];
 }
 
-const UNLOCKED_KEY = "scholr_unlocked_achievements";
-const SEEDED_KEY = "scholr_achievements_seeded";
+const UNLOCKED_KEY = "lockdin_unlocked_achievements";
+const SEEDED_KEY = "lockdin_achievements_seeded";
 
 function readSeenUnlocks(): Set<string> {
   try {

@@ -4,7 +4,7 @@ export default function TermsPage() {
   return (
     <LegalPage title="Terms of service">
       <p>
-        By using Scholr you agree to these terms. Scholr is a revision planning tool for Cambridge
+        By using Lockdin you agree to these terms. Lockdin is a revision planning tool for Cambridge
         A-Level students — not an exam board, school, or grading authority.
       </p>
       <h2>Your account</h2>
@@ -22,7 +22,7 @@ export default function TermsPage() {
       </p>
       <h2>Changes</h2>
       <p>
-        We may update these terms as Scholr evolves. Continued use after changes means you accept the
+        We may update these terms as Lockdin evolves. Continued use after changes means you accept the
         revised terms.
       </p>
     </LegalPage>

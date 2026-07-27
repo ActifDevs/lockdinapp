@@ -1,4 +1,4 @@
-# Scholr — Database Architecture & Supabase Schema Design Audit
+# Lockdin — Database Architecture & Supabase Schema Design Audit
 
 **Status: READ-ONLY AUDIT. Nothing in this document has been executed. No tables created, no migrations run, no files modified, no Supabase project touched.**
 
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Scholr is a Cambridge A-Level revision workspace (subjects → syllabus topics → tasks → past papers → dashboard analytics). The **current codebase does not use Supabase at all** — it runs a hand-rolled Express API (`artifacts/api-server`) backed by Drizzle ORM + `pg` against a generic `DATABASE_URL` Postgres instance, with a `localStorage`-based fake authentication layer (`use-auth.ts`) that has no relationship to any real user table. There is **no multi-tenancy** in the current schema — no table has a `user_id` column. It behaves like a single-player local prototype, not a production multi-user app.
+Lockdin is a Cambridge A-Level revision workspace (subjects → syllabus topics → tasks → past papers → dashboard analytics). The **current codebase does not use Supabase at all** — it runs a hand-rolled Express API (`artifacts/api-server`) backed by Drizzle ORM + `pg` against a generic `DATABASE_URL` Postgres instance, with a `localStorage`-based fake authentication layer (`use-auth.ts`) that has no relationship to any real user table. There is **no multi-tenancy** in the current schema — no table has a `user_id` column. It behaves like a single-player local prototype, not a production multi-user app.
 
 The recommended path is: keep Postgres/Drizzle-shaped thinking about relationships, but re-home everything into Supabase Postgres, introduce `auth.users`-linked ownership on every currently-unscoped table, split "shared Cambridge reference data" from "user-owned data," and defer AI/Calendar/notification-history tables until they're actually needed.
 
@@ -20,7 +20,7 @@ Evidence from the repo:
 - **Schema** (`lib/db/src/schema/*`): `subjects`, `syllabusUnits`, `syllabusTopics`, `tasks`, `pastPapers`, `examDates`. Every table uses `serial` integer PKs. **None have a `user_id` / owner column.** The app currently assumes exactly one implicit "student."
 - **API layer**: `artifacts/api-server` — a plain Express app (`express-app.ts`, `routes/*.ts`) that queries Drizzle directly and returns Zod-validated JSON (`@workspace/api-zod`). No auth middleware, no session/JWT checks anywhere in the routes I can see.
 - **Frontend data access**: `lib/api-client-react` — an Orval-generated React Query client hitting `/api/*` on the same Express server. Not calling Supabase directly.
-- **"Auth"**: `artifacts/revision-platform/src/hooks/use-auth.ts` stores a fake user object (`name`, `email`, `level`, `examSession`) in `localStorage` under `scholr_user` / `scholr_auth` / `onboarded`. It never touches the database. Login/signup forms in `login.tsx` / `signup.tsx` accept literally any credentials and just call `login({...})` locally.
+- **"Auth"**: `artifacts/revision-platform/src/hooks/use-auth.ts` stores a fake user object (`name`, `email`, `level`, `examSession`) in `localStorage` under `lockdin_user` / `lockdin_auth` / `onboarded`. It never touches the database. Login/signup forms in `login.tsx` / `signup.tsx` accept literally any credentials and just call `login({...})` locally.
 - **Client-side "extra" state** that never reaches the DB: `dashboard-gamification.ts` (XP, streaks, achievements — computed and cached in `localStorage`), `use-notification-prefs.ts` (`localStorage`), `theme-provider.tsx` (`localStorage`).
 - **Mock/derived values**: dashboard XP, levels, "predicted grade," "momentum," achievements are all computed client-side from real DB fields (`studyStreakDays`, `syllabusProgress`, paper scores) — these are presentation logic, not persisted domain data. Good instinct already baked into the prototype: e.g. `syllabusProgress` is computed server-side in `routes/subjects.ts` and `routes/dashboard.ts` from topic counts rather than stored.
 
@@ -651,7 +651,7 @@ create trigger on_auth_user_created
 
 These genuinely can't be answered from the repo alone:
 
-1. Will Scholr ever support more than one exam board (e.g. Edexcel, AQA) or is Cambridge the permanent scope? This affects whether `exam_boards` needs to exist as a table now vs. later.
+1. Will Lockdin ever support more than one exam board (e.g. Edexcel, AQA) or is Cambridge the permanent scope? This affects whether `exam_boards` needs to exist as a table now vs. later.
 2. Will teachers/parents ever need read access to a student's data? Affects whether RLS needs a "shared with" concept baked in early.
 3. Should `topic_progress.notes` support rich text/attachments, or is plain text (as currently in the Drizzle schema) sufficient long-term?
 

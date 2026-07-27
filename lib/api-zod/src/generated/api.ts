@@ -36,6 +36,35 @@ export const ListSubjectsResponse = zod.array(ListSubjectsResponseItem)
 
 
 /**
+ * @summary Add a subject to the workspace (idempotent by code)
+ */
+
+
+
+
+
+export const CreateSubjectBody = zod.object({
+  "name": zod.string().min(1),
+  "code": zod.string().min(1),
+  "color": zod.string().min(1)
+})
+
+export const CreateSubjectResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "color": zod.string(),
+  "syllabusProgress": zod.number(),
+  "topicsTotal": zod.number(),
+  "topicsCompleted": zod.number(),
+  "topicsInProgress": zod.number(),
+  "upcomingTasksCount": zod.number(),
+  "recentPaperScore": zod.number().nullable(),
+  "recentPaperLabel": zod.string().nullable()
+})
+
+
+/**
  * @summary Get a single subject with detail
  */
 export const GetSubjectParams = zod.object({
@@ -55,6 +84,16 @@ export const GetSubjectResponse = zod.object({
   "recentPaperScore": zod.number().nullable(),
   "recentPaperLabel": zod.string().nullable()
 })
+
+
+/**
+ * @summary Remove a subject and its related data
+ */
+export const DeleteSubjectParams = zod.object({
+  "subjectId": zod.coerce.number()
+})
+
+export const DeleteSubjectResponse = zod.void()
 
 
 /**

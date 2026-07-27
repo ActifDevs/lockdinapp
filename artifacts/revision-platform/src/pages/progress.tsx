@@ -9,6 +9,7 @@ import { AlertCircle, BarChart2, CheckCircle2, FileText } from "lucide-react";
 import { ChartSkeleton } from "@/components/charts/chart-skeleton";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { getQueryErrorMessage } from "@/lib/query-error-message";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 
 const WeeklyActivityBarChart = lazy(
@@ -16,11 +17,17 @@ const WeeklyActivityBarChart = lazy(
 );
 
 export default function ProgressPage() {
-  const { data: progress, isLoading } = useGetProgressOverview({
+  const {
+    data: progress,
+    isPending,
+    isError,
+    error,
+    refetch,
+  } = useGetProgressOverview({
     query: { queryKey: getGetProgressOverviewQueryKey() },
   });
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="app-page animate-pulse">
         <div className="dash-skeleton h-10 w-48 rounded-xl" />
@@ -36,7 +43,23 @@ export default function ProgressPage() {
     );
   }
 
-  if (!progress) return null;
+  if (isError || !progress) {
+    return (
+      <div className="app-page">
+        <PageHeader
+          title="Progress overview"
+          subtitle="Syllabus coverage, activity, and subjects that need your next session."
+        />
+        <div className="dash-panel flex min-h-[40vh] flex-col items-center justify-center gap-4">
+          <h2 className="text-2xl font-bold tracking-tight">Could not load progress</h2>
+          <p className="max-w-md text-center text-muted-foreground">
+            {getQueryErrorMessage(error)}
+          </p>
+          <Button onClick={() => refetch()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-page animate-in fade-in duration-300">
@@ -46,15 +69,17 @@ export default function ProgressPage() {
       />
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-12">
-        <div className="hero-band md:col-span-7">
-          <p className="hero-band-muted text-sm font-medium">Overall syllabus</p>
-          <p className="hero-band-stat tabular">{progress.overallSyllabusProgress}%</p>
+        <div className="dash-stat-card p-6 md:col-span-7 md:p-8">
+          <p className="card-label">Overall syllabus</p>
+          <p className="mt-2 text-4xl font-bold tabular tracking-tight text-[hsl(var(--semantic-progress))] md:text-5xl">
+            {progress.overallSyllabusProgress}%
+          </p>
           <Progress
             value={progress.overallSyllabusProgress}
-            className="mt-8 bg-primary-foreground/20"
-            indicatorClassName="!bg-primary-foreground"
+            className="mt-6"
+            indicatorClassName="bg-[hsl(var(--semantic-progress))]"
           />
-          <p className="hero-band-muted mt-3 text-sm">Coverage across all active subjects</p>
+          <p className="mt-3 text-sm text-muted-foreground">Coverage across all active subjects</p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 md:col-span-5 md:grid-cols-1">
@@ -72,12 +97,12 @@ export default function ProgressPage() {
           </div>
           <div className="dash-stat-card">
             <div className="flex items-center gap-2">
-              <span className="dash-stat-icon" aria-hidden>
-                <FileText className="h-4 w-4 text-[hsl(217_80%_52%)]" strokeWidth={2} />
+              <span className="dash-stat-icon dash-stat-icon-primary" aria-hidden>
+                <FileText className="h-4 w-4 text-[hsl(var(--semantic-progress))]" strokeWidth={2} />
               </span>
               <p className="card-label">Papers logged</p>
             </div>
-            <p className="mt-3 stat-value text-[hsl(217_80%_42%)] dark:text-[hsl(217_90%_68%)]">
+            <p className="mt-3 stat-value text-[hsl(var(--semantic-progress))]">
               {progress.totalPapersLogged}
             </p>
             <p className="mt-2 text-xs text-muted-foreground">Past-paper trail</p>

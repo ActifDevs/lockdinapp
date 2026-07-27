@@ -7,11 +7,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  weeklyActivitySummary,
+  type WeeklyActivityPoint,
+} from "@/lib/chart-summaries";
 
-export type WeeklyActivityPoint = {
-  date: string;
-  tasksCompleted: number;
-};
+export type { WeeklyActivityPoint };
 
 type WeeklyActivityBarChartProps = {
   data: WeeklyActivityPoint[];
@@ -25,13 +26,15 @@ export default function WeeklyActivityBarChart({
   compact = false,
 }: WeeklyActivityBarChartProps) {
   const margin = compact
-    ? { top: 4, right: 4, left: -28, bottom: 0 }
-    : { top: 10, right: 10, left: -20, bottom: 0 };
+    ? { top: 4, right: 4, left: 0, bottom: 0 }
+    : { top: 10, right: 10, left: 0, bottom: 0 };
   const gradientId = "weekProgressFill";
+  const summary = weeklyActivitySummary(data);
 
   return (
     <div className="w-full" style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <p className="sr-only">{summary}</p>
+      <ResponsiveContainer width="100%" height="100%" aria-hidden>
         <BarChart data={data} margin={margin}>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -55,6 +58,7 @@ export default function WeeklyActivityBarChart({
             axisLine={false}
             tickLine={false}
             allowDecimals={false}
+            width={compact ? 28 : 32}
             tick={{
               fontSize: compact ? 10 : 12,
               fill: "currentColor",

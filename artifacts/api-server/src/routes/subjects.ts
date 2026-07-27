@@ -1,10 +1,20 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
-import { db, subjectsTable, syllabusUnitsTable, syllabusTopicsTable, tasksTable, pastPapersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import {
+  db,
+  subjectsTable,
+  syllabusUnitsTable,
+  syllabusTopicsTable,
+  tasksTable,
+  pastPapersTable,
+} from "@workspace/db";
 import {
   ListSubjectsResponse,
+  CreateSubjectBody,
+  CreateSubjectResponse,
   GetSubjectParams,
   GetSubjectResponse,
+  DeleteSubjectParams,
   GetSubjectSyllabusParams,
   GetSubjectSyllabusResponse,
   GetSubjectPerformanceParams,
@@ -13,49 +23,113 @@ import {
 
 const router: IRouter = Router();
 
-router.get("/subjects", async (req, res): Promise<void> => {
-  const subjects = await db.select().from(subjectsTable).orderBy(subjectsTable.id);
+async function enrichSubject(subject: typeof subjectsTable.$inferSelect) {
+  const topics = await db
+    .select()
+    .from(syllabusTopicsTable)
+    .where(eq(syllabusTopicsTable.subjectId, subject.id));
 
-  const result = await Promise.all(
-    subjects.map(async (subject) => {
-      const topics = await db
-        .select()
-        .from(syllabusTopicsTable)
-        .where(eq(syllabusTopicsTable.subjectId, subject.id));
+  const topicsTotal = topics.length;
+  const topicsCompleted = topics.filter((t) => t.status === "completed").length;
+  const topicsInProgress = topics.filter((t) => t.status === "in_progress").length;
+  const syllabusProgress = topicsTotal > 0 ? Math.round((topicsCompleted / topicsTotal) * 100) : 0;
 
-      const topicsTotal = topics.length;
-      const topicsCompleted = topics.filter((t) => t.status === "completed").length;
-      const topicsInProgress = topics.filter((t) => t.status === "in_progress").length;
-      const syllabusProgress = topicsTotal > 0 ? Math.round((topicsCompleted / topicsTotal) * 100) : 0;
+  const upcomingTasks = await db
+    .select()
+    .from(tasksTable)
+    .where(eq(tasksTable.subjectId, subject.id));
+  const upcomingTasksCount = upcomingTasks.filter((t) => !t.completed).length;
 
-      const upcomingTasks = await db
-        .select()
-        .from(tasksTable)
-        .where(eq(tasksTable.subjectId, subject.id));
-      const upcomingTasksCount = upcomingTasks.filter((t) => !t.completed).length;
+  const papers = await db
+    .select()
+    .from(pastPapersTable)
+    .where(eq(pastPapersTable.subjectId, subject.id))
+    .orderBy(pastPapersTable.dateAttempted);
 
-      const papers = await db
-        .select()
-        .from(pastPapersTable)
-        .where(eq(pastPapersTable.subjectId, subject.id))
-        .orderBy(pastPapersTable.dateAttempted);
+  const recentPaper = papers[papers.length - 1] ?? null;
 
-      const recentPaper = papers[papers.length - 1] ?? null;
+  return {
+    ...subject,
+    syllabusProgress,
+    topicsTotal,
+    topicsCompleted,
+    topicsInProgress,
+    upcomingTasksCount,
+    recentPaperScore: recentPaper ? recentPaper.percentage : null,
+    recentPaperLabel: recentPaper ? recentPaper.paperCode : null,
+  };
+}
 
-      return {
-        ...subject,
-        syllabusProgress,
-        topicsTotal,
-        topicsCompleted,
-        topicsInProgress,
-        upcomingTasksCount,
-        recentPaperScore: recentPaper ? recentPaper.percentage : null,
-        recentPaperLabel: recentPaper ? recentPaper.paperCode : null,
-      };
+async function seedStarterSyllabus(subjectId: number, subjectName: string) {
+  const [unit] = await db
+    .insert(syllabusUnitsTable)
+    .values({
+      subjectId,
+      title: `${subjectName} foundations`,
+      orderIndex: 0,
     })
-  );
+    .returning();
 
+  await db.insert(syllabusTopicsTable).values([
+    {
+      unitId: unit.id,
+      subjectId,
+      title: "Syllabus overview & exam format",
+      status: "not_started",
+      orderIndex: 0,
+    },
+    {
+      unitId: unit.id,
+      subjectId,
+      title: "Core topic review",
+      status: "not_started",
+      orderIndex: 1,
+    },
+    {
+      unitId: unit.id,
+      subjectId,
+      title: "Past paper technique",
+      status: "not_started",
+      orderIndex: 2,
+    },
+  ]);
+}
+
+router.get("/subjects", async (_req, res): Promise<void> => {
+  const subjects = await db.select().from(subjectsTable).orderBy(subjectsTable.id);
+  const result = await Promise.all(subjects.map(enrichSubject));
   res.json(ListSubjectsResponse.parse(result));
+});
+
+router.post("/subjects", async (req, res): Promise<void> => {
+  const body = CreateSubjectBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const code = body.data.code.trim();
+  const name = body.data.name.trim();
+  const color = body.data.color.trim();
+
+  const [existing] = await db
+    .select()
+    .from(subjectsTable)
+    .where(eq(subjectsTable.code, code));
+
+  if (existing) {
+    res.status(200).json(CreateSubjectResponse.parse(await enrichSubject(existing)));
+    return;
+  }
+
+  const [created] = await db
+    .insert(subjectsTable)
+    .values({ name, code, color })
+    .returning();
+
+  await seedStarterSyllabus(created.id, created.name);
+
+  res.status(201).json(CreateSubjectResponse.parse(await enrichSubject(created)));
 });
 
 router.get("/subjects/:subjectId", async (req, res): Promise<void> => {
@@ -75,39 +149,27 @@ router.get("/subjects/:subjectId", async (req, res): Promise<void> => {
     return;
   }
 
-  const topics = await db
-    .select()
-    .from(syllabusTopicsTable)
-    .where(eq(syllabusTopicsTable.subjectId, subject.id));
+  res.json(GetSubjectResponse.parse(await enrichSubject(subject)));
+});
 
-  const topicsTotal = topics.length;
-  const topicsCompleted = topics.filter((t) => t.status === "completed").length;
-  const topicsInProgress = topics.filter((t) => t.status === "in_progress").length;
-  const syllabusProgress = topicsTotal > 0 ? Math.round((topicsCompleted / topicsTotal) * 100) : 0;
+router.delete("/subjects/:subjectId", async (req, res): Promise<void> => {
+  const params = DeleteSubjectParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
 
-  const upcomingTasks = await db.select().from(tasksTable).where(eq(tasksTable.subjectId, subject.id));
-  const upcomingTasksCount = upcomingTasks.filter((t) => !t.completed).length;
+  const [deleted] = await db
+    .delete(subjectsTable)
+    .where(eq(subjectsTable.id, params.data.subjectId))
+    .returning();
 
-  const papers = await db
-    .select()
-    .from(pastPapersTable)
-    .where(eq(pastPapersTable.subjectId, subject.id))
-    .orderBy(pastPapersTable.dateAttempted);
+  if (!deleted) {
+    res.status(404).json({ error: "Subject not found" });
+    return;
+  }
 
-  const recentPaper = papers[papers.length - 1] ?? null;
-
-  res.json(
-    GetSubjectResponse.parse({
-      ...subject,
-      syllabusProgress,
-      topicsTotal,
-      topicsCompleted,
-      topicsInProgress,
-      upcomingTasksCount,
-      recentPaperScore: recentPaper ? recentPaper.percentage : null,
-      recentPaperLabel: recentPaper ? recentPaper.paperCode : null,
-    })
-  );
+  res.status(204).send();
 });
 
 router.get("/subjects/:subjectId/syllabus", async (req, res): Promise<void> => {
@@ -172,7 +234,6 @@ router.get("/subjects/:subjectId/performance", async (req, res): Promise<void> =
     session: p.session,
   }));
 
-  // Component breakdown by paper code prefix (e.g. 9702/11 → component "Paper 1")
   const componentMap = new Map<string, { percentages: number[] }>();
   for (const p of papers) {
     const parts = p.paperCode.split("/");

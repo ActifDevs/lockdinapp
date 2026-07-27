@@ -1,3 +1,4 @@
+import { BrandName } from "@/components/brand-name";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { IllustLost } from "@/components/illustrations";
@@ -8,7 +9,7 @@ export default function NotFound() {
       <header className="border-b">
         <div className="mx-auto flex h-14 max-w-6xl items-center px-4 sm:px-6">
           <Link href="/" className="text-xl font-bold tracking-tight">
-            Scholr
+            <BrandName />
           </Link>
         </div>
       </header>

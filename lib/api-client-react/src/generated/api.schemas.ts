@@ -9,6 +9,15 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface SubjectInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  code: string;
+  /** @minLength 1 */
+  color: string;
+}
+
 export interface Subject {
   id: number;
   name: string;

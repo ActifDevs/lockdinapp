@@ -1,3 +1,4 @@
+import { BrandName } from "@/components/brand-name";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +34,7 @@ export default function ForgotPassword() {
         href="/"
         className="absolute left-4 top-6 font-bold tracking-tight sm:left-8 sm:top-8"
       >
-        Scholr
+        <BrandName />
       </Link>
 
       <div className="relative z-10 w-full max-w-sm">
@@ -47,7 +48,7 @@ export default function ForgotPassword() {
         {isSubmitted ? (
           <div className="mt-8 space-y-4">
             <p className="text-sm text-muted-foreground">
-              For now, sign in with any email on the login page to continue using Scholr. Real email
+              For now, sign in with any email on the login page to continue using Lockdin. Real email
               reset will ship with full accounts.
             </p>
             <Button asChild className="h-11 w-full cursor-pointer">

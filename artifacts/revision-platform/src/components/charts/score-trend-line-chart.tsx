@@ -7,6 +7,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { scoreTrendSummary } from "@/lib/chart-summaries";
 
 type ScoreTrendLineChartProps<T extends { percentage: number }> = {
   data: T[];
@@ -14,6 +15,7 @@ type ScoreTrendLineChartProps<T extends { percentage: number }> = {
   stroke: string;
   height?: number;
   tooltipLabelFormatter?: (label: string, items: Array<{ payload?: T }>) => string;
+  summaryLabel?: (point: T, index: number) => string;
 };
 
 export default function ScoreTrendLineChart<T extends { percentage: number }>({
@@ -22,10 +24,17 @@ export default function ScoreTrendLineChart<T extends { percentage: number }>({
   stroke,
   height = 300,
   tooltipLabelFormatter,
+  summaryLabel,
 }: ScoreTrendLineChartProps<T>) {
+  const summary = scoreTrendSummary(
+    data,
+    summaryLabel ?? ((point, index) => String((point as Record<string, unknown>)[xKey] ?? `Entry ${index + 1}`)),
+  );
+
   return (
     <div className="w-full" style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <p className="sr-only">{summary}</p>
+      <ResponsiveContainer width="100%" height="100%" aria-hidden>
         <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="opacity-10" />
           <XAxis

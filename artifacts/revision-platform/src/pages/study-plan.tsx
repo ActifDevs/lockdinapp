@@ -15,7 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DialogFooter } from "@/components/ui/dialog";
+import { ResponsiveFormPanel } from "@/components/responsive-form-panel";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
@@ -250,11 +251,12 @@ export default function StudyPlan() {
         </Tabs>
       </Card>
 
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Add new task</DialogTitle>
-          </DialogHeader>
+      <ResponsiveFormPanel
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        title="Add new task"
+        className="sm:max-w-[425px]"
+      >
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
               {createTask.isError && (
@@ -360,8 +362,7 @@ export default function StudyPlan() {
               </DialogFooter>
             </form>
           </Form>
-        </DialogContent>
-      </Dialog>
+      </ResponsiveFormPanel>
     </div>
   );
 }

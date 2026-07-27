@@ -9,9 +9,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { useNotificationPrefs } from "@/hooks/use-notification-prefs";
 import { toast } from "@/hooks/use-toast";
 
-const MORNING_KEY = "scholr_morning_ping";
-const DEADLINE_KEY = "scholr_deadline_ping";
-const EXAM_KEY = "scholr_exam_ping";
+const MORNING_KEY = "lockdin_morning_ping";
+const DEADLINE_KEY = "lockdin_deadline_ping";
+const EXAM_KEY = "lockdin_exam_ping";
 
 function todayKey() {
   return new Date().toISOString().split("T")[0]!;

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RichEmptyState } from "@/components/rich-empty-state";
 import { PageHeader } from "@/components/page-header";
+import { getQueryErrorMessage } from "@/lib/query-error-message";
 import {
   format,
   startOfMonth,
@@ -41,13 +42,34 @@ export default function CalendarPage() {
   const [viewMonth, setViewMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
-  const { data: tasks } = useListTasks(
+  const {
+    data: tasks,
+    isPending: tasksPending,
+    isError: tasksError,
+    error: tasksLoadError,
+    refetch: refetchTasks,
+  } = useListTasks(
     { filter: "all" },
     { query: { queryKey: getListTasksQueryKey({ filter: "all" }) } }
   );
-  const { data: exams } = useListExamDates({
+  const {
+    data: exams,
+    isPending: examsPending,
+    isError: examsError,
+    error: examsLoadError,
+    refetch: refetchExams,
+  } = useListExamDates({
     query: { queryKey: getListExamDatesQueryKey() },
   });
+
+  const isPending = tasksPending || examsPending;
+  const isError = tasksError || examsError;
+  const loadError = tasksLoadError ?? examsLoadError;
+
+  const refetchCalendar = () => {
+    void refetchTasks();
+    void refetchExams();
+  };
 
   // Build lookup maps keyed by YYYY-MM-DD
   const tasksByDate = useMemo(() => {
@@ -131,6 +153,34 @@ export default function CalendarPage() {
       ? `, ${selTasks.length + selExams.length} scheduled item${selTasks.length + selExams.length === 1 ? "" : "s"}`
       : ", nothing scheduled"
   }`;
+
+  if (isPending) {
+    return (
+      <div className="app-page animate-pulse">
+        <div className="dash-skeleton h-10 w-48 rounded-xl" />
+        <div className="dash-skeleton h-24 rounded-[var(--surface-radius)]" />
+        <div className="dash-skeleton h-[28rem] rounded-[var(--surface-radius)]" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="app-page">
+        <PageHeader
+          title="Calendar"
+          subtitle="Revision deadlines and exam countdowns in one calm view."
+        />
+        <div className="dash-panel flex min-h-[40vh] flex-col items-center justify-center gap-4">
+          <h2 className="text-2xl font-bold tracking-tight">Could not load calendar</h2>
+          <p className="max-w-md text-center text-muted-foreground">
+            {getQueryErrorMessage(loadError)}
+          </p>
+          <Button onClick={refetchCalendar}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-page animate-in fade-in duration-300 md:pb-10">
@@ -511,7 +561,7 @@ export default function CalendarPage() {
                         <AlertCircle className="h-3.5 w-3.5 text-[hsl(var(--semantic-critical))] flex-shrink-0" strokeWidth={2} />
                         <Badge
                           variant="destructive"
-                          className="text-[10px] px-1.5 py-0 h-4 uppercase tracking-wider"
+                          className="h-auto px-2 py-0.5 text-xs font-medium"
                         >
                           Exam
                         </Badge>

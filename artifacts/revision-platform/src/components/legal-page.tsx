@@ -1,3 +1,4 @@
+import { BrandName } from "@/components/brand-name";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { GraduationCap } from "lucide-react";
@@ -17,7 +18,7 @@ export function LegalPage({ title, children }: LegalPageProps) {
             <span className="brand-icon-sm">
               <GraduationCap className="h-4 w-4" strokeWidth={2} />
             </span>
-            Scholr
+            <BrandName />
           </Link>
           <Link href="/">
             <Button variant="ghost" size="sm">
@@ -41,7 +42,7 @@ export function LegalPage({ title, children }: LegalPageProps) {
             Terms
           </Link>
           <span className="text-border">·</span>
-          <span>© {new Date().getFullYear()} Scholr</span>
+          <span>© {new Date().getFullYear()} <BrandName /></span>
         </div>
       </footer>
     </div>

@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "Scholr — A-Level Revision Workspace"
+title = "Lockdin — A-Level Revision Workspace"
 version = "1.0.0"
 id = "artifacts/revision-platform"
 router = "path"

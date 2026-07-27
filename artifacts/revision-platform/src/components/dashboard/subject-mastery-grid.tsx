@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight, ChevronRight } from "lucide-react";
 import type { AttentionItem, RecentPerformanceItem, Subject } from "@workspace/api-client-react";
+import { entranceProps } from "@/hooks/use-entrance";
 import { gradeTone } from "@/lib/cambridge-grades";
 import { predictedGradeFromSubject } from "@/lib/dashboard-gamification";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
@@ -62,6 +63,8 @@ export function SubjectMasteryGrid({
   attention,
   recentPerformance = [],
 }: SubjectMasteryGridProps) {
+  const reduceMotion = useReducedMotion();
+
   if (subjects.length === 0) {
     return null;
   }
@@ -98,17 +101,14 @@ export function SubjectMasteryGrid({
               : change < 0
                 ? "Needs care"
                 : "Steady";
+        const entrance = entranceProps(reduceMotion, index);
 
         return (
           <motion.div
             key={subject.id}
-            initial={{ opacity: 0, transform: "translateY(8px)" }}
-            animate={{ opacity: 1, transform: "translateY(0px)" }}
-            transition={{
-              delay: Math.min(index * 0.04, 0.16),
-              duration: 0.28,
-              ease: [0.23, 1, 0.32, 1],
-            }}
+            initial={entrance.initial}
+            animate={entrance.animate}
+            transition={entrance.transition}
           >
             <Link
               href={`/subjects/${subject.id}`}

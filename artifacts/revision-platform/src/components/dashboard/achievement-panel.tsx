@@ -1,6 +1,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { BookOpen, Check, Flame, Star, Target, Trophy } from "lucide-react";
 import type { Achievement } from "@/lib/dashboard-gamification";
+import { entranceProps } from "@/hooks/use-entrance";
 import { cn } from "@/lib/utils";
 
 const ICONS = {
@@ -55,17 +56,14 @@ export function AchievementPanel({ achievements, className }: AchievementPanelPr
       <ul className="mt-4 space-y-1.5">
         {unlocked.map((item, index) => {
           const Icon = ICONS[item.icon];
+          const entrance = entranceProps(reduceMotion, index, { y: 4, maxDelay: 0.12, duration: 0.22 });
           return (
             <motion.li
               key={item.id}
               className="dash-achievement dash-achievement-unlocked"
-              initial={reduceMotion ? false : { opacity: 0, transform: "translateY(4px)" }}
-              animate={{ opacity: 1, transform: "translateY(0px)" }}
-              transition={{
-                delay: Math.min(index * 0.03, 0.12),
-                duration: 0.22,
-                ease: [0.23, 1, 0.32, 1],
-              }}
+              initial={entrance.initial}
+              animate={entrance.animate}
+              transition={entrance.transition}
             >
               <span
                 className={cn("dash-achievement-icon", `dash-achievement-icon-${item.icon}`)}

@@ -53,6 +53,29 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Subject"
+    post:
+      operationId: createSubject
+      tags: [subjects]
+      summary: Add a subject to the workspace (idempotent by code)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubjectInput"
+      responses:
+        "201":
+          description: Subject created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subject"
+        "200":
+          description: Subject already existed (returned as-is)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subject"
 
   /subjects/{subjectId}:
     get:
@@ -72,6 +95,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Subject"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteSubject
+      tags: [subjects]
+      summary: Remove a subject and its related data
+      parameters:
+        - name: subjectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
         "404":
           description: Not found
 
@@ -357,6 +395,23 @@ components:
           type: string
       required:
         - status
+
+    SubjectInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        code:
+          type: string
+          minLength: 1
+        color:
+          type: string
+          minLength: 1
+      required:
+        - name
+        - code
+        - color
 
     Subject:
       type: object

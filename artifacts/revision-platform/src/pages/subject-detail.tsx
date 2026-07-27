@@ -1,17 +1,28 @@
 import { useGetSubject, getGetSubjectQueryKey, useGetSubjectSyllabus, getGetSubjectSyllabusQueryKey, useGetSubjectPerformance, getGetSubjectPerformanceQueryKey, useListTasks, getListTasksQueryKey, useListPastPapers, getListPastPapersQueryKey, useUpdateSyllabusTopic, useUpdateTask } from "@workspace/api-client-react";
 import { Link, useRoute } from "wouter";
 import { lazy, Suspense, useEffect, type CSSProperties } from "react";
+import { APP_NAME } from "@/lib/app-config";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProgressRing } from "@/components/progress-ring";
 import { TaskRow } from "@/components/task-row";
 import { RichEmptyState } from "@/components/rich-empty-state";
 import { InsightCard } from "@/components/insight-card";
-import { BarChart, CheckCircle2, Circle, ChevronLeft } from "lucide-react";
+import { BarChart, CheckCircle2, Circle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { format, parseISO } from "date-fns";
 import { ChartSkeleton } from "@/components/charts/chart-skeleton";
 import { useQueryClient } from "@tanstack/react-query";
+import { getQueryErrorMessage } from "@/lib/query-error-message";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { subjectMark } from "@/lib/subject-mark";
 import { cn } from "@/lib/utils";
@@ -26,7 +37,13 @@ export default function SubjectDetail() {
   const queryClient = useQueryClient();
 
   // Queries
-  const { data: subject, isLoading: subjectLoading } = useGetSubject(subjectId!, {
+  const {
+    data: subject,
+    isPending: subjectLoading,
+    isError: subjectError,
+    error: subjectLoadError,
+    refetch: refetchSubject,
+  } = useGetSubject(subjectId!, {
     query: { enabled: !!subjectId, queryKey: getGetSubjectQueryKey(subjectId!) }
   });
 
@@ -67,15 +84,59 @@ export default function SubjectDetail() {
 
   useEffect(() => {
     if (!subject?.name) return;
-    document.title = `${subject.name} · Scholr`;
+    document.title = `${subject.name} · ${APP_NAME}`;
   }, [subject?.name]);
 
-  if (subjectLoading || !subject) {
+  if (!subjectId) {
+    return (
+      <div className="app-page">
+        <div className="dash-panel flex min-h-[40vh] flex-col items-center justify-center gap-4">
+          <h2 className="text-2xl font-bold tracking-tight">Subject not found</h2>
+          <p className="max-w-md text-center text-muted-foreground">
+            This link does not point to a valid subject.
+          </p>
+          <Button asChild>
+            <Link href="/subjects">Back to subjects</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (subjectLoading) {
     return (
       <div className="app-page animate-pulse">
         <div className="h-20 rounded-xl bg-muted" />
         <div className="h-10 w-full rounded bg-muted" />
         <div className="h-96 rounded-xl bg-muted" />
+      </div>
+    );
+  }
+
+  if (subjectError || !subject) {
+    return (
+      <div className="app-page">
+        <Breadcrumb className="mb-4">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/subjects">Subjects</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Subject</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        <div className="dash-panel mt-6 flex min-h-[40vh] flex-col items-center justify-center gap-4">
+          <h2 className="text-2xl font-bold tracking-tight">Could not load subject</h2>
+          <p className="max-w-md text-center text-muted-foreground">
+            {getQueryErrorMessage(subjectLoadError)}
+          </p>
+          <Button onClick={() => refetchSubject()}>Retry</Button>
+        </div>
       </div>
     );
   }
@@ -126,13 +187,19 @@ export default function SubjectDetail() {
 
   return (
     <div className="app-page animate-in fade-in duration-300">
-      <Link
-        href="/subjects"
-        className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ChevronLeft className="h-4 w-4" aria-hidden strokeWidth={2} />
-        All subjects
-      </Link>
+      <Breadcrumb className="mb-4">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/subjects">Subjects</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{subject.name}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       {/* Header */}
       <div

@@ -14,8 +14,8 @@ export type OnboardingPayload = {
   subjectCodes?: string[];
 };
 
-const AUTH_KEY = "scholr_auth";
-const USER_KEY = "scholr_user";
+const AUTH_KEY = "lockdin_auth";
+const USER_KEY = "lockdin_user";
 const ONBOARDED_KEY = "onboarded";
 
 function readUser(): AuthUser | null {
@@ -98,7 +98,7 @@ export function useAuth() {
       });
       localStorage.setItem(ONBOARDED_KEY, "true");
       if (payload?.subjectCodes?.length) {
-        localStorage.setItem("scholr_subject_codes", JSON.stringify(payload.subjectCodes));
+        localStorage.setItem("lockdin_subject_codes", JSON.stringify(payload.subjectCodes));
       }
       setIsOnboarded(true);
       setLocation("/dashboard");

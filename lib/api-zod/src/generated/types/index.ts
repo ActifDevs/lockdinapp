@@ -21,6 +21,7 @@ export * from './pastPaperInput';
 export * from './progressOverview';
 export * from './recentPerformanceItem';
 export * from './subject';
+export * from './subjectInput';
 export * from './subjectPerformance';
 export * from './subjectProgressItem';
 export * from './syllabusTopic';

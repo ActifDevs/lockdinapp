@@ -4,7 +4,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy policy">
       <p>
-        Scholr stores your account details, subject choices, study tasks, and revision progress so the
+        Lockdin stores your account details, subject choices, study tasks, and revision progress so the
         workspace can function. We do not sell your data.
       </p>
       <h2>What we collect</h2>
@@ -22,8 +22,8 @@ export default function PrivacyPage() {
       <h2>Contact</h2>
       <p>
         Questions about this policy? Email{" "}
-        <a href="mailto:privacy@scholr.app" className="text-primary hover:underline">
-          privacy@scholr.app
+        <a href="mailto:privacy@lockdin.app" className="text-primary hover:underline">
+          privacy@lockdin.app
         </a>
         .
       </p>
