@@ -1,0 +1,110 @@
+---
+description: Hard constraints for the auth/multi-tenancy migration (Phases 0-7 of docs/lockdin-architecture-plan.md). Apply whenever touching lib/db, artifacts/api-server, or auth-related frontend code.
+globs:
+  - "lib/db/**"
+  - "artifacts/api-server/**"
+  - "artifacts/revision-platform/src/**/*auth*"
+  - "artifacts/revision-platform/src/**/*use-auth*"
+  - "scripts/src/syllabus/**"
+alwaysApply: false
+---
+
+# Lockdin: multi-tenancy migration rules
+
+This repo is mid-migration from a single-user prototype (fake localStorage auth,
+zero `user_id` columns) to a real multi-tenant product (Supabase Auth + Postgres
+RLS). The full plan is `docs/lockdin-architecture-plan.md`. These rules exist so
+partial/parallel work doesn't reintroduce the mistakes that plan explicitly calls
+out. Read the relevant phase in the plan before starting work in these paths.
+
+## Don't trust the docs blindly — verify against code
+
+`docs/README.md` and the `docs/checkpoints/*/CURRENT_STATE.md` files have a
+history of drifting from actual `HEAD` (a checkpoint was once filed after several
+commits it didn't reflect). Before claiming something is "not implemented" or
+"already done," check the actual schema files in `lib/db/src/schema/`, the actual
+migrations in `lib/db/migrations/`, and the actual route files — not just the
+prose docs. If you find drift, flag it and suggest regenerating the checkpoint;
+don't silently work around it.
+
+## Migrations: `migrate`, never `push`, once a migration file exists
+
+The moment `lib/db/migrations/` contains a tracked `.sql` file, `drizzle-kit push`
+must not be run against any shared (staging/prod) database — it schema-diffs
+directly and has no history, so it will silently diverge from the migration files
+over time. Use `drizzle-kit generate` + `migrate` for any shared-database schema
+change. `push` is fine for a throwaway local DB only.
+
+## Shared reference data vs. per-user data — never merge them
+
+`subjects`, `syllabus_versions`, `syllabus_units`, `syllabus_topics`,
+`syllabus_learning_outcomes`, `assessment_components` are **shared reference
+data** — the Cambridge syllabus structure, identical for every user. Never add a
+`user_id` column to these tables or otherwise fork them per-user.
+
+Per-user state that's *about* shared data (e.g. "has this student completed this
+topic") belongs in a separate join/progress table (`topic_progress`: `user_id`,
+`topic_id`, `status`, `notes`), per the target model in
+`docs/scholr-database-architecture-audit.md`.
+
+**Important correction:** `syllabus_topics` already HAS `status`/`notes`
+columns directly on the shared reference row (see the doc-comment in
+`lib/db/src/schema/syllabusTopics.ts` — this was intentional for the
+single-user prototype phase, not a mistake to avoid, but it does not survive
+multi-tenancy as-is, since one shared row can't hold different status per
+user). This is a genuine migration, not a "don't do this": create
+`topic_progress`, backfill one row per (current implicit single user, topic)
+from the existing `syllabus_topics.status`/`.notes` values, cut reads/writes
+over to `topic_progress`, and only then deprecate/drop the columns on
+`syllabus_topics` in a follow-up migration once nothing reads them. Don't drop
+the old columns in the same migration that creates the new table — see
+`docs/cursor/03-multitenancy-rollout.md` for the exact sequencing.
+
+Tables that are already correctly user-owned once `user_id` is added: `tasks`,
+`past_paper_attempts`. `exam_dates` is ambiguous — confirm with the plan/team
+whether it's shared canonical exam-timetable data, personal entries, or both
+(which would be two tables) before adding `user_id` there.
+
+## RLS is the enforcement boundary, not the app layer
+
+Every user-owned table needs a Postgres RLS policy scoping rows to
+`auth.uid() = user_id`, and this is the thing that actually protects data — app-
+layer `WHERE user_id = ?` checks are a courtesy, not the boundary. Never write an
+API handler that trusts a `user_id` from the request body or query string; it
+must come from the verified session on the server (`req.userId` set by auth
+middleware from a validated JWT).
+
+When adding a new user-owned table or RLS policy, write a test that logs in as
+two different real users and confirms user A cannot read/write user B's rows.
+Don't consider RLS work done from a passing "it looked right in the UI" check
+alone — RLS bugs fail silently (return the wrong data) rather than throwing.
+
+## Auth cutover: replace the implementation, not every call site
+
+`use-auth.ts` currently reads/writes `localStorage` (`lockdin_user`,
+`lockdin_auth`, `onboarded`) and accepts any input as a valid login. When wiring
+real Supabase Auth, keep the hook's existing external interface (`useAuth()`
+returning `{ user, login, logout, ... }`) where reasonable so downstream
+components don't need a mass edit in the same PR as the auth swap — change the
+implementation underneath, not the call sites, unless a call site is itself
+relying on the fake-auth behavior (e.g. accepting arbitrary input).
+
+`require-auth.tsx` must gate on a verified session, never on presence of a
+localStorage key.
+
+## The CSV import pipeline already works — don't rewrite it
+
+`scripts/src/syllabus/{parse-csv,normalize,db-upsert,cli}.ts` is a working,
+tested pipeline. If a docs file claims this doesn't exist, the docs file is
+stale — don't rebuild it from scratch. Before changing it, re-run its existing
+test suite and check `db-upsert.ts` is genuinely idempotent (run
+`--mode=import` twice against the same DB and confirm row counts don't change on
+the second run) before assuming any existing behavior.
+
+## Explicitly out of scope right now
+
+Do not add schema, routes, or persistence for: an AI assistant, a standalone
+focus/distraction-blocker, or server-side gamification (`achievements`/`xp`
+tables) — these are deliberately deferred per
+`docs/lockdin-architecture-plan.md` §11. If a task seems to require one of
+these, stop and confirm scope before building it.
