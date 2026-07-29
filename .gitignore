@@ -45,3 +45,5 @@ Thumbs.db
 .github/instructions/nx.instructions.md
 .vercel
 .env*
+!.env.example
+!**/.env.example

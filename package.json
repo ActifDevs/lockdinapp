@@ -7,12 +7,16 @@
     "dev": "bash scripts/dev.sh",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status"
   },
   "private": true,
   "dependencies": {},
   "devDependencies": {
     "prettier": "^3.9.5",
+    "supabase": "^2.109.1",
     "typescript": "~5.9.3"
   }
 }
