@@ -62,6 +62,9 @@ session, not a `"true"` string in localStorage. `user` should be sourced from
 `profiles` (see step 2) joined with `auth.users`, not from whatever the
 caller passed to `login()`.
 
+**Selected authentication route:** Google OAuth through Supabase Auth as primary,
+with email/password available as a secondary or development option.
+
 `onboarded` deserves a real decision: is it a `profiles.onboarded_at
 timestamp` column, or inferred from whether `user_subjects` has any rows for
 this user? Either works; pick one, don't leave it half-migrated with
@@ -146,6 +149,30 @@ If you only ever test this through the app UI, a bug in the app-layer query
 policy and you won't find out until real data leaks.
 
 ### 5. Express middleware
+
+**Authentication flow clarification:**
+
+1. **JWT verification:** The Express server verifies the supplied Supabase session
+   token server-side, for example through `auth.getUser(token)`, and attaches the
+   verified user identity to the request. This confirms the token is valid and
+   not expired.
+2. **Express request attachment:** The verified user identity is attached to the
+   Express request as `req.userId`. This is the middleware's primary output.
+3. **Database query context:** Executing user-owned database queries in a context
+   that actually enforces ownership or RLS requires explicit propagation of the
+   authenticated database role/claims. Token verification alone does not
+   automatically cause later Drizzle queries through an administrative connection
+   to obey RLS.
+
+**Important:** A service-role client must not be used as the execution context for
+ordinary user-owned queries because it can bypass RLS. The recommended runtime
+path is user-scoped Supabase queries carrying the user's JWT to leverage built-in
+RLS enforcement at the database level.
+
+If direct Drizzle is retained for runtime user-owned queries, require an
+explicit, tested method for propagating the authenticated database role/claims
+within the same transaction (e.g., via `SET LOCAL` or session variables that RLS
+policies reference).
 
 New file, `artifacts/api-server/src/middlewares/auth.ts` (the directory
 already exists, empty — use it):

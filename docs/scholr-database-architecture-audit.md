@@ -4,6 +4,10 @@
 
 ---
 
+**Historical notice:** This audit was written before the Supabase foundation was merged and Phase 0 was completed. For current architecture and migration guidance, see the current phase guides under [docs/cursor/](./cursor/) and [docs/README.md](./README.md). Where this audit conflicts with newer phase documents, the phase documents take precedence.
+
+---
+
 ## Executive Summary
 
 Lockdin is a Cambridge A-Level revision workspace (subjects → syllabus topics → tasks → past papers → dashboard analytics). The **current codebase does not use Supabase at all** — it runs a hand-rolled Express API (`artifacts/api-server`) backed by Drizzle ORM + `pg` against a generic `DATABASE_URL` Postgres instance, with a `localStorage`-based fake authentication layer (`use-auth.ts`) that has no relationship to any real user table. There is **no multi-tenancy** in the current schema — no table has a `user_id` column. It behaves like a single-player local prototype, not a production multi-user app.

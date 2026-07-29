@@ -46,23 +46,27 @@ or partial-failure states.
 
 2. Run the existing test suite for all three pipeline stages:
    ```bash
-   pnpm --filter <syllabus-script-package> test
+   pnpm --filter @workspace/scripts test
    ```
    All green is a prerequisite, not a nice-to-have — don't run a live import
    against a codebase with failing tests in the exact pipeline you're about
    to trust.
 
-3. Run `--mode=validate` and read the *entire* output, not just the exit
-   code. This step should be side-effect-free — confirm that from reading
-   `cli.ts`, don't assume it from the flag name.
+3. Run `pnpm --filter @workspace/scripts syllabus:validate` and read the *entire*
+   output, not just the exit code. This step requires a working `DATABASE_URL` —
+   the CLI imports the database module at startup.
 
-4. Run `--mode=import` once. Capture counts.
+4. Run `pnpm --filter @workspace/scripts syllabus:import` once. Capture counts.
 
-5. Run `--mode=import` a second time, same database, same input. **This is
+5. Run `pnpm --filter @workspace/scripts syllabus:import` a second time, same
+   database, same input. **This is
    the step nobody skips in a demo and everybody regrets skipping in
-   production.** Diff the counts. Zero new rows, zero changed rows (unless
-   you intentionally changed the source CSVs between runs) is the only
-   passing result.
+   production.** Diff the counts. The current implementation preserves final
+   table row counts and does not accumulate duplicate domain rows, but
+   `learning_outcome_components` undergoes delete-and-reinsert relationship
+   churn. Relationship "created" reporting therefore does not represent only
+   newly created rows. Diff-based relationship synchronization remains deferred
+   technical debt.
 
 6. Check whether `db-upsert.ts` actually respects a `--dry-run` flag if the
    CLI advertises one — read the code path, don't take the `--help` text's
@@ -94,11 +98,16 @@ Read docs/lockdin-architecture-plan.md section 4 and this entire file
 and DATABASE_URL is live and migrated.
 
 1. Read scripts/src/syllabus/manifest.ts and list every subject wired in.
-2. Run the full test suite for parse-csv, normalize, and db-upsert. Paste
-   the results. If anything fails, stop here and report it — do not proceed
+2. Run the full test suite for parse-csv, normalize, and db-upsert:
+   ```bash
+   pnpm --filter @workspace/scripts test
+   ```
+   Paste the results. If anything fails, stop here and report it — do not proceed
    to a live import against a database with failing pipeline tests.
-3. Run --mode=validate and paste the complete output (not a summary).
-4. Ask me to confirm before running --mode=import for the first time.
+3. Run `pnpm --filter @workspace/scripts syllabus:validate` and paste the complete
+   output (not a summary).
+4. Ask me to confirm before running `pnpm --filter @workspace/scripts syllabus:import`
+   for the first time.
 5. After I confirm: run the import once, report per-subject row/unit/topic/
    learning-outcome counts.
 6. Run the import a SECOND time against the same database. Diff the counts
