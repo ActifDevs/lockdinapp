@@ -22,9 +22,14 @@ Each checkpoint directory contains:
 
 ## Other Documentation
 
+- **[supabase-local-setup.md](./supabase-local-setup.md)** — Local Supabase CLI stack, hosted linking, Drizzle vs Supabase migration authority
+- **[lockdin-architecture-plan.md](./lockdin-architecture-plan.md)** — Prototype → production plan (auth, multi-tenancy, sequencing)
+- **[cursor/](./cursor/)** — Phase prompts (environment truth → ship gate)
 - **audit_syllabi_v2.py** - Python script for validating CSV syllabus data
 - **cursor_audit_prompt_v2.md** - Audit prompt documentation
 - **scholr-database-architecture-audit.md** - Detailed database architecture audit (note: references planned Supabase integration, not current state)
+
+**Schema changes on shared DBs:** use `pnpm --filter @workspace/db migrate` (Drizzle). Do not use `supabase db push` for application schema.
 
 ## Documentation Guidelines
 
