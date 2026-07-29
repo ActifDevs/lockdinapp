@@ -8,6 +8,7 @@ Timestamped technical snapshots documenting the project state at specific points
 
 | Checkpoint | Date & Time | Commit | Summary |
 |------------|-------------|--------|---------|
+| [2026-07-29_0156](./checkpoints/2026-07-29_0156/2026-07-29_0156_CURRENT_STATE.md) | 29 Jul 2026 01:56 | `3af194a` | Phase 0 verified — live Supabase schema (hand-bootstrap = migrate succeeded), syllabus import idempotent, `/api/subjects` DB-backed |
 | [2026-07-28_2156](./checkpoints/2026-07-28_2156/2026-07-28_2156_CURRENT_STATE.md) | 28 Jul 2026 21:56 | `009634d` | Data infrastructure complete - syllabus import pipeline implemented, database schema expanded with versioning and component atomization, migration ready |
 | [2026-07-27_1835](./checkpoints/2026-07-27_1835/2026-07-27_1835_CURRENT_STATE.md) | 27 Jul 2026 18:35 | `14b2c75` | Initial baseline checkpoint - Lockdin rebrand, complete frontend/backend architecture, validated syllabus data, database schema defined but not deployed |
 

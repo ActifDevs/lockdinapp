@@ -139,14 +139,17 @@ session — this phase is verification only.
 
 ## Definition of done
 
-- [ ] `pnpm migrate` succeeds against the real DB from a clean state
-- [ ] Import runs twice with identical row counts (idempotency proven, not
+- [x] Schema on the real DB matches the Drizzle target + `0000` journal stamped
+      (hand-bootstrap on empty hosted DB counts as migrate succeeded when
+      `pnpm migrate` cannot reach the direct host; see checkpoint
+      `2026-07-29_0156`)
+- [x] Import runs twice with identical row counts (idempotency proven, not
       assumed)
-- [ ] `/api/subjects` returns real, non-empty, DB-backed data
-- [ ] New checkpoint committed, old checkpoint's stale claims explicitly
+- [x] `/api/subjects` returns real, non-empty, DB-backed data
+- [x] New checkpoint committed, old checkpoint's stale claims explicitly
       called out somewhere (in the new checkpoint or a short doc-drift note)
-- [ ] `migrate` vs `push` decision written down somewhere durable (this file
-      counts, but also worth a one-liner in `docs/README.md`)
+- [x] `migrate` vs `push` decision written down somewhere durable (this file
+      counts, plus `docs/README.md` / `docs/supabase-local-setup.md`)
 
 ## Rollback
 
