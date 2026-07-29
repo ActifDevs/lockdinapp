@@ -89,8 +89,8 @@ that gap before anyone writes a line of new schema.
 
 5. **Verify against the running API, not just the DB.**
    ```bash
-   curl http://localhost:<port>/healthz
-   curl http://localhost:<port>/api/subjects
+   curl http://localhost:3001/api/healthz
+   curl http://localhost:3001/api/subjects
    ```
    Paste the actual JSON. "The DB has rows" and "the API correctly returns
    them" are different claims — `routes/subjects.ts` might have bugs in
@@ -127,8 +127,8 @@ Once I've given you the value:
    outcome counts, then run it again against the same DB and show me a diff
    of the counts. If they differ at all, stop and tell me — do not proceed
    to "fixing" it without discussing what you found first.
-5. Curl /healthz and /api/subjects against the running server and paste the
-   raw response.
+5. Curl /api/healthz on port 3001 and /api/subjects against the running server
+   and paste the raw response.
 6. Only after all of the above pass, draft a new checkpoint file under
    docs/checkpoints/ reflecting verified reality, and explicitly list which
    claims in the old checkpoint were wrong.
@@ -140,9 +140,13 @@ session — this phase is verification only.
 ## Definition of done
 
 - [x] Schema on the real DB matches the Drizzle target + `0000` journal stamped
-      (hand-bootstrap on empty hosted DB counts as migrate succeeded when
-      `pnpm migrate` cannot reach the direct host; see checkpoint
-      `2026-07-29_0156`)
+      (verified outcome: the incremental 0000 migration could not initialize
+      an empty database because it assumes an earlier legacy schema; separately,
+      direct database connectivity failed on the available network because the
+      Supabase direct hostname was IPv6-only. The schema was created manually
+      through the Supabase SQL editor, then the Drizzle migration journal was
+      stamped; later application access and imports used the session pooler.
+      See checkpoint `2026-07-29_0156`)
 - [x] Import runs twice with identical row counts (idempotency proven, not
       assumed)
 - [x] `/api/subjects` returns real, non-empty, DB-backed data
@@ -150,6 +154,12 @@ session — this phase is verification only.
       called out somewhere (in the new checkpoint or a short doc-drift note)
 - [x] `migrate` vs `push` decision written down somewhere durable (this file
       counts, plus `docs/README.md` / `docs/supabase-local-setup.md`)
+
+## Remaining technical debt
+
+A reproducible baseline migration for a completely empty PostgreSQL database
+is still required. A fresh environment must eventually be constructible without
+manually recreating tables and stamping the migration journal.
 
 ## Rollback
 
