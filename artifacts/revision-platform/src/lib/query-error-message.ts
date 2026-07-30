@@ -5,7 +5,7 @@ export function getQueryErrorMessage(error: unknown): string {
 
   const message = error.message.trim();
   if (message === "HTTP 500 Internal Server Error" || /^HTTP 5\d\d/.test(message)) {
-    return "The API server is not running or returned an error. From the project root, run pnpm dev to start the frontend and API together.";
+    return "The dashboard API returned a server error. Please retry while we investigate.";
   }
 
   if (/fetch failed|Failed to fetch|NetworkError|ECONNREFUSED/i.test(message)) {
