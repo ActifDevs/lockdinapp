@@ -33,8 +33,8 @@ explicit sign-off before writing the middleware wiring, rather than
 defaulting to "just require auth on everything" or "just leave it all open"
 without anyone having actually decided.
 
-`/healthz` stays public, full stop — infra/monitoring needs to hit it
-without a token.
+`/api/healthz` on port 3001 stays public, full stop — infra/monitoring needs
+to hit it without a token.
 
 ### 2. Make auth middleware the default, not opt-in per router
 

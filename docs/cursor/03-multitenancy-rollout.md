@@ -97,15 +97,17 @@ sequencing above.
 ## Table 4 of 4: `user_subjects` — new table, no existing data to migrate
 
 Subject enrollment is currently implicit/global (every subject just... shows
-up). Create `user_subjects` (`user_id`, `subject_id`, enrolled-at timestamp,
-maybe a `target_grade` field if the report's gamification/goal-setting
-features need it — check the report's spec before adding fields
-speculatively). Standard RLS. This one's genuinely additive with no
-backfill complexity, since there's no prior per-user enrollment concept to
-migrate from — every existing test account effectively gets "enrolled" in
-whatever subjects it's currently interacting with, which you can backfill
-simply by looking at which subjects have `tasks` or `past_paper_attempts`
-rows for that user.
+up). Create `user_subjects` (`user_id`, `syllabus_version_id`, `subject_id`,
+enrolled-at timestamp, maybe a `target_grade` field if the report's
+gamification/goal-setting features need it — check the report's spec before
+adding fields speculatively). **Target Phase 3 design:** `user_subjects` must
+reference `syllabus_version_id` alongside `subject_id` to pin each user to a
+specific syllabus version. Shared syllabus records must not be duplicated per
+user. Standard RLS. This one's genuinely additive with no backfill complexity,
+since there's no prior per-user enrollment concept to migrate from — every
+existing test account effectively gets "enrolled" in whatever subjects it's
+currently interacting with, which you can backfill simply by looking at which
+subjects have `tasks` or `past_paper_attempts` rows for that user.
 
 ## Cursor prompt (run once per table — fill in the bracket)
 
