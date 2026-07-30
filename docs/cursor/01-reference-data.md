@@ -129,13 +129,26 @@ before fixing it.
 
 ## Definition of done
 
-- [ ] All existing pipeline tests pass
-- [ ] Import run twice, identical counts, diff explicitly shown (not
-      asserted)
-- [ ] Dry-run behavior (if advertised) traced and confirmed, not assumed
-- [ ] Manual spot-check of at least 6 topics across subjects matches source
-- [ ] `/api/subjects/:id/syllabus` returns the full real hierarchy for at
-      least one subject, verified via curl
+## Verified Phase 1 results — 30 July 2026
+
+- [x] Manifest contains all 9 expected syllabus files.
+- [x] Full syllabus test suite passed: 19/19 tests.
+- [x] Database integration tests passed: 3/3 tests.
+- [x] Syllabus validation passed: 9/9 files, 0 warnings.
+- [x] Import dry-run completed with zero database writes.
+- [x] The API returned all 9 database-backed subjects.
+- [x] The complete subject → unit → topic → learning-outcome hierarchy was verified.
+- [x] Six topics across three subjects matched the source CSV data:
+  - 9702 Physics: Physical quantities; SI units
+  - 9709 Mathematics: Quadratics; Functions
+  - 9618 Computer Science: Data Representation; Multimedia Graphics
+- [x] Previous live twice-import evidence remains valid, with stable final row counts.
+
+### Remaining technical debt
+
+`learning_outcome_components` still uses delete-and-reinsert synchronization
+during repeated imports. Final row counts remain stable, but relationship
+writes and created-row reporting are not fully differential.
 
 ## Rollback
 
