@@ -9,7 +9,8 @@
 - Step 3 status: complete
 - Step 4 status: complete
 - Step 5 status: complete
-- Current next step: production smoke and runbook
+- Step 6 status: complete (baseline smoke + runbook; post-deploy re-smoke still needed for new routes)
+- Batch 1 status: code complete on branch; production deploy of Steps 2–5 pending
 
 ## Batch Goals
 1. Stabilize serverless API/database behavior under real production traffic.
@@ -56,3 +57,8 @@
 - Added a global Express error middleware that returns JSON `{ error: "Internal server error" }` and logs underlying exceptions.
 - Generalized frontend 5xx UX copy so all shared query-error surfaces stay production-safe.
 - Added focused tests for API error handling and frontend failure messaging.
+
+### Step 6
+- Smoked production (`https://lockedin-study.vercel.app`): hot routes 200; concurrent dashboard burst 200.
+- Confirmed `/api/healthz/db` is still 404 on production (Steps 2–5 not fully deployed).
+- Wrote operator runbook for pooler/5xx triage and a post-deploy re-smoke checklist.
