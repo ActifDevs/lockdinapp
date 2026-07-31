@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db, subjectsTable, syllabusTopicsTable, tasksTable, pastPaperAttemptsTable, assessmentComponentsTable, examDatesTable } from "@workspace/db";
 import { GetDashboardSummaryResponse } from "@workspace/api-zod";
 import { computePaperLabel } from "../lib/paper-label";
@@ -10,16 +10,20 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   const today = new Date().toISOString().split("T")[0];
 
   const subjects = await db.select().from(subjectsTable).orderBy(subjectsTable.id);
+  const subjectById = new Map(subjects.map((subject) => [subject.id, subject]));
+  const topics = await db.select().from(syllabusTopicsTable);
+  const topicsBySubjectId = new Map<number, typeof topics>();
+  for (const topic of topics) {
+    const list = topicsBySubjectId.get(topic.subjectId) ?? [];
+    list.push(topic);
+    topicsBySubjectId.set(topic.subjectId, list);
+  }
 
   // Subject progress summary
-  const subjectProgressSummary = await Promise.all(
-    subjects.map(async (subject) => {
-      const topics = await db
-        .select()
-        .from(syllabusTopicsTable)
-        .where(eq(syllabusTopicsTable.subjectId, subject.id));
-      const topicsTotal = topics.length;
-      const topicsCompleted = topics.filter((t) => t.status === "completed").length;
+  const subjectProgressSummary = subjects.map((subject) => {
+      const subjectTopics = topicsBySubjectId.get(subject.id) ?? [];
+      const topicsTotal = subjectTopics.length;
+      const topicsCompleted = subjectTopics.filter((t) => t.status === "completed").length;
       const syllabusProgress = topicsTotal > 0 ? Math.round((topicsCompleted / topicsTotal) * 100) : 0;
       return {
         subjectId: subject.id,
@@ -27,20 +31,18 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
         subjectColor: subject.color,
         syllabusProgress,
       };
-    })
-  );
+  });
 
   // Today's tasks
   const allTasks = await db
     .select()
     .from(tasksTable)
     .orderBy(tasksTable.deadline, tasksTable.createdAt);
+  const topicById = new Map(topics.map((topic) => [topic.id, topic]));
 
-  const enrichTask = async (task: typeof tasksTable.$inferSelect) => {
-    const [subject] = await db.select().from(subjectsTable).where(eq(subjectsTable.id, task.subjectId));
-    const [topic] = task.topicId
-      ? await db.select().from(syllabusTopicsTable).where(eq(syllabusTopicsTable.id, task.topicId))
-      : [null];
+  const enrichTask = (task: typeof tasksTable.$inferSelect) => {
+    const subject = subjectById.get(task.subjectId) ?? null;
+    const topic = task.topicId ? topicById.get(task.topicId) ?? null : null;
     return {
       ...task,
       subjectName: subject?.name ?? "Unknown",
@@ -53,11 +55,11 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
     };
   };
 
-  const todayTasks = await Promise.all(
+  const todayTasks = (
     allTasks.filter((t) => !t.completed && t.deadline === today).map(enrichTask)
   );
 
-  const upcomingDeadlines = await Promise.all(
+  const upcomingDeadlines = (
     allTasks
       .filter((t) => !t.completed && t.deadline && t.deadline >= today)
       .slice(0, 5)
@@ -65,23 +67,39 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   );
 
   // Recent performance
-  const recentPerformance = await Promise.all(
-    subjects.map(async (subject) => {
-      const papers = await db
-        .select()
-        .from(pastPaperAttemptsTable)
-        .where(eq(pastPaperAttemptsTable.subjectId, subject.id))
-        .orderBy(pastPaperAttemptsTable.dateAttempted);
+  const allPapers = await db
+    .select()
+    .from(pastPaperAttemptsTable)
+    .orderBy(pastPaperAttemptsTable.subjectId, pastPaperAttemptsTable.dateAttempted);
+  const papersBySubjectId = new Map<number, typeof allPapers>();
+  for (const paper of allPapers) {
+    const list = papersBySubjectId.get(paper.subjectId) ?? [];
+    list.push(paper);
+    papersBySubjectId.set(paper.subjectId, list);
+  }
+  const latestComponentIds = [...new Set(
+    subjects
+      .map((subject) => {
+        const papers = papersBySubjectId.get(subject.id) ?? [];
+        return papers.length > 0 ? papers[papers.length - 1]?.componentId ?? null : null;
+      })
+      .filter((id): id is number => id !== null)
+  )];
+  const latestComponents = latestComponentIds.length > 0
+    ? await db.select().from(assessmentComponentsTable).where(inArray(assessmentComponentsTable.id, latestComponentIds))
+    : [];
+  const componentById = new Map(latestComponents.map((component) => [component.id, component]));
 
+  const recentPerformance = subjects.map((subject) => {
+      const papers = papersBySubjectId.get(subject.id) ?? [];
       if (papers.length === 0) return null;
 
       const latestPaper = papers[papers.length - 1];
       const previousPaper = papers.length >= 2 ? papers[papers.length - 2] : null;
       const change = previousPaper ? latestPaper.percentage - previousPaper.percentage : null;
-
-      const [latestComponent] = latestPaper.componentId
-        ? await db.select().from(assessmentComponentsTable).where(eq(assessmentComponentsTable.id, latestPaper.componentId))
-        : [null];
+      const latestComponent = latestPaper.componentId !== null
+        ? componentById.get(latestPaper.componentId) ?? null
+        : null;
 
       return {
         subjectId: subject.id,
@@ -97,8 +115,7 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
         latestPercentage: latestPaper.percentage,
         change,
       };
-    })
-  );
+  });
 
   // Upcoming exams
   const upcomingExams = await db
@@ -106,17 +123,15 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
     .from(examDatesTable)
     .orderBy(examDatesTable.date);
 
-  const enrichedExams = await Promise.all(
-    upcomingExams.slice(0, 5).map(async (exam) => {
-      const [subject] = await db.select().from(subjectsTable).where(eq(subjectsTable.id, exam.subjectId));
-      return {
-        ...exam,
-        subjectName: subject?.name ?? "Unknown",
-        subjectColor: subject?.color ?? "#6366f1",
-        notes: exam.notes ?? null,
-      };
-    })
-  );
+  const enrichedExams = upcomingExams.slice(0, 5).map((exam) => {
+    const subject = subjectById.get(exam.subjectId) ?? null;
+    return {
+      ...exam,
+      subjectName: subject?.name ?? "Unknown",
+      subjectColor: subject?.color ?? "#6366f1",
+      notes: exam.notes ?? null,
+    };
+  });
 
   // Study streak: count consecutive days with completed tasks
   const completedTasks = allTasks

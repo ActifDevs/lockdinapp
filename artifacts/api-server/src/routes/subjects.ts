@@ -80,7 +80,76 @@ async function enrichSubject(subject: typeof subjectsTable.$inferSelect) {
 
 router.get("/subjects", async (_req, res): Promise<void> => {
   const subjects = await db.select().from(subjectsTable).orderBy(subjectsTable.id);
-  const result = await Promise.all(subjects.map(enrichSubject));
+
+  const topics = await db.select().from(syllabusTopicsTable);
+  const topicsBySubjectId = new Map<number, typeof topics>();
+  for (const topic of topics) {
+    const list = topicsBySubjectId.get(topic.subjectId) ?? [];
+    list.push(topic);
+    topicsBySubjectId.set(topic.subjectId, list);
+  }
+
+  const tasks = await db.select().from(tasksTable);
+  const tasksBySubjectId = new Map<number, typeof tasks>();
+  for (const task of tasks) {
+    const list = tasksBySubjectId.get(task.subjectId) ?? [];
+    list.push(task);
+    tasksBySubjectId.set(task.subjectId, list);
+  }
+
+  const recentPapers = await db
+    .select()
+    .from(pastPaperAttemptsTable)
+    .orderBy(pastPaperAttemptsTable.subjectId, desc(pastPaperAttemptsTable.dateAttempted));
+  const recentPaperBySubjectId = new Map<number, (typeof recentPapers)[number]>();
+  for (const paper of recentPapers) {
+    if (!recentPaperBySubjectId.has(paper.subjectId)) {
+      recentPaperBySubjectId.set(paper.subjectId, paper);
+    }
+  }
+
+  const componentIds = [...new Set(
+    [...recentPaperBySubjectId.values()]
+      .map((paper) => paper.componentId)
+      .filter((id): id is number => id !== null)
+  )];
+  const components = componentIds.length > 0
+    ? await db.select().from(assessmentComponentsTable).where(inArray(assessmentComponentsTable.id, componentIds))
+    : [];
+  const componentById = new Map(components.map((component) => [component.id, component]));
+
+  const result = subjects.map((subject) => {
+    const subjectTopics = topicsBySubjectId.get(subject.id) ?? [];
+    const topicsTotal = subjectTopics.length;
+    const topicsCompleted = subjectTopics.filter((t) => t.status === "completed").length;
+    const topicsInProgress = subjectTopics.filter((t) => t.status === "in_progress").length;
+    const syllabusProgress = topicsTotal > 0 ? Math.round((topicsCompleted / topicsTotal) * 100) : 0;
+
+    const subjectTasks = tasksBySubjectId.get(subject.id) ?? [];
+    const upcomingTasksCount = subjectTasks.filter((t) => !t.completed).length;
+
+    const recentPaper = recentPaperBySubjectId.get(subject.id) ?? null;
+    const recentPaperLabel = recentPaper
+      ? computePaperLabel({
+          subjectCode: subject.code,
+          component: recentPaper.componentId !== null ? componentById.get(recentPaper.componentId) ?? null : null,
+          variant: recentPaper.variant,
+          session: recentPaper.session,
+        })
+      : null;
+
+    return {
+      ...subject,
+      syllabusProgress,
+      topicsTotal,
+      topicsCompleted,
+      topicsInProgress,
+      upcomingTasksCount,
+      recentPaperScore: recentPaper ? recentPaper.percentage : null,
+      recentPaperLabel,
+    };
+  });
+
   res.json(ListSubjectsResponse.parse(result));
 });
 

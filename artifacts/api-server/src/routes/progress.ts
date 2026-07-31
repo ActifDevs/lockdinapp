@@ -1,5 +1,4 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
 import { db, subjectsTable, syllabusTopicsTable, tasksTable, pastPaperAttemptsTable } from "@workspace/db";
 import { GetProgressOverviewResponse } from "@workspace/api-zod";
 
@@ -7,16 +6,29 @@ const router: IRouter = Router();
 
 router.get("/progress/overview", async (req, res): Promise<void> => {
   const subjects = await db.select().from(subjectsTable).orderBy(subjectsTable.id);
+  const topics = await db.select().from(syllabusTopicsTable);
+  const topicsBySubjectId = new Map<number, typeof topics>();
+  for (const topic of topics) {
+    const list = topicsBySubjectId.get(topic.subjectId) ?? [];
+    list.push(topic);
+    topicsBySubjectId.set(topic.subjectId, list);
+  }
+  const allPapers = await db
+    .select()
+    .from(pastPaperAttemptsTable)
+    .orderBy(pastPaperAttemptsTable.subjectId, pastPaperAttemptsTable.dateAttempted);
+  const papersBySubjectId = new Map<number, typeof allPapers>();
+  for (const paper of allPapers) {
+    const list = papersBySubjectId.get(paper.subjectId) ?? [];
+    list.push(paper);
+    papersBySubjectId.set(paper.subjectId, list);
+  }
 
   // Syllabus completion per subject
-  const syllabusCompletion = await Promise.all(
-    subjects.map(async (subject) => {
-      const topics = await db
-        .select()
-        .from(syllabusTopicsTable)
-        .where(eq(syllabusTopicsTable.subjectId, subject.id));
-      const topicsTotal = topics.length;
-      const topicsCompleted = topics.filter((t) => t.status === "completed").length;
+  const syllabusCompletion = subjects.map((subject) => {
+      const subjectTopics = topicsBySubjectId.get(subject.id) ?? [];
+      const topicsTotal = subjectTopics.length;
+      const topicsCompleted = subjectTopics.filter((t) => t.status === "completed").length;
       const syllabusProgress = topicsTotal > 0 ? Math.round((topicsCompleted / topicsTotal) * 100) : 0;
       return {
         subjectId: subject.id,
@@ -24,8 +36,7 @@ router.get("/progress/overview", async (req, res): Promise<void> => {
         subjectColor: subject.color,
         syllabusProgress,
       };
-    })
-  );
+  });
 
   const overallSyllabusProgress =
     syllabusCompletion.length > 0
@@ -46,20 +57,11 @@ router.get("/progress/overview", async (req, res): Promise<void> => {
   }
 
   // Subject attention needed
-  const subjectAttentionNeeded = await Promise.all(
-    subjects.map(async (subject) => {
-      const papers = await db
-        .select()
-        .from(pastPaperAttemptsTable)
-        .where(eq(pastPaperAttemptsTable.subjectId, subject.id))
-        .orderBy(pastPaperAttemptsTable.dateAttempted);
-
-      const topics = await db
-        .select()
-        .from(syllabusTopicsTable)
-        .where(eq(syllabusTopicsTable.subjectId, subject.id));
-      const topicsTotal = topics.length;
-      const topicsCompleted = topics.filter((t) => t.status === "completed").length;
+  const subjectAttentionNeeded = subjects.map((subject) => {
+      const papers = papersBySubjectId.get(subject.id) ?? [];
+      const subjectTopics = topicsBySubjectId.get(subject.id) ?? [];
+      const topicsTotal = subjectTopics.length;
+      const topicsCompleted = subjectTopics.filter((t) => t.status === "completed").length;
       const syllabusProgress = topicsTotal > 0 ? Math.round((topicsCompleted / topicsTotal) * 100) : 0;
 
       let recentScoreTrend: number | null = null;
@@ -83,11 +85,9 @@ router.get("/progress/overview", async (req, res): Promise<void> => {
       return needsAttention
         ? { subjectId: subject.id, subjectName: subject.name, subjectColor: subject.color, reason, syllabusProgress, recentScoreTrend }
         : null;
-    })
-  );
+  });
 
   const totalTasksCompleted = allTasks.filter((t) => t.completed).length;
-  const allPapers = await db.select().from(pastPaperAttemptsTable);
   const totalPapersLogged = allPapers.length;
 
   res.json(
