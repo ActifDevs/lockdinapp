@@ -1,6 +1,8 @@
 /**
- * Fail clearly unless local Supabase is running on localhost/127.0.0.1.
+ * Fail clearly unless local Supabase is running on an exact loopback hostname.
  * Never falls back to hosted Supabase. Used by `pnpm test:integration`.
+ *
+ * Helpers are exported for unit tests; status validation runs only on direct execution.
  */
 import { execFileSync } from "node:child_process";
 import path from "node:path";
@@ -9,54 +11,90 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../..");
 
-function fail(message) {
-  console.error(`\n[test:integration] ${message}\n`);
-  process.exit(1);
+const LOOPBACK_HOSTNAMES = new Set([
+  "localhost",
+  "127.0.0.1",
+  "::1",
+  "[::1]",
+]);
+
+export function isLoopbackUrl(value) {
+  if (typeof value !== "string" || value.trim() === "") {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(value);
+    return LOOPBACK_HOSTNAMES.has(parsed.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
 }
 
-let raw;
-try {
-  raw = execFileSync("pnpm", ["exec", "supabase", "status", "-o", "json"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
+export function assertLoopbackUrl(name, value) {
+  if (!isLoopbackUrl(value)) {
+    throw new Error(
+      `[test:integration] ${name} must use an exact loopback hostname`,
+    );
+  }
+}
+
+async function main() {
+  let raw;
+  try {
+    raw = execFileSync("pnpm", ["exec", "supabase", "status", "-o", "json"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch {
+    throw new Error(
+      "[test:integration] Local Supabase is unavailable. Start it with " +
+        "`pnpm supabase:start` (or `pnpm exec supabase start`) and re-run " +
+        "`pnpm test:integration`. This command never falls back to hosted Supabase.",
+    );
+  }
+
+  let status;
+  try {
+    status = JSON.parse(raw);
+  } catch {
+    throw new Error(
+      "[test:integration] Could not parse `supabase status -o json` output.",
+    );
+  }
+
+  const apiUrl = status.API_URL ?? "";
+  const dbUrl = status.DB_URL ?? "";
+
+  assertLoopbackUrl("API_URL", apiUrl);
+  assertLoopbackUrl("DB_URL", dbUrl);
+
+  if (!status.PUBLISHABLE_KEY && !status.ANON_KEY) {
+    throw new Error(
+      "[test:integration] Local Supabase status is missing PUBLISHABLE_KEY / ANON_KEY.",
+    );
+  }
+  if (!status.SERVICE_ROLE_KEY) {
+    throw new Error(
+      "[test:integration] Local Supabase status is missing SERVICE_ROLE_KEY.",
+    );
+  }
+
+  console.log("[test:integration] Local Supabase loopback URLs verified");
+}
+
+const isDirectExecution =
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+
+if (isDirectExecution) {
+  main().catch((error) => {
+    console.error(
+      error instanceof Error
+        ? error.message
+        : "[test:integration] Local Supabase validation failed",
+    );
+    process.exit(1);
   });
-} catch {
-  fail(
-    "Local Supabase is unavailable. Start it with `pnpm supabase:start` " +
-      "(or `pnpm exec supabase start`) and re-run `pnpm test:integration`. " +
-      "This command never falls back to hosted Supabase.",
-  );
 }
-
-let status;
-try {
-  status = JSON.parse(raw);
-} catch {
-  fail("Could not parse `supabase status -o json` output.");
-}
-
-const apiUrl = status.API_URL ?? "";
-const isLocal =
-  apiUrl.includes("127.0.0.1") || apiUrl.includes("localhost");
-
-if (!apiUrl || !isLocal) {
-  fail(
-    `Supabase API URL is not local (got ${JSON.stringify(apiUrl)}). ` +
-      "Refuse to run integration tests against a non-local project. " +
-      "Never use hosted Supabase for this suite.",
-  );
-}
-
-if (!status.PUBLISHABLE_KEY && !status.ANON_KEY) {
-  fail("Local Supabase status is missing PUBLISHABLE_KEY / ANON_KEY.");
-}
-if (!status.SERVICE_ROLE_KEY) {
-  fail("Local Supabase status is missing SERVICE_ROLE_KEY.");
-}
-if (!status.DB_URL) {
-  fail("Local Supabase status is missing DB_URL.");
-}
-
-console.log(`[test:integration] Local Supabase OK at ${apiUrl}`);
-process.exit(0);

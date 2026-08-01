@@ -17,6 +17,26 @@ import { FEATURE_TEMPORARILY_UNAVAILABLE } from "../lib/feature-quarantine";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../../..");
 
+const LOOPBACK_HOSTNAMES = new Set([
+  "localhost",
+  "127.0.0.1",
+  "::1",
+  "[::1]",
+]);
+
+function isLoopbackUrl(value: string | undefined): boolean {
+  if (!value?.trim()) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(value);
+    return LOOPBACK_HOSTNAMES.has(parsed.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 function loadLocalSupabaseEnv(): {
   url: string;
   publishableKey: string;
@@ -39,9 +59,17 @@ function loadLocalSupabaseEnv(): {
 
   const status = JSON.parse(raw) as Record<string, string>;
   const apiUrl = status.API_URL ?? "";
-  if (!apiUrl.includes("127.0.0.1") && !apiUrl.includes("localhost")) {
+  const dbUrl = status.DB_URL ?? "";
+
+  if (!isLoopbackUrl(apiUrl)) {
     throw new Error(
-      `Refusing non-local Supabase API URL: ${apiUrl}. Hosted projects are forbidden.`,
+      "Integration API_URL must use an exact loopback hostname",
+    );
+  }
+
+  if (!isLoopbackUrl(dbUrl)) {
+    throw new Error(
+      "Integration DB_URL must use an exact loopback hostname",
     );
   }
 
@@ -49,7 +77,7 @@ function loadLocalSupabaseEnv(): {
     url: apiUrl,
     publishableKey: status.PUBLISHABLE_KEY || status.ANON_KEY,
     serviceRoleKey: status.SERVICE_ROLE_KEY,
-    dbUrl: status.DB_URL,
+    dbUrl,
   };
 }
 
@@ -66,8 +94,11 @@ describe("two-user local Supabase task isolation (exact)", () => {
   let subjectId = 0;
   let topicId: number | null = null;
 
+  // A1 incomplete due today; A2 completed due today; A3 completed, no deadline
   let dueAId = 0;
-  let completedAId = 0;
+  let completedDueAId = 0;
+  let completedUndatedAId = 0;
+  // B1 incomplete due today; B2–B4 completed due today
   let dueBId = 0;
   const completedBIds: number[] = [];
 
@@ -130,7 +161,7 @@ describe("two-user local Supabase task isolation (exact)", () => {
     app.use(express.json());
     app.use("/api", router);
 
-    // User A: 1 incomplete due today + 1 completed today
+    // A1: incomplete due today
     const createDueA = await request(app)
       .post("/api/tasks")
       .set("Authorization", `Bearer ${tokenA}`)
@@ -143,24 +174,46 @@ describe("two-user local Supabase task isolation (exact)", () => {
     expect(createDueA.status).toBe(201);
     dueAId = createDueA.body.id;
 
-    const createDoneA = await request(app)
+    // A2: completed due today
+    const createDoneDueA = await request(app)
       .post("/api/tasks")
       .set("Authorization", `Bearer ${tokenA}`)
       .send({
-        title: "A completed today",
+        title: "A completed due today",
         subjectId,
         priority: "medium",
         deadline: today,
       });
-    expect(createDoneA.status).toBe(201);
-    completedAId = createDoneA.body.id;
-    const patchA = await request(app)
-      .patch(`/api/tasks/${completedAId}`)
+    expect(createDoneDueA.status).toBe(201);
+    completedDueAId = createDoneDueA.body.id;
+    const patchDoneDueA = await request(app)
+      .patch(`/api/tasks/${completedDueAId}`)
       .set("Authorization", `Bearer ${tokenA}`)
       .send({ completed: true });
-    expect(patchA.status).toBe(200);
+    expect(patchDoneDueA.status).toBe(200);
 
-    // User B: 1 incomplete due today + 3 completed today
+    // A3: completed, no deadline (must not count toward today's mission)
+    const createUndatedA = await request(app)
+      .post("/api/tasks")
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({
+        title: "A completed undated",
+        subjectId,
+        priority: "low",
+      });
+    expect(createUndatedA.status).toBe(201);
+    expect(createUndatedA.body.deadline).toBeNull();
+    completedUndatedAId = createUndatedA.body.id;
+    const patchUndatedA = await request(app)
+      .patch(`/api/tasks/${completedUndatedAId}`)
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({ completed: true });
+    expect(patchUndatedA.status).toBe(200);
+    expect(patchUndatedA.body.completed).toBe(true);
+    expect(patchUndatedA.body.deadline).toBeNull();
+    expect(patchUndatedA.body.completedAt?.split("T")[0]).toBe(today);
+
+    // B1: incomplete due today
     const createDueB = await request(app)
       .post("/api/tasks")
       .set("Authorization", `Bearer ${tokenB}`)
@@ -173,12 +226,13 @@ describe("two-user local Supabase task isolation (exact)", () => {
     expect(createDueB.status).toBe(201);
     dueBId = createDueB.body.id;
 
+    // B2–B4: three completed due today
     for (let i = 1; i <= 3; i++) {
       const created = await request(app)
         .post("/api/tasks")
         .set("Authorization", `Bearer ${tokenB}`)
         .send({
-          title: `B completed today ${i}`,
+          title: `B completed due today ${i}`,
           subjectId,
           priority: "low",
           deadline: today,
@@ -211,7 +265,8 @@ describe("two-user local Supabase task isolation (exact)", () => {
     expect(listA.status).toBe(200);
     const idsA = listA.body.map((t: { id: number }) => t.id);
     expect(idsA).toContain(dueAId);
-    expect(idsA).toContain(completedAId);
+    expect(idsA).toContain(completedDueAId);
+    expect(idsA).toContain(completedUndatedAId);
     expect(idsA).not.toContain(dueBId);
     for (const id of completedBIds) expect(idsA).not.toContain(id);
 
@@ -222,7 +277,8 @@ describe("two-user local Supabase task isolation (exact)", () => {
     const idsB = listB.body.map((t: { id: number }) => t.id);
     expect(idsB).toContain(dueBId);
     expect(idsB).not.toContain(dueAId);
-    expect(idsB).not.toContain(completedAId);
+    expect(idsB).not.toContain(completedDueAId);
+    expect(idsB).not.toContain(completedUndatedAId);
 
     expect(
       (
@@ -252,21 +308,31 @@ describe("two-user local Supabase task isolation (exact)", () => {
     expect(spoof.status).toBe(400);
   });
 
-  it("dashboard exact isolation for A and B", async () => {
+  it("dashboard exact mission and isolation for A and B", async () => {
     const dashA = await request(app)
       .get("/api/dashboard/summary")
       .set("Authorization", `Bearer ${tokenA}`);
     expect(dashA.status).toBe(200);
 
+    expect(dashA.body.todayTasksTotal).toBe(2);
+    expect(dashA.body.todayTasksCompleted).toBe(1);
+
     const todayIdsA = dashA.body.todayTasks.map((t: { id: number }) => t.id);
     const upcomingIdsA = dashA.body.upcomingDeadlines.map((t: { id: number }) => t.id);
+    const allDashIdsA = [...todayIdsA, ...upcomingIdsA];
+
     expect(todayIdsA).toContain(dueAId);
+    expect(todayIdsA).not.toContain(completedDueAId);
+    expect(todayIdsA).not.toContain(completedUndatedAId);
     expect(todayIdsA).not.toContain(dueBId);
+    for (const id of completedBIds) {
+      expect(todayIdsA).not.toContain(id);
+      expect(allDashIdsA).not.toContain(id);
+    }
+    expect(allDashIdsA).not.toContain(dueBId);
     expect(upcomingIdsA).toContain(dueAId);
     expect(upcomingIdsA).not.toContain(dueBId);
-    expect(dashA.body.todayTasksTotal).toBe(1);
-    expect(dashA.body.todayTasksCompleted).toBe(1);
-    // Streak is from A's completions only (at least today).
+
     expect(dashA.body.studyStreakDays).toBeGreaterThanOrEqual(1);
     expect(dashA.body.recentPerformance).toEqual([]);
     expect(dashA.body.upcomingExams).toEqual([]);
@@ -279,28 +345,39 @@ describe("two-user local Supabase task isolation (exact)", () => {
       .set("Authorization", `Bearer ${tokenB}`);
     expect(dashB.status).toBe(200);
 
+    expect(dashB.body.todayTasksTotal).toBe(4);
+    expect(dashB.body.todayTasksCompleted).toBe(3);
+
     const todayIdsB = dashB.body.todayTasks.map((t: { id: number }) => t.id);
     const upcomingIdsB = dashB.body.upcomingDeadlines.map((t: { id: number }) => t.id);
+    const allDashIdsB = [...todayIdsB, ...upcomingIdsB];
+
     expect(todayIdsB).toContain(dueBId);
+    for (const id of completedBIds) expect(todayIdsB).not.toContain(id);
     expect(todayIdsB).not.toContain(dueAId);
+    expect(todayIdsB).not.toContain(completedDueAId);
+    expect(todayIdsB).not.toContain(completedUndatedAId);
+    expect(allDashIdsB).not.toContain(dueAId);
+    expect(allDashIdsB).not.toContain(completedDueAId);
+    expect(allDashIdsB).not.toContain(completedUndatedAId);
     expect(upcomingIdsB).toContain(dueBId);
     expect(upcomingIdsB).not.toContain(dueAId);
-    expect(dashB.body.todayTasksTotal).toBe(1);
-    expect(dashB.body.todayTasksCompleted).toBe(3);
+
     expect(dashB.body.studyStreakDays).toBeGreaterThanOrEqual(1);
-    // Metrics must not combine A+B (A has 1 completed today, B has 3).
-    expect(dashB.body.todayTasksCompleted).not.toBe(
-      dashA.body.todayTasksCompleted + dashB.body.todayTasksCompleted,
-    );
-    expect(dashA.body.todayTasksCompleted + dashB.body.todayTasksCompleted).toBe(4);
+
+    // No combined cross-user mission totals
+    expect(dashA.body.todayTasksTotal).not.toBe(6);
+    expect(dashB.body.todayTasksTotal).not.toBe(6);
+    expect(dashA.body.todayTasksCompleted).not.toBe(4);
+    expect(dashB.body.todayTasksCompleted).not.toBe(4);
   });
 
-  it("progress exact isolation for A and B", async () => {
+  it("progress exact isolation and undated completion semantics", async () => {
     const progA = await request(app)
       .get("/api/progress/overview")
       .set("Authorization", `Bearer ${tokenA}`);
     expect(progA.status).toBe(200);
-    expect(progA.body.totalTasksCompleted).toBe(1);
+    expect(progA.body.totalTasksCompleted).toBe(2);
     expect(progA.body.totalPapersLogged).toBe(0);
     expect(progA.body.overallSyllabusProgress).toBe(0);
     for (const item of progA.body.syllabusCompletion) {
@@ -309,7 +386,7 @@ describe("two-user local Supabase task isolation (exact)", () => {
     const weekA = progA.body.weeklyTasksCompleted.find(
       (d: { date: string }) => d.date === today,
     );
-    expect(weekA?.tasksCompleted).toBe(1);
+    expect(weekA?.tasksCompleted).toBe(2);
 
     const progB = await request(app)
       .get("/api/progress/overview")
@@ -321,10 +398,34 @@ describe("two-user local Supabase task isolation (exact)", () => {
     );
     expect(weekB?.tasksCompleted).toBe(3);
 
-    // Neither response contains combined totals.
-    expect(progA.body.totalTasksCompleted + progB.body.totalTasksCompleted).toBe(4);
-    expect(progA.body.totalTasksCompleted).not.toBe(4);
-    expect(progB.body.totalTasksCompleted).not.toBe(4);
+    // Neither response contains combined totals (A2+A3+B2..B4 = 5)
+    expect(progA.body.totalTasksCompleted).not.toBe(5);
+    expect(progB.body.totalTasksCompleted).not.toBe(5);
+    expect(weekA?.tasksCompleted).not.toBe(5);
+    expect(weekB?.tasksCompleted).not.toBe(5);
+
+    // A3: completed undated — weekly/total yes; mission no
+    const listA = await request(app)
+      .get("/api/tasks")
+      .set("Authorization", `Bearer ${tokenA}`);
+    const a3 = listA.body.find((t: { id: number }) => t.id === completedUndatedAId);
+    expect(a3).toBeDefined();
+    expect(a3.completed).toBe(true);
+    expect(a3.deadline).toBeNull();
+    expect(a3.completedAt?.split("T")[0]).toBe(today);
+
+    const dashA = await request(app)
+      .get("/api/dashboard/summary")
+      .set("Authorization", `Bearer ${tokenA}`);
+    expect(dashA.body.todayTasksTotal).toBe(2);
+    expect(dashA.body.todayTasksCompleted).toBe(1);
+    const todayIdsA = dashA.body.todayTasks.map((t: { id: number }) => t.id);
+    expect(todayIdsA).not.toContain(completedUndatedAId);
+
+    const listB = await request(app)
+      .get("/api/tasks")
+      .set("Authorization", `Bearer ${tokenB}`);
+    expect(listB.body.map((t: { id: number }) => t.id)).not.toContain(completedUndatedAId);
   });
 
   it("public subjects have no task-derived values; create/delete blocked", async () => {

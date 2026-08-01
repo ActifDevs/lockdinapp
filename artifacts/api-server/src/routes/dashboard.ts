@@ -14,6 +14,12 @@ const router: IRouter = Router();
  * Past-paper / exam sections are emptied (not multi-tenant yet).
  * subjectProgressSummary uses neutral syllabusProgress = 0 placeholders —
  * shared syllabus_topics.status is not per-user data.
+ *
+ * Today's mission uses the due-today set (deadline === today) only:
+ * - todayTasksTotal = all owned tasks due today
+ * - todayTasksCompleted = completed tasks within that set
+ * - todayTasks = incomplete tasks within that set
+ * completedAt is used for streak only, not for mission totals.
  */
 router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> => {
   const today = new Date().toISOString().split("T")[0];
@@ -37,7 +43,8 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
   }
 
   const allTasks = mappedUserTasks(rows);
-  const todayTaskCores = allTasks.filter((t) => !t.completed && t.deadline === today);
+  const todayDueTasks = allTasks.filter((task) => task.deadline === today);
+  const todayTaskCores = todayDueTasks.filter((task) => !task.completed);
   const upcomingCores = allTasks
     .filter((t) => !t.completed && t.deadline && t.deadline >= today)
     .slice(0, 5);
@@ -70,16 +77,12 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     }
   }
 
-  const todayTasksCompleted = allTasks.filter(
-    (t) => t.completed && t.completedAt && t.completedAt.split("T")[0] === today,
-  ).length;
-
   res.json(
     GetDashboardSummaryResponse.parse({
       studentName: "Student",
       studyStreakDays: streakDays,
-      todayTasksTotal: todayTasks.length,
-      todayTasksCompleted,
+      todayTasksTotal: todayDueTasks.length,
+      todayTasksCompleted: todayDueTasks.filter((task) => task.completed).length,
       todayTasks,
       upcomingDeadlines,
       subjectProgressSummary,
