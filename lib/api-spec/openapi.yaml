@@ -11,19 +11,19 @@ tags:
   - name: health
     description: Health operations
   - name: subjects
-    description: Subject operations
+    description: Public read-only shared subject catalogue (importer/admin-managed reference data)
   - name: syllabus
-    description: Syllabus topic operations
+    description: Syllabus reference reads; per-user progress updates are temporarily unavailable
   - name: tasks
-    description: Revision task operations
+    description: Authenticated revision task operations (user-owned)
   - name: pastPaperAttempts
-    description: Past paper attempt operations (Subject + Component + Variant + Session)
+    description: Past paper attempts — ownership not implemented; temporarily quarantined
   - name: examDates
-    description: Exam date operations
+    description: Exam dates — ownership not implemented; temporarily quarantined
   - name: dashboard
-    description: Dashboard summary operations
+    description: Authenticated dashboard summary (user-owned tasks; neutral syllabus placeholders)
   - name: progress
-    description: Progress and analytics operations
+    description: Authenticated progress overview (user-owned tasks; neutral syllabus placeholders)
 
 paths:
   /healthz:
@@ -43,10 +43,15 @@ paths:
     get:
       operationId: listSubjects
       tags: [subjects]
-      summary: List all subjects for the current user
+      summary: List the shared public subject catalogue
+      description: |
+        Returns importer/admin-managed reference subjects. Not user-scoped.
+        Progress, task-count, and past-paper fields are neutral placeholders
+        (syllabusProgress/topicsCompleted/topicsInProgress = 0; upcomingTasksCount = 0;
+        recent paper fields null) until per-user ownership exists for those features.
       responses:
         "200":
-          description: List of subjects
+          description: Shared catalogue subjects with neutral placeholder enrichment
           content:
             application/json:
               schema:
@@ -56,7 +61,12 @@ paths:
     post:
       operationId: createSubject
       tags: [subjects]
-      summary: Add a subject to the workspace (idempotent by code)
+      summary: Disabled — subject catalogue is read-only shared reference data
+      description: |
+        Ordinary users must not insert into the global catalogue.
+        Subjects are populated by the syllabus importer / admin processes.
+        No admin role is exposed in this API version. No database write is performed.
+      deprecated: true
       requestBody:
         required: true
         content:
@@ -64,24 +74,18 @@ paths:
             schema:
               $ref: "#/components/schemas/SubjectInput"
       responses:
-        "201":
-          description: Subject created
+        "403":
+          description: Catalogue writes are forbidden
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Subject"
-        "200":
-          description: Subject already existed (returned as-is)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Subject"
+                $ref: "#/components/schemas/ErrorMessage"
 
   /subjects/{subjectId}:
     get:
       operationId: getSubject
       tags: [subjects]
-      summary: Get a single subject with detail
+      summary: Get a shared catalogue subject with neutral placeholder enrichment
       parameters:
         - name: subjectId
           in: path
@@ -90,7 +94,7 @@ paths:
             type: integer
       responses:
         "200":
-          description: Subject detail
+          description: Subject detail (progress/task/paper fields are placeholders)
           content:
             application/json:
               schema:
@@ -100,7 +104,10 @@ paths:
     delete:
       operationId: deleteSubject
       tags: [subjects]
-      summary: Remove a subject and its related data
+      summary: Disabled — subject catalogue is read-only shared reference data
+      description: |
+        Ordinary users must not delete catalogue rows. No database delete is performed.
+      deprecated: true
       parameters:
         - name: subjectId
           in: path
@@ -108,16 +115,22 @@ paths:
           schema:
             type: integer
       responses:
-        "204":
-          description: Deleted
-        "404":
-          description: Not found
+        "403":
+          description: Catalogue deletes are forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
 
   /subjects/{subjectId}/syllabus:
     get:
       operationId: getSubjectSyllabus
       tags: [subjects]
-      summary: Get syllabus topics grouped by unit for a subject
+      summary: Get syllabus reference structure for a subject
+      description: |
+        Returns units, topic titles, and learning outcomes from shared reference data.
+        Topic status is always presented as not_started and notes as null —
+        stored shared syllabus_topics.status/notes are not treated as per-user progress.
       parameters:
         - name: subjectId
           in: path
@@ -126,7 +139,7 @@ paths:
             type: integer
       responses:
         "200":
-          description: Syllabus units with topics
+          description: Syllabus units with topics (neutral status/notes placeholders)
           content:
             application/json:
               schema:
@@ -138,7 +151,10 @@ paths:
     get:
       operationId: getSubjectPerformance
       tags: [subjects]
-      summary: Get past paper performance summary for a subject
+      summary: Past-paper performance placeholder (ownership not implemented)
+      description: |
+        Returns a contract-safe empty performance payload. Does not query
+        past_paper_attempts (no per-user ownership yet).
       parameters:
         - name: subjectId
           in: path
@@ -147,11 +163,17 @@ paths:
             type: integer
       responses:
         "200":
-          description: Performance summary
+          description: Empty performance summary placeholder
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/SubjectPerformance"
+        "404":
+          description: Subject not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
 
   /subjects/{subjectId}/assessment-components:
     get:
@@ -178,7 +200,12 @@ paths:
     patch:
       operationId: updateSyllabusTopic
       tags: [syllabus]
-      summary: Update a syllabus topic status or notes
+      summary: Temporarily unavailable — per-user syllabus progress not implemented
+      description: |
+        syllabus_topics.status and notes are shared student-progress fields and
+        must not be mutated until user-owned syllabus progress exists.
+        No database update is performed.
+      deprecated: true
       parameters:
         - name: topicId
           in: path
@@ -192,12 +219,12 @@ paths:
             schema:
               $ref: "#/components/schemas/SyllabusTopicUpdate"
       responses:
-        "200":
-          description: Updated topic
+        "503":
+          description: Feature temporarily unavailable until ownership migration
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SyllabusTopic"
+                $ref: "#/components/schemas/ErrorMessage"
 
   /tasks:
     get:
@@ -329,7 +356,13 @@ paths:
     get:
       operationId: listPastPaperAttempts
       tags: [pastPaperAttempts]
-      summary: List past paper attempts
+      summary: Authenticated empty list — past-paper ownership not implemented
+      description: |
+        Requires Bearer auth. Returns [] without querying past_paper_attempts.
+        Does not expose global attempt rows. Feature is not implemented for
+        multi-tenant use until an ownership migration lands.
+      security:
+        - bearerAuth: []
       parameters:
         - name: subjectId
           in: query
@@ -338,17 +371,27 @@ paths:
             type: integer
       responses:
         "200":
-          description: List of past paper attempts
+          description: Empty list placeholder
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/PastPaperAttempt"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
     post:
       operationId: createPastPaperAttempt
       tags: [pastPaperAttempts]
-      summary: Log a past paper attempt (Subject + Component + Variant + Session)
+      summary: Temporarily unavailable — past-paper ownership not implemented
+      description: No insert is performed. Requires Bearer auth.
+      deprecated: true
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -356,18 +399,28 @@ paths:
             schema:
               $ref: "#/components/schemas/PastPaperAttemptInput"
       responses:
-        "201":
-          description: Created past paper attempt
+        "503":
+          description: Feature temporarily unavailable until ownership migration
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PastPaperAttempt"
+                $ref: "#/components/schemas/ErrorMessage"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
 
   /past-paper-attempts/{pastPaperAttemptId}:
     delete:
       operationId: deletePastPaperAttempt
       tags: [pastPaperAttempts]
-      summary: Delete a past paper attempt
+      summary: Temporarily unavailable — past-paper ownership not implemented
+      description: No delete is performed. Requires Bearer auth.
+      deprecated: true
+      security:
+        - bearerAuth: []
       parameters:
         - name: pastPaperAttemptId
           in: path
@@ -375,27 +428,52 @@ paths:
           schema:
             type: integer
       responses:
-        "204":
-          description: Deleted
+        "503":
+          description: Feature temporarily unavailable until ownership migration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
 
   /exam-dates:
     get:
       operationId: listExamDates
       tags: [examDates]
-      summary: List exam dates
+      summary: Authenticated empty list — exam-date ownership not implemented
+      description: |
+        Requires Bearer auth. Returns [] without querying exam_dates.
+        Does not expose global exam-date rows.
+      security:
+        - bearerAuth: []
       responses:
         "200":
-          description: List of exam dates
+          description: Empty list placeholder
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/ExamDate"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
     post:
       operationId: createExamDate
       tags: [examDates]
-      summary: Add an exam date
+      summary: Temporarily unavailable — exam-date ownership not implemented
+      description: No insert is performed. Requires Bearer auth.
+      deprecated: true
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -403,18 +481,28 @@ paths:
             schema:
               $ref: "#/components/schemas/ExamDateInput"
       responses:
-        "201":
-          description: Created exam date
+        "503":
+          description: Feature temporarily unavailable until ownership migration
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ExamDate"
+                $ref: "#/components/schemas/ErrorMessage"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
 
   /exam-dates/{examDateId}:
     delete:
       operationId: deleteExamDate
       tags: [examDates]
-      summary: Delete an exam date
+      summary: Temporarily unavailable — exam-date ownership not implemented
+      description: No delete is performed. Requires Bearer auth.
+      deprecated: true
+      security:
+        - bearerAuth: []
       parameters:
         - name: examDateId
           in: path
@@ -422,14 +510,28 @@ paths:
           schema:
             type: integer
       responses:
-        "204":
-          description: Deleted
+        "503":
+          description: Feature temporarily unavailable until ownership migration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
 
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
       tags: [dashboard]
-      summary: Get dashboard overview — today's tasks, streak, subject progress
+      summary: Get dashboard overview for the authenticated user
+      description: |
+        Task metrics are Auth-scoped. subjectProgressSummary.syllabusProgress is
+        always 0 (neutral placeholder). recentPerformance and upcomingExams are
+        empty until past-paper/exam ownership exists.
       security:
         - bearerAuth: []
       responses:
@@ -450,7 +552,10 @@ paths:
     get:
       operationId: getProgressOverview
       tags: [progress]
-      summary: Get consolidated progress analytics across all subjects
+      summary: Get progress analytics for the authenticated user
+      description: |
+        Task completion metrics are Auth-scoped. Syllabus completion fields are
+        neutral placeholders (0). Past-paper totals are 0 until ownership exists.
       security:
         - bearerAuth: []
       responses:
@@ -511,6 +616,9 @@ components:
 
     Subject:
       type: object
+      description: |
+        Shared catalogue subject. Progress, task-count, and past-paper fields are
+        neutral placeholders until per-user ownership exists for those features.
       properties:
         id:
           type: integer
@@ -522,18 +630,25 @@ components:
           type: string
         syllabusProgress:
           type: number
+          description: Neutral placeholder; always 0 (not derived from shared topic status)
         topicsTotal:
           type: integer
+          description: Count of syllabus topics in the shared catalogue for this subject
         topicsCompleted:
           type: integer
+          description: Neutral placeholder; always 0
         topicsInProgress:
           type: integer
+          description: Neutral placeholder; always 0
         upcomingTasksCount:
           type: integer
+          description: Neutral placeholder; always 0 (not user-task derived)
         recentPaperScore:
           type: ["number", "null"]
+          description: Neutral placeholder; always null until past-paper ownership
         recentPaperLabel:
           type: ["string", "null"]
+          description: Neutral placeholder; always null until past-paper ownership
       required:
         - id
         - name
@@ -571,6 +686,9 @@ components:
 
     SyllabusTopic:
       type: object
+      description: |
+        Shared syllabus topic reference. status is always presented as not_started
+        and notes as null — stored shared progress fields are not exposed as user data.
       properties:
         id:
           type: integer
@@ -583,8 +701,10 @@ components:
         status:
           type: string
           enum: [not_started, in_progress, completed]
+          description: Neutral placeholder; always not_started in catalogue responses
         notes:
           type: ["string", "null"]
+          description: Neutral placeholder; always null in catalogue responses
         orderIndex:
           type: integer
         learningOutcomes:

@@ -8,15 +8,11 @@ import {
   syllabusLearningOutcomesTable,
   syllabusVersionsTable,
   assessmentComponentsTable,
-  pastPaperAttemptsTable,
 } from "@workspace/db";
 import {
   ListSubjectsResponse,
-  CreateSubjectBody,
-  CreateSubjectResponse,
   GetSubjectParams,
   GetSubjectResponse,
-  DeleteSubjectParams,
   GetSubjectSyllabusParams,
   GetSubjectSyllabusResponse,
   GetSubjectPerformanceParams,
@@ -24,37 +20,26 @@ import {
   ListAssessmentComponentsParams,
   ListAssessmentComponentsResponse,
 } from "@workspace/api-zod";
-import { computePaperLabel } from "../lib/paper-label";
+import { temporarilyUnavailableBody } from "../lib/feature-quarantine";
 
 const router: IRouter = Router();
 
 /**
- * Slice 2 subject-catalogue decision — Approach A:
- * Public pure subject catalogue with no user-specific enrichment.
+ * Shared subject catalogue — public and read-only.
  *
- * - Keeps shared reference fields (id/name/code/color + syllabus topic aggregates).
- * - Sets `upcomingTasksCount` to 0 (no global/user task reads).
- * - Sets recent paper fields to null (paper ownership is not multi-tenant yet).
- * Authenticated task enrichment belongs on /tasks, /dashboard, /progress.
+ * Subjects are importer/admin-managed reference data. Ordinary users must not
+ * create or delete catalogue rows. Syllabus topic status/notes are shared
+ * student-progress fields and are NOT treated as per-user data: catalogue
+ * responses use neutral placeholders (progress 0, status not_started, notes null).
  */
-async function enrichSubjectCatalogue(subject: typeof subjectsTable.$inferSelect) {
-  const topics = await db
-    .select()
-    .from(syllabusTopicsTable)
-    .where(eq(syllabusTopicsTable.subjectId, subject.id));
-
-  const topicsTotal = topics.length;
-  const topicsCompleted = topics.filter((t) => t.status === "completed").length;
-  const topicsInProgress = topics.filter((t) => t.status === "in_progress").length;
-  const syllabusProgress =
-    topicsTotal > 0 ? Math.round((topicsCompleted / topicsTotal) * 100) : 0;
-
+function catalogueEnrichment(subject: typeof subjectsTable.$inferSelect, topicsTotal: number) {
   return {
     ...subject,
-    syllabusProgress,
+    // Neutral placeholders — do not derive from shared syllabus_topics.status.
+    syllabusProgress: 0,
     topicsTotal,
-    topicsCompleted,
-    topicsInProgress,
+    topicsCompleted: 0,
+    topicsInProgress: 0,
     upcomingTasksCount: 0,
     recentPaperScore: null,
     recentPaperLabel: null,
@@ -74,57 +59,20 @@ router.get("/subjects", async (_req, res): Promise<void> => {
 
   const result = subjects.map((subject) => {
     const subjectTopics = topicsBySubjectId.get(subject.id) ?? [];
-    const topicsTotal = subjectTopics.length;
-    const topicsCompleted = subjectTopics.filter((t) => t.status === "completed").length;
-    const topicsInProgress = subjectTopics.filter((t) => t.status === "in_progress").length;
-    const syllabusProgress =
-      topicsTotal > 0 ? Math.round((topicsCompleted / topicsTotal) * 100) : 0;
-
-    return {
-      ...subject,
-      syllabusProgress,
-      topicsTotal,
-      topicsCompleted,
-      topicsInProgress,
-      upcomingTasksCount: 0,
-      recentPaperScore: null,
-      recentPaperLabel: null,
-    };
+    return catalogueEnrichment(subject, subjectTopics.length);
   });
 
   res.json(ListSubjectsResponse.parse(result));
 });
 
-router.post("/subjects", async (req, res): Promise<void> => {
-  const body = CreateSubjectBody.safeParse(req.body);
-  if (!body.success) {
-    res.status(400).json({ error: body.error.message });
-    return;
-  }
-
-  const code = body.data.code.trim();
-  const name = body.data.name.trim();
-  const color = body.data.color.trim();
-
-  const [existing] = await db
-    .select()
-    .from(subjectsTable)
-    .where(eq(subjectsTable.code, code));
-
-  if (existing) {
-    res.status(200).json(CreateSubjectResponse.parse(await enrichSubjectCatalogue(existing)));
-    return;
-  }
-
-  // Syllabus content (units/topics/learning outcomes/components) is populated exclusively
-  // by the syllabus importer against SYLLABUS_IMPORT_MANIFEST — subject creation no longer
-  // seeds placeholder syllabus content now that validated CSV data is the canonical dataset.
-  const [created] = await db
-    .insert(subjectsTable)
-    .values({ name, code, color })
-    .returning();
-
-  res.status(201).json(CreateSubjectResponse.parse(await enrichSubjectCatalogue(created)));
+/**
+ * Disabled: subjects are shared reference data populated by the syllabus importer.
+ * Ordinary users must not insert into the global catalogue. No admin role in Slice 2.
+ */
+router.post("/subjects", async (_req, res): Promise<void> => {
+  res.status(403).json({
+    error: "Subject catalogue is read-only shared reference data (importer/admin managed)",
+  });
 });
 
 router.get("/subjects/:subjectId", async (req, res): Promise<void> => {
@@ -144,27 +92,22 @@ router.get("/subjects/:subjectId", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(GetSubjectResponse.parse(await enrichSubjectCatalogue(subject)));
+  const topics = await db
+    .select()
+    .from(syllabusTopicsTable)
+    .where(eq(syllabusTopicsTable.subjectId, subject.id));
+
+  res.json(GetSubjectResponse.parse(catalogueEnrichment(subject, topics.length)));
 });
 
-router.delete("/subjects/:subjectId", async (req, res): Promise<void> => {
-  const params = DeleteSubjectParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-
-  const [deleted] = await db
-    .delete(subjectsTable)
-    .where(eq(subjectsTable.id, params.data.subjectId))
-    .returning();
-
-  if (!deleted) {
-    res.status(404).json({ error: "Subject not found" });
-    return;
-  }
-
-  res.status(204).send();
+/**
+ * Disabled: subjects are shared reference data. Ordinary users must not delete
+ * catalogue rows. No Drizzle delete is performed.
+ */
+router.delete("/subjects/:subjectId", async (_req, res): Promise<void> => {
+  res.status(403).json({
+    error: "Subject catalogue is read-only shared reference data (importer/admin managed)",
+  });
 });
 
 router.get("/subjects/:subjectId/syllabus", async (req, res): Promise<void> => {
@@ -182,7 +125,11 @@ router.get("/subjects/:subjectId/syllabus", async (req, res): Promise<void> => {
 
   const unitIds = units.map((u) => u.id);
   const topics = unitIds.length
-    ? await db.select().from(syllabusTopicsTable).where(inArray(syllabusTopicsTable.unitId, unitIds)).orderBy(syllabusTopicsTable.orderIndex)
+    ? await db
+        .select()
+        .from(syllabusTopicsTable)
+        .where(inArray(syllabusTopicsTable.unitId, unitIds))
+        .orderBy(syllabusTopicsTable.orderIndex)
     : [];
 
   const topicIds = topics.map((t) => t.id);
@@ -201,11 +148,17 @@ router.get("/subjects/:subjectId/syllabus", async (req, res): Promise<void> => {
     outcomesByTopicId.set(outcome.topicId, list);
   }
 
+  // Neutralise shared status/notes — titles and learning outcomes remain.
   const result = units.map((unit) => ({
     ...unit,
     topics: topics
       .filter((t) => t.unitId === unit.id)
-      .map((topic) => ({ ...topic, learningOutcomes: outcomesByTopicId.get(topic.id) ?? [] })),
+      .map((topic) => ({
+        ...topic,
+        status: "not_started" as const,
+        notes: null,
+        learningOutcomes: outcomesByTopicId.get(topic.id) ?? [],
+      })),
   }));
 
   res.json(GetSubjectSyllabusResponse.parse(result));
@@ -221,7 +174,12 @@ router.get("/subjects/:subjectId/assessment-components", async (req, res): Promi
   const [currentVersion] = await db
     .select()
     .from(syllabusVersionsTable)
-    .where(and(eq(syllabusVersionsTable.subjectId, params.data.subjectId), eq(syllabusVersionsTable.isCurrent, true)));
+    .where(
+      and(
+        eq(syllabusVersionsTable.subjectId, params.data.subjectId),
+        eq(syllabusVersionsTable.isCurrent, true),
+      ),
+    );
 
   if (!currentVersion) {
     res.json(ListAssessmentComponentsResponse.parse([]));
@@ -241,6 +199,10 @@ router.get("/subjects/:subjectId/assessment-components", async (req, res): Promi
   );
 });
 
+/**
+ * Quarantined: past_paper_attempts are not multi-tenant yet.
+ * No query of pastPaperAttemptsTable. Contract-safe empty performance payload.
+ */
 router.get("/subjects/:subjectId/performance", async (req, res): Promise<void> => {
   const params = GetSubjectPerformanceParams.safeParse(req.params);
   if (!params.success) {
@@ -258,67 +220,19 @@ router.get("/subjects/:subjectId/performance", async (req, res): Promise<void> =
     return;
   }
 
-  const papers = await db
-    .select()
-    .from(pastPaperAttemptsTable)
-    .where(eq(pastPaperAttemptsTable.subjectId, params.data.subjectId))
-    .orderBy(pastPaperAttemptsTable.dateAttempted);
-
-  const latestScore = papers.length > 0 ? papers[papers.length - 1].percentage : null;
-  const averageScore =
-    papers.length > 0 ? Math.round(papers.reduce((acc, p) => acc + p.percentage, 0) / papers.length) : null;
-  const bestScore = papers.length > 0 ? Math.max(...papers.map((p) => p.percentage)) : null;
-
-  const trend = papers.map((p, idx) => ({
-    label: `Paper ${idx + 1}`,
-    percentage: p.percentage,
-    session: p.session,
-  }));
-
-  const componentIds = [...new Set(papers.map((p) => p.componentId).filter((id): id is number => id !== null))];
-  const components = componentIds.length
-    ? await db.select().from(assessmentComponentsTable).where(inArray(assessmentComponentsTable.id, componentIds))
-    : [];
-  const componentById = new Map(components.map((c) => [c.id, c]));
-
-  const componentMap = new Map<string, { componentId: number | null; componentName: string; percentages: number[] }>();
-  for (const p of papers) {
-    const key = p.componentId !== null ? String(p.componentId) : "unknown";
-    const componentName = p.componentId !== null ? componentById.get(p.componentId)?.componentName ?? "Unknown component" : "Unknown component";
-    if (!componentMap.has(key)) componentMap.set(key, { componentId: p.componentId, componentName, percentages: [] });
-    componentMap.get(key)!.percentages.push(p.percentage);
-  }
-
-  const componentBreakdown = Array.from(componentMap.values()).map((data) => ({
-    componentId: data.componentId,
-    componentName: data.componentName,
-    latestPercentage: data.percentages[data.percentages.length - 1] ?? null,
-    attempts: data.percentages.length,
-  }));
-
-  let insight: string | null = null;
-  if (papers.length >= 3) {
-    const last3 = papers.slice(-3);
-    const isImproving = last3[2].percentage > last3[0].percentage;
-    if (isImproving) {
-      insight = `${subject.name} is improving — your last three papers showed consistent growth.`;
-    } else {
-      insight = `${subject.name} may need extra attention — consider reviewing weak topics before the next paper.`;
-    }
-  }
-
+  // Intentionally empty — do not leak global past-paper attempts.
   res.json(
     GetSubjectPerformanceResponse.parse({
       subjectId: subject.id,
       subjectName: subject.name,
-      latestScore,
-      averageScore,
-      bestScore,
-      papersCompleted: papers.length,
-      trend,
-      componentBreakdown,
-      insight,
-    })
+      latestScore: null,
+      averageScore: null,
+      bestScore: null,
+      papersCompleted: 0,
+      trend: [],
+      componentBreakdown: [],
+      insight: null,
+    }),
   );
 });
 

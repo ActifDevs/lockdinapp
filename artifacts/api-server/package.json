@@ -9,7 +9,8 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./start.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:integration": "node ./scripts/require-local-supabase.mjs && vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",

@@ -10,6 +10,7 @@ export * from './assessmentComponent';
 export * from './attentionItem';
 export * from './componentBreakdown';
 export * from './dashboardSummary';
+export * from './errorMessage';
 export * from './examDate';
 export * from './examDateInput';
 export * from './healthStatus';

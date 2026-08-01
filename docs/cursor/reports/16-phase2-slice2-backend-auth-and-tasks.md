@@ -1,5 +1,8 @@
 # Phase 2 Slice 2 — Backend Auth and Complete Task Isolation
 
+> **Superseded in part by** [`18-phase2-slice2-remote-review-corrections.md`](./18-phase2-slice2-remote-review-corrections.md).
+> Remote review of `dff86e9` required security/test/performance corrections. Exact two-user dashboard assertions, subject write quarantine, unowned-feature quarantine, bulk enrichment, and the non-skipping `test:integration` command are documented in report 18 — do not treat this report’s isolation claims as final without 18.
+
 **Status:** Backend Auth + user-scoped task isolation implemented and tested against **local Supabase only**. Not committed. Not pushed. Hosted migration/task deletion not performed.
 **Branch:** `auth-and-tasks`
 **Starting commit:** `484e70db85d9079a3f5a4a23d1790e93026a6bda`

@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * Neutral placeholder; always not_started in catalogue responses
+ */
 export type SyllabusTopicStatus = typeof SyllabusTopicStatus[keyof typeof SyllabusTopicStatus];
 
 

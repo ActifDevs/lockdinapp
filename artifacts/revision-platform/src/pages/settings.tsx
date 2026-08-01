@@ -131,10 +131,13 @@ export default function Settings() {
 
   const createSubject = useCreateSubject({
     mutation: {
-      onSuccess: (subject) => {
+      onSuccess: () => {
         invalidateSubjects();
         setAddOpen(false);
-        toast({ title: `${subject.name} added`, description: "Starter syllabus topics are ready." });
+        toast({
+          title: "Subject added",
+          description: "Starter syllabus topics are ready.",
+        });
       },
       onError: (err) => {
         toast({

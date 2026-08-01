@@ -5,6 +5,10 @@
  * A-Level Revision Platform API
  * OpenAPI spec version: 0.1.0
  */
+export interface ErrorMessage {
+  error: string;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -18,22 +22,40 @@ export interface SubjectInput {
   color: string;
 }
 
+/**
+ * Shared catalogue subject. Progress, task-count, and past-paper fields are
+ * neutral placeholders until per-user ownership exists for those features.
+ */
 export interface Subject {
   id: number;
   name: string;
   code: string;
   color: string;
+  /** Neutral placeholder; always 0 (not derived from shared topic status) */
   syllabusProgress: number;
+  /** Count of syllabus topics in the shared catalogue for this subject */
   topicsTotal: number;
+  /** Neutral placeholder; always 0 */
   topicsCompleted: number;
+  /** Neutral placeholder; always 0 */
   topicsInProgress: number;
+  /** Neutral placeholder; always 0 (not user-task derived) */
   upcomingTasksCount: number;
-  /** @nullable */
+  /**
+     * Neutral placeholder; always null until past-paper ownership
+     * @nullable
+     */
   recentPaperScore: number | null;
-  /** @nullable */
+  /**
+     * Neutral placeholder; always null until past-paper ownership
+     * @nullable
+     */
   recentPaperLabel: string | null;
 }
 
+/**
+ * Neutral placeholder; always not_started in catalogue responses
+ */
 export type SyllabusTopicStatus = typeof SyllabusTopicStatus[keyof typeof SyllabusTopicStatus];
 
 
@@ -43,13 +65,21 @@ export const SyllabusTopicStatus = {
   completed: 'completed',
 } as const;
 
+/**
+ * Shared syllabus topic reference. status is always presented as not_started
+ * and notes as null — stored shared progress fields are not exposed as user data.
+ */
 export interface SyllabusTopic {
   id: number;
   unitId: number;
   subjectId: number;
   title: string;
+  /** Neutral placeholder; always not_started in catalogue responses */
   status: SyllabusTopicStatus;
-  /** @nullable */
+  /**
+     * Neutral placeholder; always null in catalogue responses
+     * @nullable
+     */
   notes: string | null;
   orderIndex: number;
   learningOutcomes: string[];

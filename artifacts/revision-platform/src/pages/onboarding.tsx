@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { SUBJECT_CATALOG } from "@/lib/subject-catalog";
-import { createSubject, createTask } from "@workspace/api-client-react";
+import { createSubject, createTask, type Subject } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronRight, Loader2 } from "lucide-react";
 import { IllustCalm } from "@/components/illustrations";
@@ -34,16 +34,18 @@ export default function Onboarding() {
     setError(null);
     try {
       const today = new Date().toISOString().split("T")[0]!;
-      const createdSubjects = [];
+      const createdSubjects: Subject[] = [];
 
       for (const code of selectedCodes) {
         const catalog = SUBJECT_CATALOG.find((s) => s.code === code);
         if (!catalog) continue;
-        const subject = await createSubject({
+        // Subject POST is currently disabled (shared catalogue). Cast preserves
+        // compile-time shape until onboarding is rewired to catalogue selection only.
+        const subject = (await createSubject({
           name: catalog.name,
           code: catalog.code,
           color: catalog.color,
-        });
+        })) as Subject;
         createdSubjects.push(subject);
       }
 
