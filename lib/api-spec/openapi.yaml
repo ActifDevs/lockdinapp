@@ -203,7 +203,9 @@ paths:
     get:
       operationId: listTasks
       tags: [tasks]
-      summary: List revision tasks
+      summary: List revision tasks for the authenticated user
+      security:
+        - bearerAuth: []
       parameters:
         - name: filter
           in: query
@@ -225,10 +227,18 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Task"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
     post:
       operationId: createTask
       tags: [tasks]
-      summary: Create a new revision task
+      summary: Create a new revision task owned by the authenticated user
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -242,12 +252,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Task"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
 
   /tasks/{taskId}:
     patch:
       operationId: updateTask
       tags: [tasks]
-      summary: Update a task (mark complete, change deadline, etc.)
+      summary: Update a task owned by the authenticated user
+      security:
+        - bearerAuth: []
       parameters:
         - name: taskId
           in: path
@@ -267,10 +285,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Task"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Task not found or not owned by the caller
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
     delete:
       operationId: deleteTask
       tags: [tasks]
-      summary: Delete a task
+      summary: Delete a task owned by the authenticated user
+      security:
+        - bearerAuth: []
       parameters:
         - name: taskId
           in: path
@@ -280,6 +312,18 @@ paths:
       responses:
         "204":
           description: Deleted
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Task not found or not owned by the caller
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
 
   /past-paper-attempts:
     get:
@@ -386,6 +430,8 @@ paths:
       operationId: getDashboardSummary
       tags: [dashboard]
       summary: Get dashboard overview — today's tasks, streak, subject progress
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: Dashboard summary
@@ -393,12 +439,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
 
   /progress/overview:
     get:
       operationId: getProgressOverview
       tags: [progress]
       summary: Get consolidated progress analytics across all subjects
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: Progress overview
@@ -406,9 +460,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProgressOverview"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase Auth access token (Authorization Bearer). Required for task-owned routes.
+
   schemas:
+    ErrorMessage:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
     HealthStatus:
       type: object
       properties:

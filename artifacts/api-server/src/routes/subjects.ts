@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, eq, inArray, desc } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import {
   db,
   subjectsTable,
@@ -8,7 +8,6 @@ import {
   syllabusLearningOutcomesTable,
   syllabusVersionsTable,
   assessmentComponentsTable,
-  tasksTable,
   pastPaperAttemptsTable,
 } from "@workspace/db";
 import {
@@ -29,7 +28,16 @@ import { computePaperLabel } from "../lib/paper-label";
 
 const router: IRouter = Router();
 
-async function enrichSubject(subject: typeof subjectsTable.$inferSelect) {
+/**
+ * Slice 2 subject-catalogue decision — Approach A:
+ * Public pure subject catalogue with no user-specific enrichment.
+ *
+ * - Keeps shared reference fields (id/name/code/color + syllabus topic aggregates).
+ * - Sets `upcomingTasksCount` to 0 (no global/user task reads).
+ * - Sets recent paper fields to null (paper ownership is not multi-tenant yet).
+ * Authenticated task enrichment belongs on /tasks, /dashboard, /progress.
+ */
+async function enrichSubjectCatalogue(subject: typeof subjectsTable.$inferSelect) {
   const topics = await db
     .select()
     .from(syllabusTopicsTable)
@@ -38,33 +46,8 @@ async function enrichSubject(subject: typeof subjectsTable.$inferSelect) {
   const topicsTotal = topics.length;
   const topicsCompleted = topics.filter((t) => t.status === "completed").length;
   const topicsInProgress = topics.filter((t) => t.status === "in_progress").length;
-  const syllabusProgress = topicsTotal > 0 ? Math.round((topicsCompleted / topicsTotal) * 100) : 0;
-
-  const upcomingTasks = await db
-    .select()
-    .from(tasksTable)
-    .where(eq(tasksTable.subjectId, subject.id));
-  const upcomingTasksCount = upcomingTasks.filter((t) => !t.completed).length;
-
-  const [recentPaper] = await db
-    .select()
-    .from(pastPaperAttemptsTable)
-    .where(eq(pastPaperAttemptsTable.subjectId, subject.id))
-    .orderBy(desc(pastPaperAttemptsTable.dateAttempted))
-    .limit(1);
-
-  let recentPaperLabel: string | null = null;
-  if (recentPaper) {
-    const [component] = recentPaper.componentId
-      ? await db.select().from(assessmentComponentsTable).where(eq(assessmentComponentsTable.id, recentPaper.componentId))
-      : [null];
-    recentPaperLabel = computePaperLabel({
-      subjectCode: subject.code,
-      component: component ?? null,
-      variant: recentPaper.variant,
-      session: recentPaper.session,
-    });
-  }
+  const syllabusProgress =
+    topicsTotal > 0 ? Math.round((topicsCompleted / topicsTotal) * 100) : 0;
 
   return {
     ...subject,
@@ -72,9 +55,9 @@ async function enrichSubject(subject: typeof subjectsTable.$inferSelect) {
     topicsTotal,
     topicsCompleted,
     topicsInProgress,
-    upcomingTasksCount,
-    recentPaperScore: recentPaper ? recentPaper.percentage : null,
-    recentPaperLabel,
+    upcomingTasksCount: 0,
+    recentPaperScore: null,
+    recentPaperLabel: null,
   };
 }
 
@@ -89,54 +72,13 @@ router.get("/subjects", async (_req, res): Promise<void> => {
     topicsBySubjectId.set(topic.subjectId, list);
   }
 
-  const tasks = await db.select().from(tasksTable);
-  const tasksBySubjectId = new Map<number, typeof tasks>();
-  for (const task of tasks) {
-    const list = tasksBySubjectId.get(task.subjectId) ?? [];
-    list.push(task);
-    tasksBySubjectId.set(task.subjectId, list);
-  }
-
-  const recentPapers = await db
-    .select()
-    .from(pastPaperAttemptsTable)
-    .orderBy(pastPaperAttemptsTable.subjectId, desc(pastPaperAttemptsTable.dateAttempted));
-  const recentPaperBySubjectId = new Map<number, (typeof recentPapers)[number]>();
-  for (const paper of recentPapers) {
-    if (!recentPaperBySubjectId.has(paper.subjectId)) {
-      recentPaperBySubjectId.set(paper.subjectId, paper);
-    }
-  }
-
-  const componentIds = [...new Set(
-    [...recentPaperBySubjectId.values()]
-      .map((paper) => paper.componentId)
-      .filter((id): id is number => id !== null)
-  )];
-  const components = componentIds.length > 0
-    ? await db.select().from(assessmentComponentsTable).where(inArray(assessmentComponentsTable.id, componentIds))
-    : [];
-  const componentById = new Map(components.map((component) => [component.id, component]));
-
   const result = subjects.map((subject) => {
     const subjectTopics = topicsBySubjectId.get(subject.id) ?? [];
     const topicsTotal = subjectTopics.length;
     const topicsCompleted = subjectTopics.filter((t) => t.status === "completed").length;
     const topicsInProgress = subjectTopics.filter((t) => t.status === "in_progress").length;
-    const syllabusProgress = topicsTotal > 0 ? Math.round((topicsCompleted / topicsTotal) * 100) : 0;
-
-    const subjectTasks = tasksBySubjectId.get(subject.id) ?? [];
-    const upcomingTasksCount = subjectTasks.filter((t) => !t.completed).length;
-
-    const recentPaper = recentPaperBySubjectId.get(subject.id) ?? null;
-    const recentPaperLabel = recentPaper
-      ? computePaperLabel({
-          subjectCode: subject.code,
-          component: recentPaper.componentId !== null ? componentById.get(recentPaper.componentId) ?? null : null,
-          variant: recentPaper.variant,
-          session: recentPaper.session,
-        })
-      : null;
+    const syllabusProgress =
+      topicsTotal > 0 ? Math.round((topicsCompleted / topicsTotal) * 100) : 0;
 
     return {
       ...subject,
@@ -144,9 +86,9 @@ router.get("/subjects", async (_req, res): Promise<void> => {
       topicsTotal,
       topicsCompleted,
       topicsInProgress,
-      upcomingTasksCount,
-      recentPaperScore: recentPaper ? recentPaper.percentage : null,
-      recentPaperLabel,
+      upcomingTasksCount: 0,
+      recentPaperScore: null,
+      recentPaperLabel: null,
     };
   });
 
@@ -170,7 +112,7 @@ router.post("/subjects", async (req, res): Promise<void> => {
     .where(eq(subjectsTable.code, code));
 
   if (existing) {
-    res.status(200).json(CreateSubjectResponse.parse(await enrichSubject(existing)));
+    res.status(200).json(CreateSubjectResponse.parse(await enrichSubjectCatalogue(existing)));
     return;
   }
 
@@ -182,7 +124,7 @@ router.post("/subjects", async (req, res): Promise<void> => {
     .values({ name, code, color })
     .returning();
 
-  res.status(201).json(CreateSubjectResponse.parse(await enrichSubject(created)));
+  res.status(201).json(CreateSubjectResponse.parse(await enrichSubjectCatalogue(created)));
 });
 
 router.get("/subjects/:subjectId", async (req, res): Promise<void> => {
@@ -202,7 +144,7 @@ router.get("/subjects/:subjectId", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(GetSubjectResponse.parse(await enrichSubject(subject)));
+  res.json(GetSubjectResponse.parse(await enrichSubjectCatalogue(subject)));
 });
 
 router.delete("/subjects/:subjectId", async (req, res): Promise<void> => {
