@@ -1,7 +1,14 @@
 import { defineConfig } from "drizzle-kit";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL, ensure the database is provisioned");
+// Prefer a direct (non-transaction-pooler) connection for drizzle-kit's own
+// DDL operations (migrate/push/introspect); fall back to DATABASE_URL for
+// setups that only have one connection string. See
+// docs/supabase-local-setup.md for why the transaction-mode pooler
+// (:6543) is a poor fit for migrations.
+const databaseUrl = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error("DIRECT_DATABASE_URL or DATABASE_URL is required");
 }
 
 // Relative paths are required: drizzle-kit 0.31 resolves out/meta by
@@ -11,6 +18,6 @@ export default defineConfig({
   out: "./migrations",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    url: databaseUrl,
   },
 });

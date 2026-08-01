@@ -45,6 +45,26 @@ SELECT
   count(DISTINCT user_id) AS distinct_owner_count
 FROM public.tasks;
 
+-- 3a. Aggregated Auth/profile integrity — no UUIDs, emails, or metadata.
+--     Expected after migration: missing_profile_count = 0 and
+--     orphan_profile_count = 0 (the trigger + backfill together should
+--     leave every auth.users row with exactly one public.profiles row,
+--     and no public.profiles row without a backing auth.users row — the
+--     profiles.id FK to auth.users(id) ON DELETE CASCADE should make an
+--     orphan structurally impossible, but this checks it directly rather
+--     than assuming the FK is doing its job).
+SELECT
+  (SELECT count(*) FROM auth.users) AS auth_user_count,
+  (SELECT count(*) FROM public.profiles) AS profile_count,
+  (SELECT count(*)
+     FROM auth.users u
+     LEFT JOIN public.profiles p ON p.id = u.id
+     WHERE p.id IS NULL) AS missing_profile_count,
+  (SELECT count(*)
+     FROM public.profiles p
+     LEFT JOIN auth.users u ON u.id = p.id
+     WHERE u.id IS NULL) AS orphan_profile_count;
+
 -- 4. profiles constraints (username format check + auth.users FK)
 SELECT conname, pg_get_constraintdef(oid)
 FROM pg_constraint
@@ -96,15 +116,25 @@ ORDER BY table_name, pol.polname;
 -- pass/fail matrix requested by the Stop 2 hardening pass.
 -- ============================================================================
 SELECT
-  -- profiles: authenticated should have table-level SELECT; anon: none.
+  -- profiles: authenticated should have table-level SELECT only — no
+  -- table-level INSERT/UPDATE/DELETE (profile creation is trigger-only via
+  -- lockdin_handle_new_user; updates are column-level only, see below).
+  -- anon: none of any kind.
   has_table_privilege('authenticated', 'public.profiles', 'SELECT')  AS authenticated_can_select_profiles,
+  has_table_privilege('authenticated', 'public.profiles', 'INSERT')  AS authenticated_can_insert_profiles_expect_false,
+  has_table_privilege('authenticated', 'public.profiles', 'UPDATE')  AS authenticated_can_table_update_profiles_expect_false,
+  has_table_privilege('authenticated', 'public.profiles', 'DELETE')  AS authenticated_can_delete_profiles_expect_false,
   has_table_privilege('anon', 'public.profiles', 'SELECT')           AS anon_can_select_profiles_expect_false,
   has_table_privilege('anon', 'public.profiles', 'INSERT')           AS anon_can_insert_profiles_expect_false,
   has_table_privilege('anon', 'public.profiles', 'UPDATE')           AS anon_can_update_profiles_expect_false,
   has_table_privilege('anon', 'public.profiles', 'DELETE')           AS anon_can_delete_profiles_expect_false,
 
   -- profiles column-level UPDATE: exactly full_name, level, exam_session
-  -- for authenticated; every other column must be false.
+  -- for authenticated; every other column must be false. Note this is
+  -- deliberately independent of authenticated_can_table_update_profiles_
+  -- expect_false above — GRANT UPDATE (col1, col2) grants column-level
+  -- privilege without granting table-level UPDATE, so both must be
+  -- checked to confirm the migration's intended shape.
   has_column_privilege('authenticated', 'public.profiles', 'full_name', 'UPDATE')    AS authenticated_can_update_full_name,
   has_column_privilege('authenticated', 'public.profiles', 'level', 'UPDATE')        AS authenticated_can_update_level,
   has_column_privilege('authenticated', 'public.profiles', 'exam_session', 'UPDATE') AS authenticated_can_update_exam_session,
@@ -214,8 +244,12 @@ ORDER BY tgname;
 --   [ ] profiles_table_exists = true
 --   [ ] tasks.user_id present, nullable
 --   [ ] total_task_count (#3) matches the pre-migration audit's task_count
+--   [ ] missing_profile_count = 0 and orphan_profile_count = 0 (#3a)
 --   [ ] policies (#9) use (select auth.uid()) = id / = user_id
---   [ ] privilege matrix (#10) matches every "_expect_..." column exactly
+--   [ ] privilege matrix (#10) matches every "_expect_..." column exactly,
+--       including authenticated_can_table_update_profiles_expect_false =
+--       false while authenticated_can_update_full_name/level/exam_session
+--       = true (table-level UPDATE denied, column-level UPDATE allowed)
 --   [ ] PUBLIC ACL rows (#11, #12b) are empty for profiles/tasks/sequence/functions
 --   [ ] function EXECUTE checks (#12) are all false for anon/authenticated
 --   [ ] auth.users trigger list (#14) is a superset of the pre-migration list

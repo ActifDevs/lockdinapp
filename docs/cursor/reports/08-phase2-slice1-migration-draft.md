@@ -1,5 +1,10 @@
 # Phase 2 Slice 1 — Profiles + Task Ownership Migration Draft
 
+> **Historical report:** superseded for implementation purposes by
+> [`10-phase2-slice1-stop2-final-hardening.md`](./10-phase2-slice1-stop2-final-hardening.md).
+> Do not use this document as the current migration or operational-SQL
+> instruction set.
+
 **Status:** Draft complete — awaiting Stop 2 review  
 **Branch:** `auth-and-tasks`  
 **Starting tip before Slice 1 work:** `cf91a82` (Stop 1 report cherry-pick on top of `5f1fbf4`)  

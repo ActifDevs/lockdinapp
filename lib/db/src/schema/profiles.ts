@@ -7,8 +7,6 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
 
 /**
  * App profile, 1:1 with Supabase Auth `auth.users`.
@@ -41,9 +39,10 @@ export const profilesTable = pgTable(
   ],
 );
 
-export const insertProfileSchema = createInsertSchema(profilesTable).omit({
-  createdAt: true,
-  updatedAt: true,
-});
-export type InsertProfile = z.infer<typeof insertProfileSchema>;
+// No client-facing insert/update schema: every writable column here
+// (username, onboarded_at) is intentionally reserved for a later, reviewed
+// onboarding operation, not a general-purpose insert endpoint. Do not add
+// one back without also deciding how username/onboarded_at become
+// client-writable.
+export type NewProfileRow = typeof profilesTable.$inferInsert;
 export type Profile = typeof profilesTable.$inferSelect;

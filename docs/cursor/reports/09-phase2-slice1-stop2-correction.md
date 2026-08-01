@@ -1,5 +1,10 @@
 # Phase 2 Slice 1 — Stop 2 Correction Report
 
+> **Historical report:** superseded for implementation purposes by
+> [`10-phase2-slice1-stop2-final-hardening.md`](./10-phase2-slice1-stop2-final-hardening.md).
+> Do not use this document as the current migration or operational-SQL
+> instruction set.
+
 **Status:** Correction pass complete — awaiting Stop 2 review
 **Branch:** `auth-and-tasks`
 **HEAD (unchanged throughout):** `cf91a82` docs: Phase 2 Stop 1 corrected architecture report
