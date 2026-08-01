@@ -24,6 +24,8 @@ tags:
     description: Authenticated dashboard summary (user-owned tasks; neutral syllabus placeholders)
   - name: progress
     description: Authenticated progress overview (user-owned tasks; neutral syllabus placeholders)
+  - name: profile
+    description: Authenticated profile and atomic onboarding operations
 
 paths:
   /healthz:
@@ -523,6 +525,116 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorMessage"
 
+  /profile:
+    get:
+      operationId: getCurrentProfile
+      tags: [profile]
+      summary: Get the authenticated user's profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    patch:
+      operationId: updateCurrentProfile
+      tags: [profile]
+      summary: Update allowed profile fields for the authenticated user
+      description: |
+        Allowed fields: fullName, level, examSession.
+        username and onboardedAt cannot be changed through this endpoint.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+
+  /profile/complete-onboarding:
+    post:
+      operationId: completeCurrentUserOnboarding
+      tags: [profile]
+      summary: Complete onboarding atomically for the authenticated user
+      description: |
+        Sets username and onboarded_at and creates one starter task per selected
+        subject (1–3) via lockdin_complete_onboarding. Idempotent when retried
+        with the same username after success.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteOnboardingInput"
+      responses:
+        "200":
+          description: Onboarded profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "409":
+          description: Username unavailable or onboarding already completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -588,6 +700,88 @@ components:
           type: string
       required:
         - error
+
+    Profile:
+      type: object
+      properties:
+        id:
+          type: string
+        fullName:
+          type: ["string", "null"]
+        username:
+          type: ["string", "null"]
+        level:
+          type: ["string", "null"]
+        examSession:
+          type: ["string", "null"]
+        onboardedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - fullName
+        - username
+        - level
+        - examSession
+        - onboardedAt
+        - createdAt
+        - updatedAt
+
+    ProfileUpdate:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 100
+        level:
+          type: string
+          minLength: 1
+          maxLength: 80
+        examSession:
+          type: string
+          minLength: 1
+          maxLength: 80
+      additionalProperties: false
+
+    CompleteOnboardingInput:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 100
+        username:
+          type: string
+          minLength: 3
+          maxLength: 24
+          pattern: "^[a-z0-9_]{3,24}$"
+        level:
+          type: string
+          minLength: 1
+          maxLength: 80
+        examSession:
+          type: string
+          minLength: 1
+          maxLength: 80
+        subjectIds:
+          type: array
+          minItems: 1
+          maxItems: 3
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 1
+      required:
+        - fullName
+        - username
+        - level
+        - examSession
+        - subjectIds
+      additionalProperties: false
 
     HealthStatus:
       type: object

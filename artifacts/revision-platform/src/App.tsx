@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { DocumentTitle } from "@/components/document-title";
 import { PageLoader } from "@/components/page-loader";
 import { AppShell } from "@/components/app-shell";
+import { AuthProvider } from "@/components/auth-provider";
 import { RequireAuth, RedirectIfAuthenticated } from "@/components/require-auth";
 import { ReminderRunner } from "@/components/reminder-runner";
 
@@ -14,6 +15,8 @@ const LandingPage = lazy(() => import("@/pages/index"));
 const Login = lazy(() => import("@/pages/login"));
 const Signup = lazy(() => import("@/pages/signup"));
 const ForgotPassword = lazy(() => import("@/pages/forgot-password"));
+const UpdatePassword = lazy(() => import("@/pages/update-password"));
+const AuthCallback = lazy(() => import("@/pages/auth-callback"));
 const Onboarding = lazy(() => import("@/pages/onboarding"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const Subjects = lazy(() => import("@/pages/subjects"));
@@ -109,6 +112,16 @@ function Router() {
           <ForgotPassword />
         </Suspense>
       </Route>
+      <Route path="/update-password">
+        <Suspense fallback={<PageLoader />}>
+          <UpdatePassword />
+        </Suspense>
+      </Route>
+      <Route path="/auth/callback">
+        <Suspense fallback={<PageLoader />}>
+          <AuthCallback />
+        </Suspense>
+      </Route>
       <Route path="/onboarding">
         <RequireAuth onboardingOnly>
           <Suspense fallback={<PageLoader />}>
@@ -182,14 +195,16 @@ function App() {
   return (
     <ThemeProvider defaultTheme="dark">
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <DocumentTitle />
-            <ReminderRunner />
-            <Router />
-          </WouterRouter>
-          <Toaster />
-        </TooltipProvider>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <AuthProvider>
+            <TooltipProvider>
+              <DocumentTitle />
+              <ReminderRunner />
+              <Router />
+              <Toaster />
+            </TooltipProvider>
+          </AuthProvider>
+        </WouterRouter>
       </QueryClientProvider>
     </ThemeProvider>
   );

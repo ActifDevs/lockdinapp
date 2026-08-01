@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,18 +15,28 @@ function validateEmail(value: string) {
 }
 
 export default function ForgotPassword() {
+  const { requestPasswordReset } = useAuth();
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | undefined>();
   const [touched, setTouched] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const next = validateEmail(email);
     setTouched(true);
     setError(next);
     if (next) return;
-    setIsSubmitted(true);
+    setIsLoading(true);
+    try {
+      await requestPasswordReset(email);
+    } catch {
+      // Still show generic success to avoid account enumeration.
+    } finally {
+      setIsLoading(false);
+      setIsSubmitted(true);
+    }
   };
 
   return (
@@ -41,26 +52,18 @@ export default function ForgotPassword() {
         <h1 className="font-bold tracking-tight">Reset password</h1>
         <p className="mt-2 text-muted-foreground">
           {isSubmitted
-            ? "Thanks — we've noted your request."
-            : "Password reset email isn't live in this build yet."}
+            ? "If an account exists for that email, a password-reset link has been sent."
+            : "Enter your email and we’ll send a reset link if an account exists."}
         </p>
 
         {isSubmitted ? (
           <div className="mt-8 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              For now, sign in with any email on the login page to continue using Lockdin. Real email
-              reset will ship with full accounts.
-            </p>
             <Button asChild className="h-11 w-full cursor-pointer">
               <Link href="/login">Back to login</Link>
             </Button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
-            <div className="rounded-xl border border-border/70 bg-muted/40 p-3 text-sm text-muted-foreground">
-              Leave your email if you'd like to be notified when reset works. You can still sign in
-              without a password today.
-            </div>
+          <form onSubmit={(e) => void handleSubmit(e)} className="mt-8 space-y-4" noValidate>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -87,8 +90,12 @@ export default function ForgotPassword() {
                 </p>
               )}
             </div>
-            <Button type="submit" className="h-11 w-full cursor-pointer text-base active:scale-[0.98]">
-              Notify me when ready
+            <Button
+              type="submit"
+              className="h-11 w-full cursor-pointer text-base active:scale-[0.98]"
+              disabled={isLoading}
+            >
+              {isLoading ? "Sending…" : "Send reset link"}
             </Button>
           </form>
         )}

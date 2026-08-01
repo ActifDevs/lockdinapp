@@ -21,6 +21,7 @@ import type {
 
 import type {
   AssessmentComponent,
+  CompleteOnboardingInput,
   DashboardSummary,
   ErrorMessage,
   ExamDate,
@@ -30,6 +31,8 @@ import type {
   ListTasksParams,
   PastPaperAttempt,
   PastPaperAttemptInput,
+  Profile,
+  ProfileUpdate,
   ProgressOverview,
   Subject,
   SubjectInput,
@@ -1524,6 +1527,230 @@ export const useDeleteExamDate = <TError = ErrorType<ErrorMessage>,
         TContext
       > => {
       return useMutation(getDeleteExamDateMutationOptions(options));
+    }
+
+export const getGetCurrentProfileUrl = () => {
+
+
+
+
+  return `/api/profile`
+}
+
+/**
+ * @summary Get the authenticated user's profile
+ */
+export const getCurrentProfile = async ( options?: RequestInit): Promise<Profile> => {
+
+  return customFetch<Profile>(getGetCurrentProfileUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCurrentProfileQueryKey = () => {
+    return [
+    `/api/profile`
+    ] as const;
+    }
+
+
+export const getGetCurrentProfileQueryOptions = <TData = Awaited<ReturnType<typeof getCurrentProfile>>, TError = ErrorType<ErrorMessage>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCurrentProfileQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentProfile>>> = ({ signal }) => getCurrentProfile({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCurrentProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCurrentProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getCurrentProfile>>>
+export type GetCurrentProfileQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary Get the authenticated user's profile
+ */
+
+export function useGetCurrentProfile<TData = Awaited<ReturnType<typeof getCurrentProfile>>, TError = ErrorType<ErrorMessage>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCurrentProfileQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCurrentProfileUrl = () => {
+
+
+
+
+  return `/api/profile`
+}
+
+/**
+ * Allowed fields: fullName, level, examSession.
+ * username and onboardedAt cannot be changed through this endpoint.
+ * @summary Update allowed profile fields for the authenticated user
+ */
+export const updateCurrentProfile = async (profileUpdate: ProfileUpdate, options?: RequestInit): Promise<Profile> => {
+
+  return customFetch<Profile>(getUpdateCurrentProfileUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(profileUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateCurrentProfileMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCurrentProfile>>, TError,{data: BodyType<ProfileUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCurrentProfile>>, TError,{data: BodyType<ProfileUpdate>}, TContext> => {
+
+const mutationKey = ['updateCurrentProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCurrentProfile>>, {data: BodyType<ProfileUpdate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateCurrentProfile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCurrentProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateCurrentProfile>>>
+    export type UpdateCurrentProfileMutationBody = BodyType<ProfileUpdate>
+    export type UpdateCurrentProfileMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary Update allowed profile fields for the authenticated user
+ */
+export const useUpdateCurrentProfile = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCurrentProfile>>, TError,{data: BodyType<ProfileUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCurrentProfile>>,
+        TError,
+        {data: BodyType<ProfileUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateCurrentProfileMutationOptions(options));
+    }
+
+export const getCompleteCurrentUserOnboardingUrl = () => {
+
+
+
+
+  return `/api/profile/complete-onboarding`
+}
+
+/**
+ * Sets username and onboarded_at and creates one starter task per selected
+ * subject (1–3) via lockdin_complete_onboarding. Idempotent when retried
+ * with the same username after success.
+ * @summary Complete onboarding atomically for the authenticated user
+ */
+export const completeCurrentUserOnboarding = async (completeOnboardingInput: CompleteOnboardingInput, options?: RequestInit): Promise<Profile> => {
+
+  return customFetch<Profile>(getCompleteCurrentUserOnboardingUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(completeOnboardingInput)
+  }
+);}
+
+
+
+
+
+export const getCompleteCurrentUserOnboardingMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeCurrentUserOnboarding>>, TError,{data: BodyType<CompleteOnboardingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeCurrentUserOnboarding>>, TError,{data: BodyType<CompleteOnboardingInput>}, TContext> => {
+
+const mutationKey = ['completeCurrentUserOnboarding'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeCurrentUserOnboarding>>, {data: BodyType<CompleteOnboardingInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  completeCurrentUserOnboarding(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteCurrentUserOnboardingMutationResult = NonNullable<Awaited<ReturnType<typeof completeCurrentUserOnboarding>>>
+    export type CompleteCurrentUserOnboardingMutationBody = BodyType<CompleteOnboardingInput>
+    export type CompleteCurrentUserOnboardingMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary Complete onboarding atomically for the authenticated user
+ */
+export const useCompleteCurrentUserOnboarding = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeCurrentUserOnboarding>>, TError,{data: BodyType<CompleteOnboardingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completeCurrentUserOnboarding>>,
+        TError,
+        {data: BodyType<CompleteOnboardingInput>},
+        TContext
+      > => {
+      return useMutation(getCompleteCurrentUserOnboardingMutationOptions(options));
     }
 
 export const getGetDashboardSummaryUrl = () => {

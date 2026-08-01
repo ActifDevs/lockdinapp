@@ -1,12 +1,7 @@
 import {
   useListSubjects,
   getListSubjectsQueryKey,
-  useCreateSubject,
-  useDeleteSubject,
-  getGetDashboardSummaryQueryKey,
-  getGetProgressOverviewQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -14,18 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/components/theme-provider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Bell, Palette, BookOpen, Calendar as CalendarIcon, Check, Plus, Trash2 } from "lucide-react";
+import { User, Bell, Palette, BookOpen, Calendar as CalendarIcon, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useNotificationPrefs } from "@/hooks/use-notification-prefs";
-import { SUBJECT_CATALOG } from "@/lib/subject-catalog";
 import { toast } from "@/hooks/use-toast";
 import { useEffect, useState, type ElementType } from "react";
 import { PageHeader } from "@/components/page-header";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
-import { ResponsiveFormPanel } from "@/components/responsive-form-panel";
+import { LEVEL_OPTIONS, getUpcomingExamSessions } from "@/lib/exam-sessions";
 
 function ComingSoonBadge() {
   return (
@@ -107,14 +101,13 @@ export default function Settings() {
   const { theme, setTheme } = useTheme();
   const { user, updateUser } = useAuth();
   const { prefs, updatePref, requestBrowserPermission } = useNotificationPrefs();
-  const queryClient = useQueryClient();
   const { data: subjects } = useListSubjects({ query: { queryKey: getListSubjectsQueryKey() } });
   const [name, setName] = useState(user?.name || "");
-  const [email, setEmail] = useState(user?.email || "");
   const [level, setLevel] = useState(user?.level || "");
   const [examSession, setExamSession] = useState(user?.examSession || "");
   const [saved, setSaved] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const examOptions = [...getUpcomingExamSessions(), "Other"];
   const defaultTab = (() => {
     try {
       return new URLSearchParams(window.location.search).get("tab") || "account";
@@ -123,67 +116,33 @@ export default function Settings() {
     }
   })();
 
-  const invalidateSubjects = () => {
-    queryClient.invalidateQueries({ queryKey: getListSubjectsQueryKey() });
-    queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-    queryClient.invalidateQueries({ queryKey: getGetProgressOverviewQueryKey() });
-  };
-
-  const createSubject = useCreateSubject({
-    mutation: {
-      onSuccess: () => {
-        invalidateSubjects();
-        setAddOpen(false);
-        toast({
-          title: "Subject added",
-          description: "Starter syllabus topics are ready.",
-        });
-      },
-      onError: (err) => {
-        toast({
-          title: "Could not add subject",
-          description: err instanceof Error ? err.message : "Try again.",
-          variant: "destructive",
-        });
-      },
-    },
-  });
-
-  const deleteSubject = useDeleteSubject({
-    mutation: {
-      onSuccess: () => {
-        invalidateSubjects();
-        toast({ title: "Subject removed" });
-      },
-      onError: (err) => {
-        toast({
-          title: "Could not remove subject",
-          description: err instanceof Error ? err.message : "Try again.",
-          variant: "destructive",
-        });
-      },
-    },
-  });
-
-  const saveProfile = () => {
-    updateUser({
-      name: name.trim() || user?.name,
-      email: email.trim(),
-      level: level || null,
-      examSession: examSession || null,
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
-
-  const activeCodes = new Set((subjects ?? []).map((s) => s.code));
-  const availableToAdd = SUBJECT_CATALOG.filter((s) => !activeCodes.has(s.code));
-
   useEffect(() => {
-    if (defaultTab === "subjects" && availableToAdd.length > 0 && (subjects?.length ?? 0) === 0) {
-      setAddOpen(true);
+    setName(user?.name || "");
+    setLevel(user?.level || "");
+    setExamSession(user?.examSession || "");
+  }, [user?.name, user?.level, user?.examSession]);
+
+  const saveProfile = async () => {
+    setSaving(true);
+    try {
+      await updateUser({
+        fullName: name.trim(),
+        level: level.trim() || undefined,
+        examSession: examSession.trim() || undefined,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      toast({ title: "Profile updated" });
+    } catch {
+      toast({
+        title: "Could not save profile",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
-  }, [defaultTab, availableToAdd.length, subjects?.length]);
+  };
 
   const handlePrefToggle = async (key: keyof typeof prefs, checked: boolean) => {
     updatePref(key, checked);
@@ -214,28 +173,16 @@ export default function Settings() {
 
       <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="settings-tabs-list flex h-auto w-full flex-wrap justify-start gap-1 lg:w-auto tabs-scroll lg:overflow-visible">
-          <TabsTrigger
-            value="account"
-            className="settings-tabs-trigger data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-          >
+          <TabsTrigger value="account" className="settings-tabs-trigger data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
             Account
           </TabsTrigger>
-          <TabsTrigger
-            value="subjects"
-            className="settings-tabs-trigger data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-          >
+          <TabsTrigger value="subjects" className="settings-tabs-trigger data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
             Subjects
           </TabsTrigger>
-          <TabsTrigger
-            value="appearance"
-            className="settings-tabs-trigger data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-          >
+          <TabsTrigger value="appearance" className="settings-tabs-trigger data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
             Appearance
           </TabsTrigger>
-          <TabsTrigger
-            value="notifications"
-            className="settings-tabs-trigger data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-          >
+          <TabsTrigger value="notifications" className="settings-tabs-trigger data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
             Alerts
           </TabsTrigger>
         </TabsList>
@@ -262,34 +209,64 @@ export default function Settings() {
                 <Input
                   id="email"
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@school.edu"
-                  className="max-w-md"
+                  value={user?.email || ""}
+                  readOnly
+                  className="max-w-md bg-muted/40"
                 />
+                <p className="text-xs text-muted-foreground">Email is managed by your Auth account.</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  value={user?.username || ""}
+                  readOnly
+                  className="max-w-md bg-muted/40"
+                />
+                <p className="text-xs text-muted-foreground">Username is set during onboarding.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="level">Level</Label>
-                <Input
+                <select
                   id="level"
                   value={level}
                   onChange={(e) => setLevel(e.target.value)}
-                  placeholder="AS Level (Year 12)"
-                  className="max-w-md"
-                />
+                  className="flex h-10 w-full max-w-md rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Select level</option>
+                  {LEVEL_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                  {level && !LEVEL_OPTIONS.includes(level as (typeof LEVEL_OPTIONS)[number]) && (
+                    <option value={level}>{level}</option>
+                  )}
+                </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="examSession">Exam session</Label>
-                <Input
+                <select
                   id="examSession"
                   value={examSession}
                   onChange={(e) => setExamSession(e.target.value)}
-                  placeholder="May/June 2026"
-                  className="max-w-md"
-                />
+                  className="flex h-10 w-full max-w-md rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Select session</option>
+                  {examOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                  {examSession && !examOptions.includes(examSession) && (
+                    <option value={examSession}>{examSession}</option>
+                  )}
+                </select>
               </div>
               <div className="flex items-center gap-3">
-                <Button onClick={saveProfile}>Save changes</Button>
+                <Button onClick={() => void saveProfile()} disabled={saving}>
+                  {saving ? "Saving…" : "Save changes"}
+                </Button>
                 {saved && (
                   <span className="text-sm text-muted-foreground" role="status">
                     Saved
@@ -303,19 +280,23 @@ export default function Settings() {
         <TabsContent value="subjects" className="mt-6 space-y-6">
           <SettingsSectionCard
             icon={BookOpen}
-            title="Active subjects"
-            description="Add or remove the subjects on your dashboard."
+            title="Subject catalogue"
+            description="Subjects are managed from the shared Cambridge catalogue. Personal subject selection will be available in the next multi-tenancy phase."
             tint="teal"
           >
-              {subjects && subjects.length > 0 ? (
-                <div className="mb-6 grid gap-4 sm:grid-cols-2">
-                  {subjects.map((subject) => {
-                    const accent = resolveSubjectAccent({
-                      code: subject.code,
-                      name: subject.name,
-                      color: subject.color,
-                    });
-                    return (
+            <p className="mb-4 text-sm text-muted-foreground">
+              The list below is the shared reference catalogue — it does not mean every subject
+              belongs to your account.
+            </p>
+            {subjects && subjects.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {subjects.map((subject) => {
+                  const accent = resolveSubjectAccent({
+                    code: subject.code,
+                    name: subject.name,
+                    color: subject.color,
+                  });
+                  return (
                     <div
                       key={subject.id}
                       className="dash-list-row !items-center rounded-xl border border-border/50 bg-muted/20 px-3 py-3"
@@ -331,50 +312,17 @@ export default function Settings() {
                           <p className="text-xs text-muted-foreground">{subject.code}</p>
                         </div>
                       </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/subjects/${subject.id}`}>View</Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9 text-muted-foreground hover:text-destructive"
-                          aria-label={`Remove ${subject.name}`}
-                          disabled={deleteSubject.isPending}
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                `Remove ${subject.name}? Tasks and papers for this subject will also be deleted.`,
-                              )
-                            ) {
-                              deleteSubject.mutate({ subjectId: subject.id });
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" aria-hidden strokeWidth={2} />
-                        </Button>
-                      </div>
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/subjects/${subject.id}`}>View</Link>
+                      </Button>
                     </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="mb-6 text-sm text-muted-foreground">
-                  No subjects yet — add your A-Levels to unlock syllabus tracking and predicted grades.
-                </p>
-              )}
-              <Button
-                onClick={() => setAddOpen(true)}
-                disabled={availableToAdd.length === 0}
-                className="gap-2"
-              >
-                <Plus className="h-4 w-4" aria-hidden strokeWidth={2} />
-                Add subject
-              </Button>
-              {availableToAdd.length === 0 && (
-                <p className="mt-3 text-sm text-muted-foreground">All catalog subjects are already added.</p>
-              )}
-            </SettingsSectionCard>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No catalogue subjects are available yet.</p>
+            )}
+          </SettingsSectionCard>
         </TabsContent>
 
         <TabsContent value="appearance" className="mt-6 space-y-6">
@@ -481,62 +429,30 @@ export default function Settings() {
             tint="cream"
           >
             <div className="flex flex-col gap-4 rounded-xl border border-border/50 bg-muted/15 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded border bg-card shadow-sm">
-                    <svg className="h-6 w-6" viewBox="0 0 24 24" aria-hidden>
-                      <path
-                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"
-                        fill="#4285F4"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="font-medium">Google Calendar</h4>
-                      <ComingSoonBadge />
-                    </div>
-                    <p className="text-sm text-muted-foreground">Sync your tasks and deadlines</p>
-                  </div>
+              <div className="flex items-center gap-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded border bg-card shadow-sm">
+                  <svg className="h-6 w-6" viewBox="0 0 24 24" aria-hidden>
+                    <path
+                      d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"
+                      fill="#4285F4"
+                    />
+                  </svg>
                 </div>
-                <Button variant="outline" disabled aria-disabled className="shrink-0">
-                  Connect
-                </Button>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="font-medium">Google Calendar</h4>
+                    <ComingSoonBadge />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Sync your tasks and deadlines</p>
+                </div>
               </div>
+              <Button variant="outline" disabled aria-disabled className="shrink-0">
+                Connect
+              </Button>
+            </div>
           </SettingsSectionCard>
         </TabsContent>
       </Tabs>
-
-      <ResponsiveFormPanel
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        title="Add a subject"
-        className="sm:max-w-md"
-      >
-          <div className="grid max-h-[60vh] gap-2 overflow-y-auto py-2">
-            {availableToAdd.map((item) => (
-              <button
-                key={item.code}
-                type="button"
-                disabled={createSubject.isPending}
-                onClick={() =>
-                  createSubject.mutate({
-                    data: { name: item.name, code: item.code, color: item.color },
-                  })
-                }
-                className="flex items-center justify-between rounded-xl border p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn("h-2.5 w-2.5 rounded-sm", item.swatchClass)} />
-                  <div>
-                    <p className="font-medium">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">{item.code}</p>
-                  </div>
-                </div>
-                <Plus className="h-4 w-4 text-muted-foreground" aria-hidden />
-              </button>
-            ))}
-          </div>
-      </ResponsiveFormPanel>
     </div>
   );
 }

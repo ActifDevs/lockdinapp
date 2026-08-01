@@ -384,7 +384,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             displayName={displayName}
             userName={userName}
             userEmail={user?.email}
-            onLogout={logout}
+            onLogout={() => {
+              void logout();
+            }}
             collapsed={collapsed}
             onToggleCollapsed={toggleCollapsed}
             showCollapseControl
@@ -521,7 +523,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               displayName={displayName}
               userName={userName}
               userEmail={user?.email}
-              onLogout={logout}
+              onLogout={() => {
+                void logout();
+              }}
               onNavigate={() => setMobileOpen(false)}
               collapsed={false}
             />

@@ -1,5 +1,4 @@
 import { inArray } from "drizzle-orm";
-import { db, subjectsTable, syllabusTopicsTable } from "@workspace/db";
 import type { MappedTaskCore } from "./task-row";
 
 export type EnrichedTask = MappedTaskCore & {
@@ -48,6 +47,7 @@ export async function enrichTasks(
     deps.fetchSubjects ??
     (async (ids: number[]) => {
       if (ids.length === 0) return [];
+      const { db, subjectsTable } = await import("@workspace/db");
       return db
         .select({
           id: subjectsTable.id,
@@ -62,6 +62,7 @@ export async function enrichTasks(
     deps.fetchTopics ??
     (async (ids: number[]) => {
       if (ids.length === 0) return [];
+      const { db, syllabusTopicsTable } = await import("@workspace/db");
       return db
         .select({
           id: syllabusTopicsTable.id,

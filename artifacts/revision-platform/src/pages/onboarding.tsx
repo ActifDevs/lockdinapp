@@ -1,74 +1,112 @@
 import { BrandName } from "@/components/brand-name";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { SUBJECT_CATALOG } from "@/lib/subject-catalog";
-import { createSubject, createTask, type Subject } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronRight, Loader2 } from "lucide-react";
+import { useListSubjects, ApiError } from "@workspace/api-client-react";
+import { Check, ChevronRight, Loader2, Search } from "lucide-react";
 import { IllustCalm } from "@/components/illustrations";
+import { getUpcomingExamSessions, LEVEL_OPTIONS } from "@/lib/exam-sessions";
+import {
+  canProceedWithSubjects,
+  filterSubjectsByQuery,
+  mapOnboardingConflictError,
+  normaliseUsernameInput,
+  toggleSubjectSelection,
+  validateUsername,
+} from "@/lib/onboarding-logic";
 
 export default function Onboarding() {
-  const { completeOnboarding, firstName } = useAuth();
-  const queryClient = useQueryClient();
+  const { firstName, user, completeOnboarding } = useAuth();
+  const { data: subjects = [], isLoading: subjectsLoading } = useListSubjects();
+  const examOptions = useMemo(() => [...getUpcomingExamSessions(), "Other"], []);
+
   const [step, setStep] = useState(1);
-  const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
+  const [fullName, setFullName] = useState(user?.name || "");
+  const [username, setUsername] = useState("");
+  const [usernameError, setUsernameError] = useState<string | undefined>();
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [search, setSearch] = useState("");
   const [level, setLevel] = useState<string | null>(null);
   const [examSession, setExamSession] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const toggleSubject = (code: string) => {
-    setSelectedCodes((prev) =>
-      prev.includes(code) ? prev.filter((s) => s !== code) : [...prev, code],
-    );
-  };
-
-  const handleNext = () => setStep((s) => Math.min(s + 1, 4));
-  const handleBack = () => setStep((s) => Math.max(s - 1, 1));
   const greetingName = firstName || "there";
 
-  const finishSetup = async () => {
+  const filteredSubjects = useMemo(
+    () => filterSubjectsByQuery(subjects, search),
+    [subjects, search],
+  );
+
+  const selectedSubjects = subjects.filter((s) => selectedIds.includes(s.id));
+
+  const toggleSubject = (id: number) => {
+    setSelectedIds((prev) => toggleSubjectSelection(prev, id));
+  };
+
+  const goNext = () => {
+    setError(null);
+    if (step === 2) {
+      const nameOk = fullName.trim().length >= 2 && fullName.trim().length <= 100;
+      const uErr = validateUsername(username);
+      setUsernameError(uErr);
+      if (!nameOk) {
+        setError("Enter your full name (2–100 characters).");
+        return;
+      }
+      if (uErr) return;
+    }
+    if (step === 3) {
+      const subjectErr = canProceedWithSubjects(selectedIds);
+      if (subjectErr) {
+        setError(subjectErr);
+        return;
+      }
+    }
+    if (step === 4) {
+      if (!level || !examSession) {
+        setError("Choose your level and exam session.");
+        return;
+      }
+    }
+    setStep((s) => Math.min(s + 1, 5));
+  };
+
+  const finish = async () => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setError(null);
     try {
-      const today = new Date().toISOString().split("T")[0]!;
-      const createdSubjects: Subject[] = [];
-
-      for (const code of selectedCodes) {
-        const catalog = SUBJECT_CATALOG.find((s) => s.code === code);
-        if (!catalog) continue;
-        // Subject POST is currently disabled (shared catalogue). Cast preserves
-        // compile-time shape until onboarding is rewired to catalogue selection only.
-        const subject = (await createSubject({
-          name: catalog.name,
-          code: catalog.code,
-          color: catalog.color,
-        })) as Subject;
-        createdSubjects.push(subject);
-      }
-
-      // First win: one due-today task per subject (cap at 3 so Day 1 stays finishable)
-      for (const subject of createdSubjects.slice(0, 3)) {
-        await createTask({
-          title: `Review ${subject.name} syllabus overview`,
-          subjectId: subject.id,
-          priority: "medium",
-          deadline: today,
-          estimatedMinutes: 30,
-        });
-      }
-
-      await queryClient.invalidateQueries();
-      completeOnboarding({
-        level,
-        examSession,
-        subjectCodes: selectedCodes,
+      await completeOnboarding({
+        fullName: fullName.trim(),
+        username: username.trim().toLowerCase(),
+        level: level!,
+        examSession: examSession!,
+        subjectIds: selectedIds,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not finish setup.";
-      setError(message);
+      const msg =
+        err instanceof ApiError &&
+        typeof err.data === "object" &&
+        err.data &&
+        "error" in err.data &&
+        typeof (err.data as { error: unknown }).error === "string"
+          ? (err.data as { error: string }).error
+          : "";
+      const mapped = mapOnboardingConflictError(
+        err instanceof ApiError ? err.status : 0,
+        msg,
+      );
+      if (mapped.usernameTaken) {
+        setUsernameError("That username is already taken.");
+        setStep(2);
+        setError(null);
+      } else {
+        setError("Onboarding could not be completed. Please try again.");
+      }
       setIsSubmitting(false);
     }
   };
@@ -80,199 +118,258 @@ export default function Onboarding() {
       </div>
 
       <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-2xl border bg-card shadow-[0_20px_60px_-20px_hsl(185_100%_23%/0.18)]">
-        <div className="h-1.5 w-full bg-secondary">
-          <div
-            className="h-full bg-primary transition-all duration-500 ease-out"
-            style={{ width: `${(step / 4) * 100}%` }}
-          />
+        <div className="border-b bg-muted/20 px-6 py-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Step {step} of 5
+          </p>
         </div>
 
-        <div className="p-8 md:p-12">
+        <div className="p-6 sm:p-8">
           {step === 1 && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6 duration-500">
-              <IllustCalm className="mb-2 max-w-[12rem]" />
-              <h1 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-                Welcome to <BrandName />, {greetingName}.
+            <div className="space-y-6 text-center">
+              <IllustCalm className="mx-auto w-full max-w-[14rem]" />
+              <h1 className="text-2xl font-bold tracking-tight">
+                Welcome{greetingName !== "there" ? `, ${greetingName}` : ""}
               </h1>
-              <p className="max-w-md text-pretty text-lg leading-relaxed text-muted-foreground">
-                A short setup so your workspace matches your subjects and exam timing.
+              <p className="text-muted-foreground">
+                We’ll set up your username, pick up to three subjects for your first revision
+                tasks, and choose your exam session.
               </p>
-              <div className="pt-4">
-                <Button size="lg" className="h-12 px-8 text-base active:scale-[0.98]" onClick={handleNext}>
-                  Continue
-                  <ChevronRight className="ml-2 h-5 w-5" aria-hidden />
-                </Button>
-              </div>
+              <Button className="h-11 cursor-pointer" onClick={() => setStep(2)}>
+                Continue <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
             </div>
           )}
 
           {step === 2 && (
-            <div className="animate-in fade-in slide-in-from-right-8 space-y-8 duration-500">
+            <div className="space-y-5">
               <div>
-                <h2 className="mb-2 text-3xl font-bold tracking-tight">
-                  Which subjects are you taking?
-                </h2>
-                <p className="text-muted-foreground">Select all that apply. You can change this later.</p>
+                <h1 className="text-2xl font-bold tracking-tight">Your identity</h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Username is permanent after onboarding — choose carefully.
+                </p>
               </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {SUBJECT_CATALOG.map((subject) => {
-                  const isSelected = selectedCodes.includes(subject.code);
-                  return (
-                    <button
-                      key={subject.code}
-                      type="button"
-                      onClick={() => toggleSubject(subject.code)}
-                      className={cn(
-                        "flex items-center justify-between rounded-2xl border-2 p-4 text-left transition-colors",
-                        isSelected
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/40",
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={cn("h-2.5 w-2.5 rounded-sm", subject.swatchClass)} />
-                        <div>
-                          <p className="font-medium">{subject.name}</p>
-                          <p className="text-xs text-muted-foreground">{subject.code}</p>
-                        </div>
-                      </div>
-                      <div
-                        className={cn(
-                          "flex h-6 w-6 items-center justify-center rounded-md border transition-colors",
-                          isSelected
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-muted-foreground/30",
-                        )}
-                      >
-                        {isSelected && <Check className="h-4 w-4" aria-hidden />}
-                      </div>
-                    </button>
-                  );
-                })}
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full name</Label>
+                <Input
+                  id="fullName"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="h-11"
+                />
               </div>
-
-              <div className="flex justify-between border-t pt-6">
-                <Button variant="ghost" onClick={handleBack}>
-                  Back
-                </Button>
-                <Button size="lg" onClick={handleNext} disabled={selectedCodes.length === 0}>
-                  Continue
-                </Button>
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) => {
+                    const next = normaliseUsernameInput(e.target.value);
+                    setUsername(next);
+                    setUsernameError(validateUsername(next));
+                  }}
+                  className={cn("h-11", usernameError && "border-destructive")}
+                  placeholder="e.g. aisha_chem"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                />
+                <p className="text-xs text-muted-foreground">
+                  3–24 characters · lowercase letters, numbers, underscore
+                </p>
+                {usernameError && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {usernameError}
+                  </p>
+                )}
               </div>
             </div>
           )}
 
           {step === 3 && (
-            <div className="animate-in fade-in slide-in-from-right-8 space-y-8 duration-500">
+            <div className="space-y-5">
               <div>
-                <h2 className="mb-2 text-3xl font-bold tracking-tight">Study details</h2>
-                <p className="text-muted-foreground">Optional — helps pace your plan.</p>
+                <h1 className="text-2xl font-bold tracking-tight">Choose subjects</h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Select 1–3 subjects from the shared Cambridge catalogue. These create your first
+                  revision tasks — personal subject membership comes later.
+                </p>
               </div>
-
-              <div className="mx-auto max-w-md space-y-6">
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">Current level</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {["AS Level (Year 12)", "A2 Level (Year 13)"].map((option) => (
-                      <Button
-                        key={option}
-                        type="button"
-                        variant="outline"
-                        className={cn(
-                          "h-14 justify-start px-4 font-normal",
-                          level === option && "border-primary bg-primary/5 ring-1 ring-primary",
-                        )}
-                        onClick={() => setLevel(option)}
-                      >
-                        {option}
-                      </Button>
-                    ))}
-                  </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-11 pl-9"
+                  placeholder="Search by name or code"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Selected {selectedIds.length} / 3
+              </p>
+              {subjectsLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
-
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">Main exam session</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {["May/June 2026", "Oct/Nov 2026", "May/June 2027", "Other"].map((option) => (
-                      <Button
-                        key={option}
-                        type="button"
-                        variant="outline"
-                        className={cn(
-                          "h-14 justify-start px-4 font-normal",
-                          examSession === option && "border-primary bg-primary/5 ring-1 ring-primary",
-                        )}
-                        onClick={() => setExamSession(option)}
-                      >
-                        {option}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-between border-t pt-8">
-                <Button variant="ghost" onClick={handleBack}>
-                  Back
-                </Button>
-                <Button size="lg" onClick={handleNext}>
-                  Continue
-                </Button>
-              </div>
+              ) : (
+                <ul className="max-h-72 space-y-2 overflow-y-auto">
+                  {filteredSubjects.map((subject) => {
+                    const selected = selectedIds.includes(subject.id);
+                    const disabled = !selected && selectedIds.length >= 3;
+                    return (
+                      <li key={subject.id}>
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => toggleSubject(subject.id)}
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors",
+                            selected
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/40",
+                            disabled && "opacity-50",
+                          )}
+                        >
+                          <span>
+                            <span className="font-medium">{subject.name}</span>
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              {subject.code}
+                            </span>
+                          </span>
+                          {selected && <Check className="h-4 w-4 text-primary" />}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           )}
 
           {step === 4 && (
-            <div className="animate-in fade-in slide-in-from-right-8 space-y-8 text-center duration-500">
-              <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Check className="h-8 w-8" aria-hidden />
-              </div>
-
-              <h2 className="text-3xl font-bold tracking-tight">You're set up</h2>
-              <p className="mx-auto max-w-md text-pretty text-muted-foreground">
-                We’ll add {selectedCodes.length} subject
-                {selectedCodes.length === 1 ? "" : "s"} and seed today’s first revision tasks so you
-                can start immediately.
-              </p>
-
-              <div className="flex flex-wrap justify-center gap-2 py-2">
-                {selectedCodes.map((code) => {
-                  const subject = SUBJECT_CATALOG.find((s) => s.code === code);
-                  return subject ? (
-                    <span
-                      key={code}
-                      className="inline-flex items-center rounded-md bg-secondary px-3 py-1 text-sm font-medium"
-                    >
-                      {subject.name}
-                    </span>
-                  ) : null;
-                })}
-              </div>
-
-              {error && (
-                <p role="alert" className="text-sm text-destructive">
-                  {error}
+            <div className="space-y-5">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Study context</h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Tell us your level and target exam session.
                 </p>
-              )}
+              </div>
+              <div className="space-y-2">
+                <Label>Level</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {LEVEL_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setLevel(opt)}
+                      className={cn(
+                        "rounded-xl border px-4 py-3 text-left text-sm font-medium",
+                        level === opt
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/40",
+                      )}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Exam session</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {examOptions.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setExamSession(opt)}
+                      className={cn(
+                        "rounded-xl border px-4 py-3 text-left text-sm font-medium",
+                        examSession === opt
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/40",
+                      )}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
-              <div className="pt-4">
+          {step === 5 && (
+            <div className="space-y-5">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Review & finish</h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Confirm your details. We’ll create your starter tasks in one step.
+                </p>
+              </div>
+              <dl className="space-y-3 text-sm">
+                <div className="flex justify-between gap-4 border-b py-2">
+                  <dt className="text-muted-foreground">Full name</dt>
+                  <dd className="font-medium">{fullName.trim()}</dd>
+                </div>
+                <div className="flex justify-between gap-4 border-b py-2">
+                  <dt className="text-muted-foreground">Username</dt>
+                  <dd className="font-medium">{username}</dd>
+                </div>
+                <div className="flex justify-between gap-4 border-b py-2">
+                  <dt className="text-muted-foreground">Subjects</dt>
+                  <dd className="text-right font-medium">
+                    {selectedSubjects.map((s) => s.name).join(", ")}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4 border-b py-2">
+                  <dt className="text-muted-foreground">Level</dt>
+                  <dd className="font-medium">{level}</dd>
+                </div>
+                <div className="flex justify-between gap-4 py-2">
+                  <dt className="text-muted-foreground">Exam session</dt>
+                  <dd className="font-medium">{examSession}</dd>
+                </div>
+              </dl>
+            </div>
+          )}
+
+          {error && (
+            <p className="mt-4 text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          )}
+
+          {step > 1 && (
+            <div className="mt-8 flex items-center justify-between gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isSubmitting}
+                onClick={() => {
+                  setError(null);
+                  setStep((s) => Math.max(1, s - 1));
+                }}
+              >
+                Back
+              </Button>
+              {step < 5 ? (
+                <Button type="button" className="cursor-pointer" onClick={goNext}>
+                  Continue <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              ) : (
                 <Button
-                  size="lg"
-                  className="h-12 w-full px-10 text-base sm:w-auto active:scale-[0.98]"
-                  onClick={finishSetup}
+                  type="button"
+                  className="cursor-pointer"
                   disabled={isSubmitting}
+                  onClick={() => void finish()}
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                      Setting up…
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finishing…
                     </>
                   ) : (
-                    "Go to dashboard"
+                    "Finish setup"
                   )}
                 </Button>
-              </div>
+              )}
             </div>
           )}
         </div>

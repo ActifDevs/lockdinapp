@@ -15,6 +15,13 @@
       "when": 1785576300874,
       "tag": "0001_chilly_randall_flagg",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785624652661,
+      "tag": "0002_phase2_atomic_onboarding",
+      "breakpoints": true
     }
   ]
 }

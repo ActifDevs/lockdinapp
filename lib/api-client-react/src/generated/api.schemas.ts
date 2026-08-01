@@ -9,6 +9,70 @@ export interface ErrorMessage {
   error: string;
 }
 
+export interface Profile {
+  id: string;
+  /** @nullable */
+  fullName: string | null;
+  /** @nullable */
+  username: string | null;
+  /** @nullable */
+  level: string | null;
+  /** @nullable */
+  examSession: string | null;
+  /** @nullable */
+  onboardedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProfileUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  fullName?: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  level?: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  examSession?: string;
+}
+
+export interface CompleteOnboardingInput {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  fullName: string;
+  /**
+     * @minLength 3
+     * @maxLength 24
+     * @pattern ^[a-z0-9_]{3,24}$
+     */
+  username: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  level: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  examSession: string;
+  /**
+     * @minItems 1
+     * @maxItems 3
+     * @items.minimum 1
+     */
+  subjectIds: number[];
+}
+
 export interface HealthStatus {
   status: string;
 }
