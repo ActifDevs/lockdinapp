@@ -57,15 +57,20 @@ WHERE table_schema = 'public'
   AND column_name = 'user_id';
 
 SELECT CASE
-         WHEN EXISTS (
-           SELECT 1 FROM information_schema.columns
-           WHERE table_schema = 'public'
-             AND table_name = 'tasks'
-             AND column_name = 'user_id'
-         )
-         THEN (SELECT count(*) FROM public.tasks WHERE user_id IS NULL)
-         ELSE 0
-       END AS unowned_task_count;
+  WHEN EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'tasks'
+      AND column_name = 'user_id'
+  )
+  THEN (
+    SELECT count(*)
+    FROM public.tasks AS task_row
+    WHERE to_jsonb(task_row)->>'user_id' IS NULL
+  )
+  ELSE NULL::bigint
+END AS unowned_task_count;
 
 -- ------------------------------------------------------------------
 -- 7. Tasks RLS enabled.
@@ -165,16 +170,25 @@ SELECT
 
 -- ------------------------------------------------------------------
 -- 13. Drizzle migration-record count.
---     Drizzle-kit writes to its own journal table. Accept any of the
---     most common default names: __drizzle_migrations / drizzle_migrations.
+--     Drizzle-kit writes to its own journal table at drizzle.__drizzle_migrations.
+--     The estimate below uses pg_stat_user_tables to avoid direct query
+--     before table existence is confirmed. An exact count may be queried
+--     separately only after table existence has been verified:
+--       SELECT count(*) AS drizzle_migration_record_count
+--       FROM drizzle.__drizzle_migrations;
 -- ------------------------------------------------------------------
-SELECT CASE
-  WHEN to_regclass('public.__drizzle_migrations') IS NOT NULL
-    THEN (SELECT count(*) FROM public.__drizzle_migrations)
-  WHEN to_regclass('public.drizzle_migrations') IS NOT NULL
-    THEN (SELECT count(*) FROM public.drizzle_migrations)
-  ELSE 0
-END AS drizzle_migration_record_count;
+SELECT
+  to_regclass('drizzle.__drizzle_migrations') IS NOT NULL
+    AS drizzle_migration_table_exists,
+  COALESCE(
+    (
+      SELECT n_live_tup::bigint
+      FROM pg_stat_user_tables
+      WHERE schemaname = 'drizzle'
+        AND relname = '__drizzle_migrations'
+    ),
+    0
+  ) AS drizzle_migration_record_estimate;
 
 -- ------------------------------------------------------------------
 -- 14. Subject count.

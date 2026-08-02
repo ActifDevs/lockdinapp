@@ -216,6 +216,75 @@ FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public' AND p.proname IN ('lockdin_handle_new_user', 'lockdin_set_profiles_updated_at');
 
+-- 13b. lockdin_complete_onboarding function existence (exact signature)
+SELECT
+  to_regprocedure(
+    'public.lockdin_complete_onboarding(text,text,text,text,integer[])'
+  ) IS NOT NULL AS complete_onboarding_function_exists;
+-- Expected: complete_onboarding_function_exists = true
+
+-- 13c. lockdin_complete_onboarding detailed security and privilege verification
+WITH onboarding_function AS (
+  SELECT
+    procedure.oid,
+    procedure.proowner,
+    procedure.prosecdef,
+    procedure.proconfig,
+    procedure.proacl,
+    pg_get_function_identity_arguments(procedure.oid)
+      AS identity_arguments
+  FROM pg_proc AS procedure
+  INNER JOIN pg_namespace AS namespace
+    ON namespace.oid = procedure.pronamespace
+  WHERE namespace.nspname = 'public'
+    AND procedure.proname = 'lockdin_complete_onboarding'
+    AND procedure.oid = to_regprocedure(
+      'public.lockdin_complete_onboarding(text,text,text,text,integer[])'
+    )
+)
+SELECT
+  identity_arguments,
+  prosecdef AS is_security_definer,
+  EXISTS (
+    SELECT 1
+    FROM unnest(
+      COALESCE(proconfig, ARRAY[]::text[])
+    ) AS configuration_entry(value)
+    WHERE value IN (
+      'search_path=',
+      'search_path=""'
+    )
+  ) AS has_empty_search_path,
+  NOT has_function_privilege(
+    'anon',
+    oid,
+    'EXECUTE'
+  ) AS anon_execute_denied,
+  has_function_privilege(
+    'authenticated',
+    oid,
+    'EXECUTE'
+  ) AS authenticated_execute_allowed,
+  NOT EXISTS (
+    SELECT 1
+    FROM aclexplode(
+      COALESCE(
+        proacl,
+        acldefault('f', proowner)
+      )
+    ) AS privilege
+    WHERE privilege.grantee = 0
+      AND privilege.privilege_type = 'EXECUTE'
+  ) AS public_execute_denied
+FROM onboarding_function;
+-- Expected results:
+--   identity_arguments = text, text, text, text, integer[]
+--   is_security_definer = true
+--   has_empty_search_path = true
+--   anon_execute_denied = true
+--   authenticated_execute_allowed = true
+--   public_execute_denied = true
+
 -- 14. Triggers on auth.users. Must be a SUPERSET of whatever the
 --     pre-migration audit found — lockdin_on_auth_user_created added,
 --     nothing pre-existing removed.
@@ -262,6 +331,13 @@ ORDER BY tgname;
 --       = true (table-level UPDATE denied, column-level UPDATE allowed)
 --   [ ] PUBLIC ACL rows (#11, #12b) are empty for profiles/tasks/sequence/functions
 --   [ ] function EXECUTE checks (#12) are all false for anon/authenticated
---   [ ] lockdin_complete_onboarding function exists (atomic onboarding)
+--   [ ] lockdin_complete_onboarding function exists (atomic onboarding) (#13b)
+--   [ ] lockdin_complete_onboarding security verification (#13c):
+--       - identity_arguments = text, text, text, text, integer[]
+--       - is_security_definer = true
+--       - has_empty_search_path = true
+--       - anon_execute_denied = true
+--       - authenticated_execute_allowed = true
+--       - public_execute_denied = true
 --   [ ] auth.users trigger list (#14) is a superset of the pre-migration list
 --   [ ] profiles updated_at trigger attached (#15)

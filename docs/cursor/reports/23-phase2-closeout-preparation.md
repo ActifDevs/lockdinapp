@@ -110,7 +110,21 @@ Verified via `git diff -- lib/db/migrations/0001_chilly_randall_flagg.sql lib/db
 - `main` branch remains untouched.
 
 ## 21. Remaining Hosted-Cutover Actions
-- Run pre-migration audit on hosted database.
-- Execute data backfill/ownership cleanup for hosted unowned task rows if any exist.
-- Apply migration `0003_stormy_mongu.sql` to hosted database.
-- Run post-migration verification script `docs/sql/phase2/phase2-post-migration-verification.sql` on hosted environment.
+1. Run the hosted read-only cutover-readiness checks.
+2. Verify a current database backup.
+3. Verify Vercel Preview and Production environment-variable names and scopes.
+4. Verify Supabase Auth Site URL, callback redirects, password-reset redirects, email/password readiness and Google-provider readiness.
+5. During a separately approved supervised cutover:
+   - confirm the nine hosted task rows are disposable prototype data;
+   - delete exactly those nine prototype task rows;
+   - verify public.tasks is empty;
+   - apply migrations 0001, 0002 and 0003 in order using the approved Drizzle migration workflow;
+   - run the complete post-migration verification;
+   - deploy the compatible API and frontend;
+   - run two-user hosted Auth, onboarding and task-isolation tests;
+   - merge only after hosted verification succeeds.
+
+Migration 0001 creates profiles, ownership structures, RLS and nullable tasks.user_id.
+Migration 0002 creates the atomic onboarding function.
+Migration 0003 changes tasks.user_id from nullable to NOT NULL.
+Migration 0003 cannot be applied by itself to the current hosted baseline.
