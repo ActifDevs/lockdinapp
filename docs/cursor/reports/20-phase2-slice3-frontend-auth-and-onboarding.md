@@ -1,7 +1,8 @@
 # Phase 2 Slice 3 — Real Frontend Auth, Atomic Onboarding and Session Wiring
 
-**Status:** Slice 3 implemented, validated against **local Supabase only**, and stopped for review.
-**Not committed. Not pushed. Hosted Supabase untouched. `main` unchanged.**
+**Status:** Slice 3 implemented, validated against **local Supabase only**, committed and pushed to `auth-and-tasks` for remote review.
+**Review commit:** `c4c036d399200eb9aa4b8fa42b8406dc646bbc79` — `feat(auth): add frontend sessions and atomic onboarding`
+**Hosted Supabase untouched. `main` unchanged. Not merged. Not deployed.**
 
 ---
 
@@ -9,9 +10,9 @@
 
 ```
 branch: auth-and-tasks
-HEAD = origin/auth-and-tasks = 82f4b1cb10d7e2fb94f5b484e3ea63961c2fd356
+starting HEAD (pre-Slice 3): 82f4b1cb10d7e2fb94f5b484e3ea63961c2fd356
+review HEAD = origin/auth-and-tasks = c4c036d399200eb9aa4b8fa42b8406dc646bbc79
 origin/main = 5f1fbf43cda2cf055c67ce123b1add04bacbb0b4 (unchanged)
-working tree: clean at start; Slice 3 changes uncommitted at stop
 ```
 
 Baseline before edits: `pnpm install --frozen-lockfile`, `pnpm typecheck`, `@workspace/api-server` unit + integration, `@workspace/revision-platform` unit — all passed on the starting commit.
@@ -405,7 +406,7 @@ No hosted task delete/update/select performed. Hosted prototype rows remain out 
 
 ## 30. Confirmation main was unchanged
 
-`origin/main` remains `5f1fbf43cda2cf055c67ce123b1add04bacbb0b4`. No merge. No push.
+`origin/main` remains `5f1fbf43cda2cf055c67ce123b1add04bacbb0b4`. No merge into `main`. Slice 3 was pushed only to `auth-and-tasks`.
 
 ---
 
@@ -428,4 +429,12 @@ Working-tree scan of Slice 3 sources/diff found no service-role keys, JWTs, Goog
 
 ## Branch review commit note
 
-After interactive smoke + full validation, this report is included in the `auth-and-tasks` review commit. That commit does **not** authorise hosted migration, hosted task deletion, `main` merge, deployment, production signup, or live Google OAuth.
+Review commit on `auth-and-tasks`:
+
+- `c4c036d399200eb9aa4b8fa42b8406dc646bbc79`
+- `feat(auth): add frontend sessions and atomic onboarding`
+- Branch: https://github.com/ActifDevs/lockdinapp/tree/auth-and-tasks
+
+That commit does **not** authorise hosted migration, hosted task deletion, `main` merge, deployment, production signup, or live Google OAuth.
+
+This report header was later corrected locally to reflect the pushed review commit; that header-only fix may sit as a follow-up commit if/when re-pushed.
