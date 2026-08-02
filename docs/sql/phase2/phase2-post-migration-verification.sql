@@ -28,24 +28,31 @@
 -- 1. profiles table exists
 SELECT to_regclass('public.profiles') IS NOT NULL AS profiles_table_exists;
 
--- 2. tasks.user_id column present and nullable (NOT NULL cutover is a
---    separate, later step gated on the pre-migration audit's decision)
+-- 2. tasks.user_id column present, uuid, NOT NULL (Phase 2 cutover requires
+--    ownership on every row). Retains the auth.users foreign key.
 SELECT column_name, data_type, is_nullable
 FROM information_schema.columns
 WHERE table_schema = 'public' AND table_name = 'tasks' AND column_name = 'user_id';
+-- Expected: user_id | uuid | NO
 
 -- 3. Aggregated task ownership — no raw user_id values.
---    Cross-check total_task_count against the pre-migration audit's
---    task_count: it must be identical (migration 0001 only adds a nullable
---    column; it must not add, remove, or duplicate rows).
+--    After cutover every task must be owned.
 SELECT
   count(*) AS total_task_count,
-  count(*) FILTER (WHERE user_id IS NULL) AS null_user_id_count,
-  count(*) FILTER (WHERE user_id IS NOT NULL) AS non_null_user_id_count,
-  count(DISTINCT user_id) AS distinct_owner_count
+  count(*) FILTER (WHERE user_id IS NULL) AS unowned_task_count,
+  count(DISTINCT user_id) AS distinct_task_owner_count
 FROM public.tasks;
+-- Expected: unowned_task_count = 0
 
--- 3a. Aggregated Auth/profile integrity — no UUIDs, emails, or metadata.
+-- 3b. Orphan task-owner check — no task may cite an auth.users row that
+--     does not exist.
+SELECT count(*) AS orphan_task_owner_count
+FROM public.tasks t
+LEFT JOIN auth.users u ON u.id = t.user_id
+WHERE u.id IS NULL;
+-- Expected: orphan_task_owner_count = 0
+
+-- 3c. Aggregated Auth/profile integrity — no UUIDs, emails, or metadata.
 --     Expected after migration: missing_profile_count = 0 and
 --     orphan_profile_count = 0 (the trigger + backfill together should
 --     leave every auth.users row with exactly one public.profiles row,
@@ -241,10 +248,13 @@ ORDER BY tgname;
 -- ============================================================================
 
 -- Decision checklist (human):
---   [ ] profiles_table_exists = true
---   [ ] tasks.user_id present, nullable
---   [ ] total_task_count (#3) matches the pre-migration audit's task_count
---   [ ] missing_profile_count = 0 and orphan_profile_count = 0 (#3a)
+--   [ ] profiles_table_exists = true (#1)
+--   [ ] tasks.user_id present, is_nullable = NO, data_type = uuid (#2)
+--   [ ] unowned_task_count = 0 (#3)
+--   [ ] orphan_task_owner_count = 0 (#3b)
+--   [ ] tasks constraints include auth.users FK on user_id (#5)
+--   [ ] tasks_user_id_idx present (#7)
+--   [ ] missing_profile_count = 0 and orphan_profile_count = 0 (#3c)
 --   [ ] policies (#9) use (select auth.uid()) = id / = user_id
 --   [ ] privilege matrix (#10) matches every "_expect_..." column exactly,
 --       including authenticated_can_table_update_profiles_expect_false =
@@ -252,4 +262,6 @@ ORDER BY tgname;
 --       = true (table-level UPDATE denied, column-level UPDATE allowed)
 --   [ ] PUBLIC ACL rows (#11, #12b) are empty for profiles/tasks/sequence/functions
 --   [ ] function EXECUTE checks (#12) are all false for anon/authenticated
+--   [ ] lockdin_complete_onboarding function exists (atomic onboarding)
 --   [ ] auth.users trigger list (#14) is a superset of the pre-migration list
+--   [ ] profiles updated_at trigger attached (#15)

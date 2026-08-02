@@ -15,16 +15,16 @@ import { subjectsTable } from "./subjects";
 import { syllabusTopicsTable } from "./syllabusTopics";
 
 /**
- * Student tasks. `user_id` is added nullable in Phase 2 Slice 1 pending a
- * hosted-row audit; the FK to `auth.users(id)` lives in migration SQL (not
- * `.references()` here) so drizzle-kit cannot manage the Auth schema.
- * NOT NULL + full multi-tenant cutover remain blocked on that audit.
+ * Student tasks are fully user-owned after the Phase 2 cutover.
+ * The auth.users foreign key remains migration-managed because Drizzle's
+ * TypeScript schema does not manage Supabase's auth schema.
+ * user_id is required for every task.
  */
 export const tasksTable = pgTable(
   "tasks",
   {
     id: serial("id").primaryKey(),
-    userId: uuid("user_id"),
+    userId: uuid("user_id").notNull(),
     title: text("title").notNull(),
     subjectId: integer("subject_id")
       .notNull()
