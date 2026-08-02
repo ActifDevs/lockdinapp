@@ -18,6 +18,12 @@ describe("auth pages wiring", () => {
     expect(src).toMatch(/Email or password is incorrect/);
   });
 
+  it("login shows safe profile-load reason message", () => {
+    const src = readPage("login.tsx");
+    expect(src).toMatch(/profile-load/);
+    expect(src).toMatch(/load your account\. Please sign in again/);
+  });
+
   it("signup confirmation-required branch renders correctly", () => {
     const src = readPage("signup.tsx");
     expect(src).toMatch(/emailConfirmationRequired/);
@@ -36,11 +42,14 @@ describe("auth pages wiring", () => {
     expect(src).not.toMatch(/no account/i);
   });
 
-  it("password update rejects mismatch/short values", () => {
+  it("password update signs out after success without delayed navigation", () => {
     const src = readPage("update-password.tsx");
     expect(src).toMatch(/Password must be at least 8 characters/);
     expect(src).toMatch(/Passwords do not match/);
-    expect(src).toMatch(/updatePassword\(password\)/);
+    expect(src).toMatch(/await updatePassword\(password\)/);
+    expect(src).toMatch(/await logout\(\)/);
+    expect(src).not.toMatch(/setTimeout/);
+    expect(src).not.toMatch(/useLocation/);
   });
 
   it("onboarding uses catalogue fetch and complete-onboarding once", () => {

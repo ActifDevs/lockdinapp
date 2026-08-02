@@ -79,6 +79,9 @@ const OBSOLETE_KEYS = [
   "lockdin_subject_codes",
 ] as const;
 
+/** Deterministic retry schedule for initial profile resolution. */
+export const PROFILE_RETRY_DELAYS_MS = [0, 150, 400] as const;
+
 function clearObsoleteLocalStorageKeys(): void {
   for (const key of OBSOLETE_KEYS) {
     localStorage.removeItem(key);
@@ -90,20 +93,20 @@ function firstNameFrom(name: string): string {
   return part || name;
 }
 
-function buildAuthUser(sessionUser: SupabaseUser, profile: Profile | null): AuthUser {
+function buildAuthUser(sessionUser: SupabaseUser, profile: Profile): AuthUser {
   const metaName =
     typeof sessionUser.user_metadata?.full_name === "string"
       ? sessionUser.user_metadata.full_name
       : "";
-  const name = profile?.fullName?.trim() || metaName.trim() || "Scholar";
+  const name = profile.fullName?.trim() || metaName.trim() || "Scholar";
   return {
     id: sessionUser.id,
     email: sessionUser.email ?? "",
     name,
-    username: profile?.username ?? null,
-    level: profile?.level ?? null,
-    examSession: profile?.examSession ?? null,
-    onboardedAt: profile?.onboardedAt ?? null,
+    username: profile.username ?? null,
+    level: profile.level ?? null,
+    examSession: profile.examSession ?? null,
+    onboardedAt: profile.onboardedAt ?? null,
   };
 }
 
@@ -111,6 +114,13 @@ function isSafeNextPath(next: string | null): next is string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) return false;
   if (next.includes("://")) return false;
   return true;
+}
+
+function sleep(ms: number): Promise<void> {
+  if (ms <= 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -123,44 +133,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loggingOut = useRef(false);
   const sessionUserIdRef = useRef<string | null>(null);
 
-  const applyProfile = useCallback(
-    (sessionUser: SupabaseUser, profile: Profile | null) => {
-      setUser(buildAuthUser(sessionUser, profile));
-    },
-    [],
-  );
-
-  const fetchProfileForUser = useCallback(
-    async (sessionUser: SupabaseUser) => {
-      const requestId = ++profileRequestId.current;
-      const userId = sessionUser.id;
-      try {
-        const profile = await getCurrentProfile();
-        if (
-          requestId !== profileRequestId.current ||
-          sessionUserIdRef.current !== userId
-        ) {
-          return;
-        }
-        applyProfile(sessionUser, profile);
-      } catch {
-        if (
-          requestId !== profileRequestId.current ||
-          sessionUserIdRef.current !== userId
-        ) {
-          return;
-        }
-        applyProfile(sessionUser, null);
-      }
-    },
-    [applyProfile],
-  );
+  const applyProfile = useCallback((sessionUser: SupabaseUser, profile: Profile) => {
+    setUser(buildAuthUser(sessionUser, profile));
+  }, []);
 
   const clearProtectedState = useCallback(() => {
     profileRequestId.current += 1;
     sessionUserIdRef.current = null;
     setSession(null);
     setUser(null);
+    setIsLoading(false);
     queryClient.clear();
   }, [queryClient]);
 
@@ -176,6 +158,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loggingOut.current = false;
     }
   }, [clearProtectedState, setLocation]);
+
+  const disposeUnresolvedProfile = useCallback(async () => {
+    if (loggingOut.current) return;
+    loggingOut.current = true;
+    try {
+      const supabase = getSupabaseBrowserClient();
+      clearProtectedState();
+      await supabase.auth.signOut();
+      setLocation("/login?reason=profile-load");
+    } finally {
+      loggingOut.current = false;
+    }
+  }, [clearProtectedState, setLocation]);
+
+  const fetchProfileForUser = useCallback(
+    async (sessionUser: SupabaseUser) => {
+      const requestId = ++profileRequestId.current;
+      const userId = sessionUser.id;
+
+      for (const delayMs of PROFILE_RETRY_DELAYS_MS) {
+        await sleep(delayMs);
+        if (
+          requestId !== profileRequestId.current ||
+          sessionUserIdRef.current !== userId
+        ) {
+          return;
+        }
+        try {
+          const profile = await getCurrentProfile();
+          if (
+            requestId !== profileRequestId.current ||
+            sessionUserIdRef.current !== userId
+          ) {
+            return;
+          }
+          applyProfile(sessionUser, profile);
+          setIsLoading(false);
+          return;
+        } catch {
+          // Retry on the next delay; never treat failure as a null/non-onboarded profile.
+        }
+      }
+
+      if (
+        requestId !== profileRequestId.current ||
+        sessionUserIdRef.current !== userId
+      ) {
+        return;
+      }
+      await disposeUnresolvedProfile();
+    },
+    [applyProfile, disposeUnresolvedProfile],
+  );
+
+  const beginProfileResolution = useCallback(
+    (sessionUser: SupabaseUser) => {
+      const previousUserId = sessionUserIdRef.current;
+      const nextUserId = sessionUser.id;
+
+      setIsLoading(true);
+      if (previousUserId && previousUserId !== nextUserId) {
+        queryClient.clear();
+        setUser(null);
+      }
+      sessionUserIdRef.current = nextUserId;
+
+      // Keep onAuthStateChange synchronous; resolve outside the callback.
+      queueMicrotask(() => {
+        void fetchProfileForUser(sessionUser);
+      });
+    },
+    [fetchProfileForUser, queryClient],
+  );
 
   useEffect(() => {
     clearObsoleteLocalStorageKeys();
@@ -194,8 +249,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession);
-      const nextUserId = nextSession?.user.id ?? null;
-      const previousUserId = sessionUserIdRef.current;
 
       if (!nextSession?.user) {
         sessionUserIdRef.current = null;
@@ -207,35 +260,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (previousUserId && previousUserId !== nextUserId) {
-        queryClient.clear();
-      }
-      sessionUserIdRef.current = nextUserId;
-
       if (
         event === "INITIAL_SESSION" ||
         event === "SIGNED_IN" ||
         event === "USER_UPDATED" ||
         event === "PASSWORD_RECOVERY"
       ) {
-        void fetchProfileForUser(nextSession.user).finally(() => {
-          setIsLoading(false);
-        });
-      } else {
-        // TOKEN_REFRESHED and other events: keep existing profile state.
-        setIsLoading(false);
+        beginProfileResolution(nextSession.user);
+        return;
       }
+
+      // TOKEN_REFRESHED and other events: keep existing profile state.
+      sessionUserIdRef.current = nextSession.user.id;
+      setIsLoading(false);
     });
 
+    // Bootstrap when the listener has not yet delivered INITIAL_SESSION (tests / edge cases).
     void supabase.auth.getSession().then(({ data }) => {
       const initial = data.session;
-      setSession(initial);
-      if (initial?.user) {
-        sessionUserIdRef.current = initial.user.id;
-        void fetchProfileForUser(initial.user).finally(() => setIsLoading(false));
-      } else {
-        setIsLoading(false);
+      if (!initial?.user) {
+        if (!sessionUserIdRef.current) {
+          setSession(null);
+          setIsLoading(false);
+        }
+        return;
       }
+      // Auth listener already started resolution for this user.
+      if (sessionUserIdRef.current === initial.user.id) {
+        return;
+      }
+      setSession(initial);
+      beginProfileResolution(initial.user);
     });
 
     return () => {
@@ -243,7 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthTokenGetter(null);
       setUnauthorizedHandler(null);
     };
-    // Intentionally mount-once; logout/fetch helpers are stable enough via refs.
+    // Intentionally mount-once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -287,8 +342,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     if (!session?.user) return;
-    await fetchProfileForUser(session.user);
-  }, [fetchProfileForUser, session]);
+    beginProfileResolution(session.user);
+  }, [beginProfileResolution, session]);
 
   const completeOnboarding = useCallback(
     async (payload: CompleteOnboardingPayload) => {
@@ -387,4 +442,9 @@ export function getSafeNextPath(search: string): string | null {
   const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
   const next = params.get("next");
   return isSafeNextPath(next) ? next : null;
+}
+
+export function getLoginReason(search: string): string | null {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  return params.get("reason");
 }

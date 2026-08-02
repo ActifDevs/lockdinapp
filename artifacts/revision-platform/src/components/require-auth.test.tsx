@@ -127,6 +127,73 @@ describe("RequireAuth", () => {
     );
     expect(screen.getByText("secret")).toBeInTheDocument();
   });
+
+  it("authenticated user whose profile is still resolving sees PageLoader only", () => {
+    authState.isLoading = true;
+    authState.isAuthenticated = true;
+    authState.isOnboarded = false;
+    renderGuarded(
+      "/dashboard",
+      <RequireAuth>
+        <div>dashboard-children</div>
+      </RequireAuth>,
+    );
+    expect(screen.getByTestId("loader")).toBeInTheDocument();
+    expect(screen.queryByText("dashboard-children")).toBeNull();
+    expect(screen.queryByText("onboarding")).toBeNull();
+    expect(screen.getByTestId("path").textContent).toBe("/dashboard");
+  });
+
+  it("after onboarded profile resolves, protected destination renders without onboarding", async () => {
+    authState.isLoading = true;
+    authState.isAuthenticated = true;
+    authState.isOnboarded = false;
+    const { rerender } = render(
+      <Router hook={memoryLocation({ path: "/dashboard", static: false }).hook}>
+        <PathProbe />
+        <RequireAuth>
+          <div>dashboard-children</div>
+        </RequireAuth>
+      </Router>,
+    );
+    expect(screen.getByTestId("loader")).toBeInTheDocument();
+    expect(screen.queryByText("dashboard-children")).toBeNull();
+
+    authState.isLoading = false;
+    authState.isOnboarded = true;
+    const loc = memoryLocation({ path: "/dashboard", static: false });
+    rerender(
+      <Router hook={loc.hook}>
+        <PathProbe />
+        <RequireAuth>
+          <div>dashboard-children</div>
+        </RequireAuth>
+      </Router>,
+    );
+    expect(screen.getByText("dashboard-children")).toBeInTheDocument();
+    expect(screen.queryByText("onboarding")).toBeNull();
+    expect(screen.getByTestId("path").textContent).toBe("/dashboard");
+  });
+});
+
+describe("RedirectIfAuthenticated while profile loading", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("does not show login children while authenticated profile is resolving", () => {
+    authState.isLoading = true;
+    authState.isAuthenticated = true;
+    authState.isOnboarded = false;
+    renderGuarded(
+      "/login",
+      <RedirectIfAuthenticated>
+        <div>login-form</div>
+      </RedirectIfAuthenticated>,
+    );
+    expect(screen.getByTestId("loader")).toBeInTheDocument();
+    expect(screen.queryByText("login-form")).toBeNull();
+  });
 });
 
 describe("RedirectIfAuthenticated", () => {

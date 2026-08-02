@@ -1,10 +1,11 @@
 import { BrandName } from "@/components/brand-name";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
-import { useState } from "react";
+import { getLoginReason } from "@/components/auth-provider";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { IllustAuthDesk } from "@/components/illustrations";
 
@@ -39,6 +40,11 @@ function mapLoginError(err: unknown): string {
 
 export default function Login() {
   const { login, signInWithGoogle } = useAuth();
+  const search = useSearch();
+  const profileLoadReason = useMemo(
+    () => getLoginReason(search) === "profile-load",
+    [search],
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -123,6 +129,12 @@ export default function Login() {
         <div className="mx-auto w-full max-w-sm">
           <h1 className="font-bold tracking-tight">Welcome back</h1>
           <p className="mt-2 text-muted-foreground">Log in to continue your revision.</p>
+
+          {profileLoadReason && (
+            <p className="mt-4 text-sm text-destructive" role="alert">
+              We couldn&apos;t load your account. Please sign in again.
+            </p>
+          )}
 
           <Button
             type="button"

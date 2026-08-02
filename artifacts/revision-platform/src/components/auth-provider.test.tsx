@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Router } from "wouter";
+import { Router, useLocation, useSearch } from "wouter";
 import { memoryLocation } from "wouter/memory-location";
 import { AuthProvider, useAuth } from "./auth-provider";
 
@@ -87,18 +87,26 @@ function Probe() {
   );
 }
 
+function PathProbe() {
+  const [location] = useLocation();
+  const search = useSearch();
+  const full = search ? `${location}?${search}` : location;
+  return <div data-testid="path">{full}</div>;
+}
+
 function renderAuth(queryClient = new QueryClient()) {
-  const { hook, navigate } = memoryLocation({ path: "/dashboard", static: false });
+  const loc = memoryLocation({ path: "/dashboard", static: false, record: true });
   render(
     <QueryClientProvider client={queryClient}>
-      <Router hook={hook}>
+      <Router hook={loc.hook}>
+        <PathProbe />
         <AuthProvider>
           <Probe />
         </AuthProvider>
       </Router>
     </QueryClientProvider>,
   );
-  return { queryClient, navigate };
+  return { queryClient, loc };
 }
 
 function sessionFor(id: string, email = "user@example.com") {
@@ -111,6 +119,17 @@ function sessionFor(id: string, email = "user@example.com") {
     },
   };
 }
+
+const onboardedProfile = {
+  id: "user-a",
+  fullName: "Ada Lovelace",
+  username: "ada",
+  level: "AS Level (Year 12)",
+  examSession: "May/June 2026",
+  onboardedAt: "2026-01-02T00:00:00Z",
+  createdAt: "2026-01-01T00:00:00Z",
+  updatedAt: "2026-01-02T00:00:00Z",
+};
 
 describe("AuthProvider", () => {
   beforeEach(() => {
@@ -131,6 +150,7 @@ describe("AuthProvider", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.clearAllMocks();
   });
 
@@ -170,21 +190,87 @@ describe("AuthProvider", () => {
   it("session plus onboarded profile resolves onboarded", async () => {
     const sess = sessionFor("user-a");
     getSession.mockResolvedValue({ data: { session: sess } });
-    getCurrentProfile.mockResolvedValue({
-      id: "user-a",
-      fullName: "Ada Lovelace",
-      username: "ada",
-      level: "AS Level (Year 12)",
-      examSession: "May/June 2026",
-      onboardedAt: "2026-01-02T00:00:00Z",
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-02T00:00:00Z",
-    });
+    getCurrentProfile.mockResolvedValue(onboardedProfile);
 
     renderAuth();
     await waitFor(() => {
       expect(screen.getByTestId("onboarded").textContent).toBe("true");
     });
+  });
+
+  it("keeps loading while SIGNED_IN profile is pending", async () => {
+    let resolveProfile: (value: unknown) => void = () => undefined;
+    const pending = new Promise((resolve) => {
+      resolveProfile = resolve;
+    });
+    getCurrentProfile.mockImplementation(() => pending);
+
+    renderAuth();
+    await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("false"));
+
+    await act(async () => {
+      authListener?.("SIGNED_IN", sessionFor("user-a"));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("authenticated").textContent).toBe("true");
+    expect(screen.getByTestId("loading").textContent).toBe("true");
+    expect(screen.getByTestId("onboarded").textContent).toBe("false");
+    expect(screen.getByTestId("user-id").textContent).toBe("");
+
+    await act(async () => {
+      resolveProfile(onboardedProfile);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("loading").textContent).toBe("false");
+      expect(screen.getByTestId("authenticated").textContent).toBe("true");
+      expect(screen.getByTestId("onboarded").textContent).toBe("true");
+      expect(screen.getByTestId("user-id").textContent).toBe("user-a");
+    });
+  });
+
+  it("profile failure never applies a null user and signs out to login reason", async () => {
+    vi.useFakeTimers();
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["tasks"], [{ id: 1 }]);
+    getCurrentProfile.mockRejectedValue(new Error("raw profile boom"));
+
+    renderAuth(queryClient);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      authListener?.("SIGNED_IN", sessionFor("user-a"));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Retry delays: 0, 150, 400
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("user-id").textContent).toBe("");
+    expect(screen.getByTestId("onboarded").textContent).toBe("false");
+    expect(screen.getByTestId("authenticated").textContent).toBe("false");
+    expect(queryClient.getQueryData(["tasks"])).toBeUndefined();
+    expect(signOut).toHaveBeenCalled();
+    expect(screen.getByTestId("path").textContent).toBe("/login?reason=profile-load");
+    expect(document.body.textContent).not.toContain("raw profile boom");
   });
 
   it("signup sends full_name metadata", async () => {
@@ -232,16 +318,7 @@ describe("AuthProvider", () => {
     queryClient.setQueryData(["tasks"], [{ id: 1 }]);
     const sess = sessionFor("user-a");
     getSession.mockResolvedValue({ data: { session: sess } });
-    getCurrentProfile.mockResolvedValue({
-      id: "user-a",
-      fullName: "Ada",
-      username: "ada",
-      level: "AS",
-      examSession: "May/June 2026",
-      onboardedAt: "2026-01-02T00:00:00Z",
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-02T00:00:00Z",
-    });
+    getCurrentProfile.mockResolvedValue(onboardedProfile);
 
     renderAuth(queryClient);
     await waitFor(() => expect(screen.getByTestId("onboarded").textContent).toBe("true"));
@@ -255,16 +332,7 @@ describe("AuthProvider", () => {
   it("SIGNED_OUT clears user state", async () => {
     const sess = sessionFor("user-a");
     getSession.mockResolvedValue({ data: { session: sess } });
-    getCurrentProfile.mockResolvedValue({
-      id: "user-a",
-      fullName: "Ada",
-      username: "ada",
-      level: null,
-      examSession: null,
-      onboardedAt: "2026-01-02T00:00:00Z",
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-02T00:00:00Z",
-    });
+    getCurrentProfile.mockResolvedValue(onboardedProfile);
 
     renderAuth();
     await waitFor(() => expect(screen.getByTestId("authenticated").textContent).toBe("true"));
@@ -279,16 +347,7 @@ describe("AuthProvider", () => {
   it("TOKEN_REFRESHED preserves profile", async () => {
     const sess = sessionFor("user-a");
     getSession.mockResolvedValue({ data: { session: sess } });
-    getCurrentProfile.mockResolvedValue({
-      id: "user-a",
-      fullName: "Ada Lovelace",
-      username: "ada",
-      level: "AS",
-      examSession: "May/June 2026",
-      onboardedAt: "2026-01-02T00:00:00Z",
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-02T00:00:00Z",
-    });
+    getCurrentProfile.mockResolvedValue(onboardedProfile);
 
     renderAuth();
     await waitFor(() => expect(screen.getByTestId("first-name").textContent).toBe("Ada"));
@@ -333,7 +392,13 @@ describe("AuthProvider", () => {
       authListener?.("SIGNED_IN", sessionFor("user-a", "a@example.com"));
     });
     await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
       authListener?.("SIGNED_IN", sessionFor("user-b", "b@example.com"));
+    });
+    await act(async () => {
+      await Promise.resolve();
     });
 
     await waitFor(() => {
