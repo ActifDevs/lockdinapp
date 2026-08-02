@@ -1,7 +1,8 @@
 # Phase 2 Slice 3 — Final Auth Lifecycle Correction
 
-**Status:** Auth lifecycle corrections implemented and validated against **local Supabase only**.
-**Not committed. Not pushed.** Hosted Supabase untouched. `main` unchanged.
+**Status:** Auth lifecycle corrections implemented, validated against **local Supabase only**, committed and pushed to `auth-and-tasks` for remote review.
+**Review commit:** `93215a02c49fe34d0b27b47ac849e049799228a6` — `fix(auth): harden profile loading lifecycle`
+**Hosted Supabase untouched. `main` unchanged. Not merged. Not deployed.**
 
 ---
 
@@ -13,7 +14,9 @@ required Slice 3 review commit: c4c036d399200eb9aa4b8fa42b8406dc646bbc79
 actual HEAD at start of this patch:
   823a2ae037269fed4e6414825a981509bc0587ae
   (docs-only follow-up: "docs: correct Slice 3 report commit status")
-origin/auth-and-tasks = 823a2ae… (same)
+origin/auth-and-tasks at start = 823a2ae… (same)
+lifecycle review HEAD = origin/auth-and-tasks =
+  93215a02c49fe34d0b27b47ac849e049799228a6
 origin/main = 5f1fbf43cda2cf055c67ce123b1add04bacbb0b4 (unchanged)
 working tree: clean at start
 ```
@@ -192,7 +195,7 @@ No hosted task delete/update/select performed.
 
 ## 16. Confirmation main was unchanged
 
-`origin/main` remains `5f1fbf43cda2cf055c67ce123b1add04bacbb0b4`. No merge. No push in this task.
+`origin/main` remains `5f1fbf43cda2cf055c67ce123b1add04bacbb0b4`. No merge into `main`. Lifecycle correction was pushed only to `auth-and-tasks`.
 
 ---
 
@@ -204,10 +207,25 @@ No hosted task delete/update/select performed.
 - `user_subjects` remains deferred.
 - Subject component selection remains deferred.
 - Hosted cutover remains separately gated.
-- This lifecycle correction is uncommitted pending review.
+
+---
+
+## 18. Review commit
+
+Review commit on `auth-and-tasks`:
+
+```
+93215a02c49fe34d0b27b47ac849e049799228a6
+fix(auth): harden profile loading lifecycle
+```
+
+Branch URL: https://github.com/ActifDevs/lockdinapp/tree/auth-and-tasks
+
+This report header was later corrected to reflect the pushed review commit.
 
 ---
 
 ## Stop
 
-Ready for review. **Do not commit / push / merge / apply hosted SQL / delete hosted tasks** until approved.
+Committed and pushed to `auth-and-tasks` for remote code inspection only.
+**Do not merge / apply hosted SQL / delete hosted tasks / deploy / begin hosted cutover** until separately approved.
