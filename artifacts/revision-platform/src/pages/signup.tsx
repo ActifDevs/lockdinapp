@@ -31,6 +31,9 @@ function validatePassword(value: string) {
   return undefined;
 }
 
+const googleAuthEnabled =
+  import.meta.env.VITE_GOOGLE_AUTH_ENABLED === "true";
+
 export default function Signup() {
   const { signUp, signInWithGoogle } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -145,23 +148,31 @@ export default function Signup() {
               <h1 className="font-bold tracking-tight">Create your account</h1>
               <p className="mt-2 text-muted-foreground">Start Lockdin with your school email.</p>
 
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-8 h-11 w-full cursor-pointer text-base"
-                disabled={busy}
-                onClick={() => void handleGoogle()}
+              {googleAuthEnabled && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-8 h-11 w-full cursor-pointer text-base"
+                    disabled={busy}
+                    onClick={() => void handleGoogle()}
+                  >
+                    {googleLoading ? "Connecting…" : "Continue with Google"}
+                  </Button>
+
+                  <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
+                    <span className="h-px flex-1 bg-border" />
+                    or
+                    <span className="h-px flex-1 bg-border" />
+                  </div>
+                </>
+              )}
+
+              <form
+                onSubmit={(e) => void handleSubmit(e)}
+                className={googleAuthEnabled ? "space-y-4" : "mt-8 space-y-4"}
+                noValidate
               >
-                {googleLoading ? "Connecting…" : "Continue with Google"}
-              </Button>
-
-              <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
-                <span className="h-px flex-1 bg-border" />
-                or
-                <span className="h-px flex-1 bg-border" />
-              </div>
-
-              <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4" noValidate>
                 <div className="space-y-2">
                   <Label htmlFor="name">Full name</Label>
                   <Input

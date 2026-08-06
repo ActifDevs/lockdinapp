@@ -15,7 +15,16 @@ describe("auth pages wiring", () => {
     expect(src).not.toMatch(/setTimeout\s*\(/);
     expect(src).toMatch(/await login\(/);
     expect(src).toMatch(/signInWithGoogle/);
+    expect(src).toMatch(/VITE_GOOGLE_AUTH_ENABLED/);
+    expect(src).toMatch(/googleAuthEnabled/);
     expect(src).toMatch(/Email or password is incorrect/);
+  });
+
+  it("signup gates Google sign-in behind configuration", () => {
+    const src = readPage("signup.tsx");
+    expect(src).toMatch(/signInWithGoogle/);
+    expect(src).toMatch(/VITE_GOOGLE_AUTH_ENABLED/);
+    expect(src).toMatch(/googleAuthEnabled/);
   });
 
   it("login shows safe profile-load reason message", () => {
