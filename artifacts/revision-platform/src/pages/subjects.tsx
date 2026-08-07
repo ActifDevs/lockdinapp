@@ -1,5 +1,9 @@
 import type { CSSProperties } from "react";
-import { useListSubjects, getListSubjectsQueryKey, type Subject } from "@workspace/api-client-react";
+import {
+  useListCurrentUserSubjects,
+  getListCurrentUserSubjectsQueryKey,
+  type Subject,
+} from "@workspace/api-client-react";
 import { RichEmptyState } from "@/components/rich-empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Link } from "wouter";
@@ -109,9 +113,10 @@ function SubjectCard({ subject, index }: { subject: Subject; index: number }) {
 }
 
 export default function Subjects() {
-  const { data: subjects, isLoading } = useListSubjects({
-    query: { queryKey: getListSubjectsQueryKey() },
+  const { data: memberships, isLoading, isError, refetch } = useListCurrentUserSubjects({
+    query: { queryKey: getListCurrentUserSubjectsQueryKey() },
   });
+  const subjects = memberships?.map((membership) => membership.subject);
 
   if (isLoading) {
     return <SubjectsSkeleton />;
@@ -129,7 +134,17 @@ export default function Subjects() {
         }
       />
 
-      {!subjects || subjects.length === 0 ? (
+      {isError ? (
+        <div className="dash-insight-card card-tint-cream" role="alert">
+          <p className="font-semibold">We couldn't load your subjects.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Check your connection and try again. Your saved selection has not changed.
+          </p>
+          <Button variant="outline" className="mt-4" onClick={() => void refetch()}>
+            Try again
+          </Button>
+        </div>
+      ) : !subjects || subjects.length === 0 ? (
         <div className="dash-insight-card card-tint-cream">
           <RichEmptyState
             scene="books"

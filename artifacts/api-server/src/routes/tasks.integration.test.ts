@@ -16,6 +16,13 @@ import { FEATURE_TEMPORARILY_UNAVAILABLE } from "../lib/feature-quarantine";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../../..");
+const supabaseCliScript = path.join(
+  repoRoot,
+  "node_modules",
+  "supabase",
+  "dist",
+  "supabase.js",
+);
 
 const LOOPBACK_HOSTNAMES = new Set([
   "localhost",
@@ -45,7 +52,7 @@ function loadLocalSupabaseEnv(): {
 } {
   let raw: string;
   try {
-    raw = execFileSync("pnpm", ["exec", "supabase", "status", "-o", "json"], {
+    raw = execFileSync(process.execPath, [supabaseCliScript, "status", "-o", "json"], {
       cwd: repoRoot,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],

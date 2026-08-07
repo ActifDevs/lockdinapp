@@ -27,7 +27,12 @@ export const syllabusVersionsTable = pgTable(
     sourceFile: text("source_file").notNull(),
     importedAt: timestamp("imported_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [unique("syllabus_versions_subject_source_unique").on(table.subjectId, table.sourceFile)],
+  (table) => [
+    unique("syllabus_versions_subject_source_unique").on(table.subjectId, table.sourceFile),
+    // Supports the composite user_subjects FK that prevents cross-subject
+    // syllabus-version pins (for example Physics + a Chemistry version).
+    unique("syllabus_versions_subject_id_id_unique").on(table.subjectId, table.id),
+  ],
 );
 
 export const insertSyllabusVersionSchema = createInsertSchema(syllabusVersionsTable).omit({

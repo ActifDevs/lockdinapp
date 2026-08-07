@@ -3,6 +3,7 @@ import {
   canProceedWithSubjects,
   filterSubjectsByQuery,
   mapOnboardingConflictError,
+  MAX_SELECTED_SUBJECTS,
   normaliseUsernameInput,
   toggleSubjectSelection,
   validateUsername,
@@ -27,13 +28,20 @@ describe("onboarding logic", () => {
     expect(filterSubjectsByQuery(subjects, "phys").map((s) => s.id)).toEqual([2]);
   });
 
-  it("prevents zero selected subjects", () => {
+  it("enforces the complete 1–5 subject boundary", () => {
     expect(canProceedWithSubjects([])).toMatch(/at least one/i);
+    for (const selected of [[1], [1, 2], [1, 2, 3], [1, 2, 3, 4], [1, 2, 3, 4, 5]]) {
+      expect(canProceedWithSubjects(selected)).toBeUndefined();
+    }
+    expect(canProceedWithSubjects([1, 2, 3, 4, 5, 6])).toMatch(/at most five/i);
+    expect(toggleSubjectSelection([1, 2, 3, 4, 5], 6)).toEqual([1, 2, 3, 4, 5]);
+    expect(MAX_SELECTED_SUBJECTS).toBe(5);
   });
 
-  it("prevents more than three selected subjects", () => {
-    expect(canProceedWithSubjects([1, 2, 3, 4])).toMatch(/at most three/i);
-    expect(toggleSubjectSelection([1, 2, 3], 4)).toEqual([1, 2, 3]);
+  it("rejects duplicate and malformed subject IDs", () => {
+    expect(canProceedWithSubjects([1, 1])).toMatch(/only once/i);
+    expect(canProceedWithSubjects([0])).toMatch(/valid catalogue/i);
+    expect(canProceedWithSubjects([1.5])).toMatch(/valid catalogue/i);
   });
 
   it("lowercases and strips invalid username characters", () => {

@@ -21,6 +21,7 @@ import {
   ListAssessmentComponentsResponse,
 } from "@workspace/api-zod";
 import { temporarilyUnavailableBody } from "../lib/feature-quarantine";
+import { catalogueEnrichment } from "../lib/catalogue-subject";
 
 const router: IRouter = Router();
 
@@ -32,20 +33,6 @@ const router: IRouter = Router();
  * student-progress fields and are NOT treated as per-user data: catalogue
  * responses use neutral placeholders (progress 0, status not_started, notes null).
  */
-function catalogueEnrichment(subject: typeof subjectsTable.$inferSelect, topicsTotal: number) {
-  return {
-    ...subject,
-    // Neutral placeholders — do not derive from shared syllabus_topics.status.
-    syllabusProgress: 0,
-    topicsTotal,
-    topicsCompleted: 0,
-    topicsInProgress: 0,
-    upcomingTasksCount: 0,
-    recentPaperScore: null,
-    recentPaperLabel: null,
-  };
-}
-
 router.get("/subjects", async (_req, res): Promise<void> => {
   const subjects = await db.select().from(subjectsTable).orderBy(subjectsTable.id);
 

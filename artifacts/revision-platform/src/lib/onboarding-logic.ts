@@ -1,4 +1,5 @@
 export const USERNAME_RE = /^[a-z0-9_]{3,24}$/;
+export const MAX_SELECTED_SUBJECTS = 5;
 
 export function validateUsername(value: string): string | undefined {
   if (!value) return "Username is required.";
@@ -33,7 +34,7 @@ export function filterSubjectsByQuery(
 export function toggleSubjectSelection(
   selectedIds: number[],
   id: number,
-  max = 3,
+  max = MAX_SELECTED_SUBJECTS,
 ): number[] {
   if (selectedIds.includes(id)) {
     return selectedIds.filter((x) => x !== id);
@@ -44,7 +45,11 @@ export function toggleSubjectSelection(
 
 export function canProceedWithSubjects(selectedIds: number[]): string | undefined {
   if (selectedIds.length < 1) return "Select at least one subject.";
-  if (selectedIds.length > 3) return "Select at most three subjects.";
+  if (selectedIds.length > MAX_SELECTED_SUBJECTS) return "Select at most five subjects.";
+  if (new Set(selectedIds).size !== selectedIds.length) return "Select each subject only once.";
+  if (selectedIds.some((id) => !Number.isInteger(id) || id < 1)) {
+    return "Select valid catalogue subjects.";
+  }
   return undefined;
 }
 
