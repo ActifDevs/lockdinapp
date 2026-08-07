@@ -41,7 +41,9 @@ import type {
   SyllabusUnit,
   Task,
   TaskInput,
-  TaskUpdate
+  TaskUpdate,
+  UserSubjectMembership,
+  UserSubjectSelectionInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1529,6 +1531,157 @@ export const useDeleteExamDate = <TError = ErrorType<ErrorMessage>,
       return useMutation(getDeleteExamDateMutationOptions(options));
     }
 
+export const getListCurrentUserSubjectsUrl = () => {
+
+
+
+
+  return `/api/user-subjects`
+}
+
+/**
+ * Returns only the caller's durable memberships with shared display data.
+ * @summary List the authenticated user's selected subjects
+ */
+export const listCurrentUserSubjects = async ( options?: RequestInit): Promise<UserSubjectMembership[]> => {
+
+  return customFetch<UserSubjectMembership[]>(getListCurrentUserSubjectsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCurrentUserSubjectsQueryKey = () => {
+    return [
+    `/api/user-subjects`
+    ] as const;
+    }
+
+
+export const getListCurrentUserSubjectsQueryOptions = <TData = Awaited<ReturnType<typeof listCurrentUserSubjects>>, TError = ErrorType<ErrorMessage>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCurrentUserSubjects>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCurrentUserSubjectsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCurrentUserSubjects>>> = ({ signal }) => listCurrentUserSubjects({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCurrentUserSubjects>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCurrentUserSubjectsQueryResult = NonNullable<Awaited<ReturnType<typeof listCurrentUserSubjects>>>
+export type ListCurrentUserSubjectsQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary List the authenticated user's selected subjects
+ */
+
+export function useListCurrentUserSubjects<TData = Awaited<ReturnType<typeof listCurrentUserSubjects>>, TError = ErrorType<ErrorMessage>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCurrentUserSubjects>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCurrentUserSubjectsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReplaceCurrentUserSubjectsUrl = () => {
+
+
+
+
+  return `/api/user-subjects`
+}
+
+/**
+ * Replaces the caller's membership set with 1–5 distinct catalogue subjects.
+ * Existing tasks and other owned activity are not deleted.
+ * @summary Atomically replace the authenticated user's selected subjects
+ */
+export const replaceCurrentUserSubjects = async (userSubjectSelectionInput: UserSubjectSelectionInput, options?: RequestInit): Promise<UserSubjectMembership[]> => {
+
+  return customFetch<UserSubjectMembership[]>(getReplaceCurrentUserSubjectsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(userSubjectSelectionInput)
+  }
+);}
+
+
+
+
+
+export const getReplaceCurrentUserSubjectsMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceCurrentUserSubjects>>, TError,{data: BodyType<UserSubjectSelectionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof replaceCurrentUserSubjects>>, TError,{data: BodyType<UserSubjectSelectionInput>}, TContext> => {
+
+const mutationKey = ['replaceCurrentUserSubjects'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof replaceCurrentUserSubjects>>, {data: BodyType<UserSubjectSelectionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  replaceCurrentUserSubjects(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReplaceCurrentUserSubjectsMutationResult = NonNullable<Awaited<ReturnType<typeof replaceCurrentUserSubjects>>>
+    export type ReplaceCurrentUserSubjectsMutationBody = BodyType<UserSubjectSelectionInput>
+    export type ReplaceCurrentUserSubjectsMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary Atomically replace the authenticated user's selected subjects
+ */
+export const useReplaceCurrentUserSubjects = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceCurrentUserSubjects>>, TError,{data: BodyType<UserSubjectSelectionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof replaceCurrentUserSubjects>>,
+        TError,
+        {data: BodyType<UserSubjectSelectionInput>},
+        TContext
+      > => {
+      return useMutation(getReplaceCurrentUserSubjectsMutationOptions(options));
+    }
+
 export const getGetCurrentProfileUrl = () => {
 
 
@@ -1688,9 +1841,9 @@ export const getCompleteCurrentUserOnboardingUrl = () => {
 }
 
 /**
- * Sets username and onboarded_at and creates one starter task per selected
- * subject (1–3) via lockdin_complete_onboarding. Idempotent when retried
- * with the same username after success.
+ * Sets username and onboarded_at, persists durable membership, and creates
+ * one starter task per selected subject (1–5) via lockdin_complete_onboarding.
+ * Idempotent when retried with the same username after success.
  * @summary Complete onboarding atomically for the authenticated user
  */
 export const completeCurrentUserOnboarding = async (completeOnboardingInput: CompleteOnboardingInput, options?: RequestInit): Promise<Profile> => {

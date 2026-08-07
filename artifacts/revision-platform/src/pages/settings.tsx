@@ -1,7 +1,11 @@
 import {
   useListSubjects,
   getListSubjectsQueryKey,
+  useListCurrentUserSubjects,
+  getListCurrentUserSubjectsQueryKey,
+  useReplaceCurrentUserSubjects,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -98,15 +102,25 @@ function ThemeOption({
 }
 
 export default function Settings() {
+  const queryClient = useQueryClient();
   const { theme, setTheme } = useTheme();
   const { user, updateUser } = useAuth();
   const { prefs, updatePref, requestBrowserPermission } = useNotificationPrefs();
   const { data: subjects } = useListSubjects({ query: { queryKey: getListSubjectsQueryKey() } });
+  const {
+    data: memberships,
+    isLoading: membershipsLoading,
+    isError: membershipsError,
+    refetch: refetchMemberships,
+  } = useListCurrentUserSubjects({
+    query: { queryKey: getListCurrentUserSubjectsQueryKey() },
+  });
   const [name, setName] = useState(user?.name || "");
   const [level, setLevel] = useState(user?.level || "");
   const [examSession, setExamSession] = useState(user?.examSession || "");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<number[]>([]);
   const examOptions = [...getUpcomingExamSessions(), "Other"];
   const defaultTab = (() => {
     try {
@@ -121,6 +135,48 @@ export default function Settings() {
     setLevel(user?.level || "");
     setExamSession(user?.examSession || "");
   }, [user?.name, user?.level, user?.examSession]);
+
+  const membershipKey = memberships?.map((membership) => membership.subject.id).join(",") ?? "";
+  useEffect(() => {
+    if (memberships) {
+      setSelectedSubjectIds(memberships.map((membership) => membership.subject.id));
+    }
+  }, [membershipKey, memberships]);
+
+  const replaceSubjects = useReplaceCurrentUserSubjects();
+  const toggleSelectedSubject = (subjectId: number) => {
+    setSelectedSubjectIds((current) => {
+      if (current.includes(subjectId)) return current.filter((id) => id !== subjectId);
+      if (current.length >= 5) {
+        toast({
+          title: "Five subjects selected",
+          description: "Deselect one subject before choosing another.",
+        });
+        return current;
+      }
+      return [...current, subjectId];
+    });
+  };
+
+  const saveSubjects = async () => {
+    if (selectedSubjectIds.length < 1 || selectedSubjectIds.length > 5) return;
+    try {
+      const updated = await replaceSubjects.mutateAsync({
+        data: { subjectIds: selectedSubjectIds },
+      });
+      queryClient.setQueryData(getListCurrentUserSubjectsQueryKey(), updated);
+      toast({
+        title: "Subjects updated",
+        description: `${updated.length} subject${updated.length === 1 ? "" : "s"} selected.`,
+      });
+    } catch {
+      toast({
+        title: "Could not update subjects",
+        description: "Your previous selection is unchanged. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const saveProfile = async () => {
     setSaving(true);
@@ -280,17 +336,47 @@ export default function Settings() {
         <TabsContent value="subjects" className="mt-6 space-y-6">
           <SettingsSectionCard
             icon={BookOpen}
-            title="Subject catalogue"
-            description="Subjects are managed from the shared Cambridge catalogue. Personal subject selection will be available in the next multi-tenancy phase."
+            title="My subjects"
+            description="Choose between 1 and 5 A-Level subjects. Your selection is saved to your account."
             tint="teal"
           >
-            <p className="mb-4 text-sm text-muted-foreground">
-              The list below is the shared reference catalogue — it does not mean every subject
-              belongs to your account.
-            </p>
-            {subjects && subjects.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground" role="status">
+                Selected {selectedSubjectIds.length} / 5
+                {selectedSubjectIds.length === 5 ? " · Maximum reached" : ""}
+              </p>
+              <Button
+                onClick={() => void saveSubjects()}
+                disabled={
+                  membershipsLoading ||
+                  replaceSubjects.isPending ||
+                  selectedSubjectIds.length < 1
+                }
+              >
+                {replaceSubjects.isPending ? "Saving…" : "Save subjects"}
+              </Button>
+            </div>
+            {membershipsError ? (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+                <p className="text-sm text-destructive">
+                  We couldn't load your saved subjects. Your selection has not been changed.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => void refetchMemberships()}
+                >
+                  Try again
+                </Button>
+              </div>
+            ) : membershipsLoading ? (
+              <p className="text-sm text-muted-foreground">Loading your subjects…</p>
+            ) : subjects && subjects.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2">
                 {subjects.map((subject) => {
+                  const selected = selectedSubjectIds.includes(subject.id);
+                  const disabled = !selected && selectedSubjectIds.length >= 5;
                   const accent = resolveSubjectAccent({
                     code: subject.code,
                     name: subject.name,
@@ -299,9 +385,20 @@ export default function Settings() {
                   return (
                     <div
                       key={subject.id}
-                      className="dash-list-row !items-center rounded-xl border border-border/50 bg-muted/20 px-3 py-3"
+                      className={cn(
+                        "dash-list-row !items-center rounded-xl border px-3 py-3",
+                        selected
+                          ? "border-primary/40 bg-primary/5"
+                          : "border-border/50 bg-muted/20",
+                      )}
                     >
-                      <div className="flex min-w-0 items-center gap-3">
+                      <button
+                        type="button"
+                        aria-pressed={selected}
+                        disabled={disabled}
+                        onClick={() => toggleSelectedSubject(subject.id)}
+                        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      >
                         <div
                           className="h-3 w-3 shrink-0 rounded-full"
                           style={{ backgroundColor: accent }}
@@ -311,7 +408,10 @@ export default function Settings() {
                           <p className="truncate text-sm font-medium">{subject.name}</p>
                           <p className="text-xs text-muted-foreground">{subject.code}</p>
                         </div>
-                      </div>
+                        {selected && (
+                          <Check className="ml-auto h-4 w-4 shrink-0 text-primary" aria-hidden />
+                        )}
+                      </button>
                       <Button variant="ghost" size="sm" asChild>
                         <Link href={`/subjects/${subject.id}`}>View</Link>
                       </Button>

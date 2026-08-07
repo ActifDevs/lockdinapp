@@ -12,6 +12,7 @@ import { getUpcomingExamSessions, LEVEL_OPTIONS } from "@/lib/exam-sessions";
 import {
   canProceedWithSubjects,
   filterSubjectsByQuery,
+  MAX_SELECTED_SUBJECTS,
   mapOnboardingConflictError,
   normaliseUsernameInput,
   toggleSubjectSelection,
@@ -132,7 +133,7 @@ export default function Onboarding() {
                 Welcome{greetingName !== "there" ? `, ${greetingName}` : ""}
               </h1>
               <p className="text-muted-foreground">
-                We’ll set up your username, pick up to three subjects for your first revision
+                We’ll set up your username and select between 1 and 5 subjects for your first revision
                 tasks, and choose your exam session.
               </p>
               <Button className="h-11 cursor-pointer" onClick={() => setStep(2)}>
@@ -190,8 +191,8 @@ export default function Onboarding() {
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">Choose subjects</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Select 1–3 subjects from the shared Cambridge catalogue. These create your first
-                  revision tasks — personal subject membership comes later.
+                  Select 1–5 subjects from the shared Cambridge catalogue. These create your first
+                  revision tasks and become your durable subject selection.
                 </p>
               </div>
               <div className="relative">
@@ -201,11 +202,17 @@ export default function Onboarding() {
                   onChange={(e) => setSearch(e.target.value)}
                   className="h-11 pl-9"
                   placeholder="Search by name or code"
+                  aria-label="Search subjects by name or code"
                 />
               </div>
               <p className="text-sm text-muted-foreground">
-                Selected {selectedIds.length} / 3
+                Selected {selectedIds.length} / {MAX_SELECTED_SUBJECTS}
               </p>
+              {selectedIds.length === MAX_SELECTED_SUBJECTS && (
+                <p className="text-sm font-medium text-foreground" role="status">
+                  Maximum reached. Deselect a subject to choose another.
+                </p>
+              )}
               {subjectsLoading ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -214,12 +221,14 @@ export default function Onboarding() {
                 <ul className="max-h-72 space-y-2 overflow-y-auto">
                   {filteredSubjects.map((subject) => {
                     const selected = selectedIds.includes(subject.id);
-                    const disabled = !selected && selectedIds.length >= 3;
+                    const disabled =
+                      !selected && selectedIds.length >= MAX_SELECTED_SUBJECTS;
                     return (
                       <li key={subject.id}>
                         <button
                           type="button"
                           disabled={disabled}
+                          aria-pressed={selected}
                           onClick={() => toggleSubject(subject.id)}
                           className={cn(
                             "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors",

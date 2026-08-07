@@ -406,6 +406,76 @@ export const DeleteExamDateResponse = zod.void()
 
 
 /**
+ * Returns only the caller's durable memberships with shared display data.
+ * @summary List the authenticated user's selected subjects
+ */
+export const ListCurrentUserSubjectsResponseItem = zod.object({
+  "subject": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "color": zod.string(),
+  "syllabusProgress": zod.number().describe('Neutral placeholder; always 0 (not derived from shared topic status)'),
+  "topicsTotal": zod.number().describe('Count of syllabus topics in the shared catalogue for this subject'),
+  "topicsCompleted": zod.number().describe('Neutral placeholder; always 0'),
+  "topicsInProgress": zod.number().describe('Neutral placeholder; always 0'),
+  "upcomingTasksCount": zod.number().describe('Neutral placeholder; always 0 (not user-task derived)'),
+  "recentPaperScore": zod.number().nullable().describe('Neutral placeholder; always null until past-paper ownership'),
+  "recentPaperLabel": zod.string().nullable().describe('Neutral placeholder; always null until past-paper ownership')
+}).describe('Shared catalogue subject. Progress, task-count, and past-paper fields are\nneutral placeholders until per-user ownership exists for those features.\n'),
+  "syllabusVersion": zod.object({
+  "id": zod.number(),
+  "label": zod.string(),
+  "examBoard": zod.string(),
+  "qualification": zod.string()
+}),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListCurrentUserSubjectsResponse = zod.array(ListCurrentUserSubjectsResponseItem)
+
+
+/**
+ * Replaces the caller's membership set with 1–5 distinct catalogue subjects.
+ * Existing tasks and other owned activity are not deleted.
+ * @summary Atomically replace the authenticated user's selected subjects
+ */
+
+export const replaceCurrentUserSubjectsBodySubjectIdsMax = 5;
+
+
+
+export const ReplaceCurrentUserSubjectsBody = zod.object({
+  "subjectIds": zod.array(zod.number().min(1)).min(1).max(replaceCurrentUserSubjectsBodySubjectIdsMax)
+})
+
+export const ReplaceCurrentUserSubjectsResponseItem = zod.object({
+  "subject": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "color": zod.string(),
+  "syllabusProgress": zod.number().describe('Neutral placeholder; always 0 (not derived from shared topic status)'),
+  "topicsTotal": zod.number().describe('Count of syllabus topics in the shared catalogue for this subject'),
+  "topicsCompleted": zod.number().describe('Neutral placeholder; always 0'),
+  "topicsInProgress": zod.number().describe('Neutral placeholder; always 0'),
+  "upcomingTasksCount": zod.number().describe('Neutral placeholder; always 0 (not user-task derived)'),
+  "recentPaperScore": zod.number().nullable().describe('Neutral placeholder; always null until past-paper ownership'),
+  "recentPaperLabel": zod.string().nullable().describe('Neutral placeholder; always null until past-paper ownership')
+}).describe('Shared catalogue subject. Progress, task-count, and past-paper fields are\nneutral placeholders until per-user ownership exists for those features.\n'),
+  "syllabusVersion": zod.object({
+  "id": zod.number(),
+  "label": zod.string(),
+  "examBoard": zod.string(),
+  "qualification": zod.string()
+}),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ReplaceCurrentUserSubjectsResponse = zod.array(ReplaceCurrentUserSubjectsResponseItem)
+
+
+/**
  * @summary Get the authenticated user's profile
  */
 export const GetCurrentProfileResponse = zod.object({
@@ -453,9 +523,9 @@ export const UpdateCurrentProfileResponse = zod.object({
 
 
 /**
- * Sets username and onboarded_at and creates one starter task per selected
- * subject (1–3) via lockdin_complete_onboarding. Idempotent when retried
- * with the same username after success.
+ * Sets username and onboarded_at, persists durable membership, and creates
+ * one starter task per selected subject (1–5) via lockdin_complete_onboarding.
+ * Idempotent when retried with the same username after success.
  * @summary Complete onboarding atomically for the authenticated user
  */
 export const completeCurrentUserOnboardingBodyFullNameMin = 2;
@@ -471,7 +541,7 @@ export const completeCurrentUserOnboardingBodyLevelMax = 80;
 export const completeCurrentUserOnboardingBodyExamSessionMax = 80;
 
 
-export const completeCurrentUserOnboardingBodySubjectIdsMax = 3;
+export const completeCurrentUserOnboardingBodySubjectIdsMax = 5;
 
 
 

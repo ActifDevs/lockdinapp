@@ -42,4 +42,7 @@ export * from './taskInputPriority';
 export * from './taskPriority';
 export * from './taskUpdate';
 export * from './taskUpdatePriority';
+export * from './userSubjectMembership';
+export * from './userSubjectSelectionInput';
+export * from './userSubjectSyllabusVersion';
 export * from './weeklyActivity';

@@ -5,8 +5,8 @@ import {
   useCreateTask, 
   useUpdateTask,
   useDeleteTask,
-  useListSubjects,
-  getListSubjectsQueryKey,
+  useListCurrentUserSubjects,
+  getListCurrentUserSubjectsQueryKey,
   Task,
   TaskPriority
 } from "@workspace/api-client-react";
@@ -55,9 +55,10 @@ export default function StudyPlan() {
     { query: { queryKey: getListTasksQueryKey({ filter: activeTab as any }) } }
   );
 
-  const { data: subjects } = useListSubjects({
-    query: { queryKey: getListSubjectsQueryKey() }
+  const { data: memberships } = useListCurrentUserSubjects({
+    query: { queryKey: getListCurrentUserSubjectsQueryKey() }
   });
+  const subjects = memberships?.map((membership) => membership.subject);
 
   const createTask = useCreateTask({
     mutation: {

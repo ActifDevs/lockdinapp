@@ -67,23 +67,19 @@ export interface CompleteOnboardingInput {
   examSession: string;
   /**
      * @minItems 1
-     * @maxItems 3
+     * @maxItems 5
      * @items.minimum 1
      */
   subjectIds: number[];
 }
 
-export interface HealthStatus {
-  status: string;
-}
-
-export interface SubjectInput {
-  /** @minLength 1 */
-  name: string;
-  /** @minLength 1 */
-  code: string;
-  /** @minLength 1 */
-  color: string;
+export interface UserSubjectSelectionInput {
+  /**
+     * @minItems 1
+     * @maxItems 5
+     * @items.minimum 1
+     */
+  subjectIds: number[];
 }
 
 /**
@@ -115,6 +111,33 @@ export interface Subject {
      * @nullable
      */
   recentPaperLabel: string | null;
+}
+
+export interface UserSubjectSyllabusVersion {
+  id: number;
+  label: string;
+  examBoard: string;
+  qualification: string;
+}
+
+export interface UserSubjectMembership {
+  subject: Subject;
+  syllabusVersion: UserSubjectSyllabusVersion;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HealthStatus {
+  status: string;
+}
+
+export interface SubjectInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  code: string;
+  /** @minLength 1 */
+  color: string;
 }
 
 /**
