@@ -116,7 +116,7 @@ No Auth users created; no OAuth; no confirmation/recovery emails sent.
 
 **None** for final operational readiness clearance.
 
-Supervised database cutover (journal stamp, apply 0003, dispose nine prototype tasks, Production promote) remains **separately authorised** and is **not** performed by this report.
+Supervised database cutover remains separately authorised and is not performed by this report. The cutover must first re-confirm and delete the nine disposable null-owned prototype tasks and verify `public.tasks` is empty; only then may migrations 0001/0002 be reconciled in the Drizzle journal and migration 0003 be applied. Post-migration verification, Production deployment, hosted Auth/isolation testing and merge remain later cutover steps.
 
 ---
 
@@ -130,9 +130,54 @@ This verdict clears the operational readiness gate only. It does **not** authori
 
 ## 8. Exact next action
 
-Under a **separate explicit cutover approval**, execute the supervised Phase 2 database cutover plan (backup already in durable private storage): journal reconciliation for unjournalled 0001/0002 as specified by that plan, apply migration 0003, dispose the nine disposable prototype tasks, then Production promote only when that cutover brief authorises it.
+Under a separate explicit supervised cutover approval:
 
-Until that separate approval: do not stamp the journal, apply 0003, delete tasks, or deploy Production.
+1. Reconfirm the durable private backup still exists, is non-empty and remains readable.
+
+2. Reconfirm the hosted pre-write state:
+   - Auth users = 0;
+   - `public.tasks` contains exactly 9 rows;
+   - all 9 are the previously classified disposable prototypes;
+   - all 9 still have `user_id NULL`;
+   - migrations 0001 and 0002 remain exact hosted matches but unjournalled;
+   - migration 0003 remains unapplied.
+
+3. Delete exactly the 9 confirmed disposable prototype task rows.
+
+4. Verify:
+   - `public.tasks` row count = 0;
+   - unowned task count = 0.
+
+5. Reconcile migrations 0001 and 0002 in `drizzle.__drizzle_migrations` using the separately reviewed cutover procedure, exact repository migration hashes and correct journal timestamps.
+
+6. Run the approved normal Drizzle migration workflow so that only migration 0003 is applied.
+
+7. Verify:
+   - `tasks.user_id` is `uuid`;
+   - `tasks.user_id` is `NOT NULL`;
+   - migration journal state is correct;
+   - all Phase 2 schema, RLS, policy, privilege, trigger and function checks pass.
+
+8. Run the complete hosted post-migration verification script.
+
+9. Deploy the approved Phase 2 candidate to Production only after the database verification passes.
+
+10. Run hosted end-to-end validation with two disposable Auth users, including:
+    - signup/sign-in;
+    - email-confirmation behaviour as configured;
+    - onboarding;
+    - profile ownership;
+    - task creation;
+    - user A cannot read/update/delete user B's tasks;
+    - user B cannot read/update/delete user A's tasks;
+    - unauthenticated protected API access remains denied;
+    - password-recovery flow where practical for the release gate.
+
+11. Clean up disposable hosted test users/data using the separately approved cleanup procedure.
+
+12. Merge `auth-and-tasks` into `main` only after all hosted verification passes and record the final Phase 2 checkpoint.
+
+Until that separately approved cutover begins, do not delete hosted tasks, stamp the journal, apply migration 0003, deploy Production or merge.
 
 ---
 

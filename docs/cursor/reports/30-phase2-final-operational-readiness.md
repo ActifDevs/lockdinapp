@@ -1,4 +1,4 @@
-# Phase 2 Final Operational Readiness Recheck — Report 29
+# Phase 2 Final Operational Readiness Recheck — Report 30
 
 **Final verdict: BLOCKED — NEW BACKUP REQUIRED BEFORE CUTOVER READINESS**
 
@@ -131,7 +131,7 @@ Not **READY FOR SUPERVISED PHASE 2 CUTOVER**.
 
 1. Operator: take a fresh private logical `pg_dump` (or equivalent) of the hosted Lockdin project into a durable private location (not `/tmp`, not inside the git repo).
 2. Confirm privately: exists, stable storage, non-empty.
-3. Re-run Report 29-style operational recheck (or Report 30 if this file is retained as the stop record).
+3. Run a subsequent final operational readiness clearance after creating and verifying a new durable private backup.
 4. Only after that pass: Preview deploy, Preview Auth redirects (if still required by the recheck brief), validation, then supervised cutover under a **separate** explicit approval.
 
 Do **not** stamp the Drizzle journal, apply migration 0003, delete the nine hosted tasks, deploy Production, or merge to `main` on the strength of this report.
