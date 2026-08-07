@@ -8,8 +8,10 @@
 
 export * from './assessmentComponent';
 export * from './attentionItem';
+export * from './completeOnboardingInput';
 export * from './componentBreakdown';
 export * from './dashboardSummary';
+export * from './errorMessage';
 export * from './examDate';
 export * from './examDateInput';
 export * from './healthStatus';
@@ -21,6 +23,8 @@ export * from './pastPaperAttempt';
 export * from './pastPaperAttemptInput';
 export * from './pastPaperAttemptInputSession';
 export * from './pastPaperAttemptSession';
+export * from './profile';
+export * from './profileUpdate';
 export * from './progressOverview';
 export * from './recentPerformanceItem';
 export * from './subject';

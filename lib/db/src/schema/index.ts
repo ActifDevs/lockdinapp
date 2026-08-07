@@ -5,6 +5,7 @@ export * from "./syllabusUnits";
 export * from "./syllabusTopics";
 export * from "./syllabusLearningOutcomes";
 export * from "./learningOutcomeComponents";
+export * from "./profiles";
 export * from "./tasks";
 export * from "./pastPaperAttempts";
 export * from "./examDates";

@@ -1,0 +1,980 @@
+{
+  "id": "09fb3fd4-8bcf-4e3c-8b5f-7638d1a82a9f",
+  "prevId": "8f0d5001-f472-41fd-8bde-0374eaa04877",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.subjects": {
+      "name": "subjects",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "subjects_code_unique": {
+          "name": "subjects_code_unique",
+          "columns": [
+            "code"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.syllabus_versions": {
+      "name": "syllabus_versions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "subject_id": {
+          "name": "subject_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "exam_board": {
+          "name": "exam_board",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qualification": {
+          "name": "qualification",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valid_from": {
+          "name": "valid_from",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "valid_to": {
+          "name": "valid_to",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_current": {
+          "name": "is_current",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "source_file": {
+          "name": "source_file",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "imported_at": {
+          "name": "imported_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "syllabus_versions_subject_id_subjects_id_fk": {
+          "name": "syllabus_versions_subject_id_subjects_id_fk",
+          "tableFrom": "syllabus_versions",
+          "columnsFrom": [
+            "subject_id"
+          ],
+          "tableTo": "subjects",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "syllabus_versions_subject_source_unique": {
+          "name": "syllabus_versions_subject_source_unique",
+          "columns": [
+            "subject_id",
+            "source_file"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.assessment_components": {
+      "name": "assessment_components",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "syllabus_version_id": {
+          "name": "syllabus_version_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paper_code": {
+          "name": "paper_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level": {
+          "name": "level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "component_name": {
+          "name": "component_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_minutes": {
+          "name": "duration_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_marks": {
+          "name": "total_marks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "weighting_percent": {
+          "name": "weighting_percent",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "order_index": {
+          "name": "order_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "assessment_components_syllabus_version_id_syllabus_versions_id_fk": {
+          "name": "assessment_components_syllabus_version_id_syllabus_versions_id_fk",
+          "tableFrom": "assessment_components",
+          "columnsFrom": [
+            "syllabus_version_id"
+          ],
+          "tableTo": "syllabus_versions",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "assessment_components_version_paper_level_unique": {
+          "name": "assessment_components_version_paper_level_unique",
+          "columns": [
+            "syllabus_version_id",
+            "paper_code",
+            "level"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.syllabus_units": {
+      "name": "syllabus_units",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "subject_id": {
+          "name": "subject_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "syllabus_version_id": {
+          "name": "syllabus_version_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_index": {
+          "name": "order_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "syllabus_units_subject_id_subjects_id_fk": {
+          "name": "syllabus_units_subject_id_subjects_id_fk",
+          "tableFrom": "syllabus_units",
+          "columnsFrom": [
+            "subject_id"
+          ],
+          "tableTo": "subjects",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "syllabus_units_syllabus_version_id_syllabus_versions_id_fk": {
+          "name": "syllabus_units_syllabus_version_id_syllabus_versions_id_fk",
+          "tableFrom": "syllabus_units",
+          "columnsFrom": [
+            "syllabus_version_id"
+          ],
+          "tableTo": "syllabus_versions",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "syllabus_units_version_title_unique": {
+          "name": "syllabus_units_version_title_unique",
+          "columns": [
+            "syllabus_version_id",
+            "title"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.syllabus_topics": {
+      "name": "syllabus_topics",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "unit_id": {
+          "name": "unit_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_id": {
+          "name": "subject_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'not_started'"
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "order_index": {
+          "name": "order_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "syllabus_topics_unit_id_syllabus_units_id_fk": {
+          "name": "syllabus_topics_unit_id_syllabus_units_id_fk",
+          "tableFrom": "syllabus_topics",
+          "columnsFrom": [
+            "unit_id"
+          ],
+          "tableTo": "syllabus_units",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "syllabus_topics_subject_id_subjects_id_fk": {
+          "name": "syllabus_topics_subject_id_subjects_id_fk",
+          "tableFrom": "syllabus_topics",
+          "columnsFrom": [
+            "subject_id"
+          ],
+          "tableTo": "subjects",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "syllabus_topics_unit_title_unique": {
+          "name": "syllabus_topics_unit_title_unique",
+          "columns": [
+            "unit_id",
+            "title"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.syllabus_learning_outcomes": {
+      "name": "syllabus_learning_outcomes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "topic_id": {
+          "name": "topic_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_index": {
+          "name": "order_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "syllabus_learning_outcomes_topic_id_syllabus_topics_id_fk": {
+          "name": "syllabus_learning_outcomes_topic_id_syllabus_topics_id_fk",
+          "tableFrom": "syllabus_learning_outcomes",
+          "columnsFrom": [
+            "topic_id"
+          ],
+          "tableTo": "syllabus_topics",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "syllabus_learning_outcomes_topic_outcome_unique": {
+          "name": "syllabus_learning_outcomes_topic_outcome_unique",
+          "columns": [
+            "topic_id",
+            "outcome"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.learning_outcome_components": {
+      "name": "learning_outcome_components",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "learning_outcome_id": {
+          "name": "learning_outcome_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "component_id": {
+          "name": "component_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "level": {
+          "name": "level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "learning_outcome_components_learning_outcome_id_syllabus_learning_outcomes_id_fk": {
+          "name": "learning_outcome_components_learning_outcome_id_syllabus_learning_outcomes_id_fk",
+          "tableFrom": "learning_outcome_components",
+          "columnsFrom": [
+            "learning_outcome_id"
+          ],
+          "tableTo": "syllabus_learning_outcomes",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "learning_outcome_components_component_id_assessment_components_id_fk": {
+          "name": "learning_outcome_components_component_id_assessment_components_id_fk",
+          "tableFrom": "learning_outcome_components",
+          "columnsFrom": [
+            "component_id"
+          ],
+          "tableTo": "assessment_components",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "learning_outcome_components_outcome_component_level_unique": {
+          "name": "learning_outcome_components_outcome_component_level_unique",
+          "columns": [
+            "learning_outcome_id",
+            "component_id",
+            "level"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.profiles": {
+      "name": "profiles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "full_name": {
+          "name": "full_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "level": {
+          "name": "level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exam_session": {
+          "name": "exam_session",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "onboarded_at": {
+          "name": "onboarded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "profiles_username_unique": {
+          "name": "profiles_username_unique",
+          "columns": [
+            {
+              "expression": "username",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"profiles\".\"username\" is not null",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "profiles_username_format": {
+          "name": "profiles_username_format",
+          "value": "\"profiles\".\"username\" is null or \"profiles\".\"username\" ~ '^[a-z0-9_]{3,24}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.tasks": {
+      "name": "tasks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject_id": {
+          "name": "subject_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "topic_id": {
+          "name": "topic_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deadline": {
+          "name": "deadline",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "priority": {
+          "name": "priority",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'medium'"
+        },
+        "estimated_minutes": {
+          "name": "estimated_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed": {
+          "name": "completed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "tasks_user_id_idx": {
+          "name": "tasks_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "tasks_subject_id_subjects_id_fk": {
+          "name": "tasks_subject_id_subjects_id_fk",
+          "tableFrom": "tasks",
+          "columnsFrom": [
+            "subject_id"
+          ],
+          "tableTo": "subjects",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "tasks_topic_id_syllabus_topics_id_fk": {
+          "name": "tasks_topic_id_syllabus_topics_id_fk",
+          "tableFrom": "tasks",
+          "columnsFrom": [
+            "topic_id"
+          ],
+          "tableTo": "syllabus_topics",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.past_paper_attempts": {
+      "name": "past_paper_attempts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "subject_id": {
+          "name": "subject_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "component_id": {
+          "name": "component_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "variant": {
+          "name": "variant",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "session": {
+          "name": "session",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "score": {
+          "name": "score",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_marks": {
+          "name": "total_marks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "percentage": {
+          "name": "percentage",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date_attempted": {
+          "name": "date_attempted",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "time_taken_minutes": {
+          "name": "time_taken_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "past_paper_attempts_subject_id_subjects_id_fk": {
+          "name": "past_paper_attempts_subject_id_subjects_id_fk",
+          "tableFrom": "past_paper_attempts",
+          "columnsFrom": [
+            "subject_id"
+          ],
+          "tableTo": "subjects",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "past_paper_attempts_component_id_assessment_components_id_fk": {
+          "name": "past_paper_attempts_component_id_assessment_components_id_fk",
+          "tableFrom": "past_paper_attempts",
+          "columnsFrom": [
+            "component_id"
+          ],
+          "tableTo": "assessment_components",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "past_paper_attempts_variant_range": {
+          "name": "past_paper_attempts_variant_range",
+          "value": "\"past_paper_attempts\".\"variant\" is null or \"past_paper_attempts\".\"variant\" between 1 and 5"
+        },
+        "past_paper_attempts_score_nonnegative": {
+          "name": "past_paper_attempts_score_nonnegative",
+          "value": "\"past_paper_attempts\".\"score\" >= 0"
+        },
+        "past_paper_attempts_total_marks_positive": {
+          "name": "past_paper_attempts_total_marks_positive",
+          "value": "\"past_paper_attempts\".\"total_marks\" > 0"
+        },
+        "past_paper_attempts_score_le_total": {
+          "name": "past_paper_attempts_score_le_total",
+          "value": "\"past_paper_attempts\".\"score\" <= \"past_paper_attempts\".\"total_marks\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.exam_dates": {
+      "name": "exam_dates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "subject_id": {
+          "name": "subject_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paper_code": {
+          "name": "paper_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date": {
+          "name": "date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "exam_dates_subject_id_subjects_id_fk": {
+          "name": "exam_dates_subject_id_subjects_id_fk",
+          "tableFrom": "exam_dates",
+          "columnsFrom": [
+            "subject_id"
+          ],
+          "tableTo": "subjects",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "views": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

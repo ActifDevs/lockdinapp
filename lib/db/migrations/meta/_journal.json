@@ -8,6 +8,27 @@
       "when": 1785172719598,
       "tag": "0000_syllabus_reference_and_paper_attempts",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785576300874,
+      "tag": "0001_chilly_randall_flagg",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785624652661,
+      "tag": "0002_phase2_atomic_onboarding",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785690212772,
+      "tag": "0003_stormy_mongu",
+      "breakpoints": true
     }
   ]
 }

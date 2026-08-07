@@ -31,13 +31,19 @@ function validatePassword(value: string) {
   return undefined;
 }
 
+const googleAuthEnabled =
+  import.meta.env.VITE_GOOGLE_AUTH_ENABLED === "true";
+
 export default function Signup() {
-  const { login } = useAuth();
+  const { signUp, signInWithGoogle } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const [touched, setTouched] = useState<{ name?: boolean; email?: boolean; password?: boolean }>({});
 
   const validators = {
@@ -52,7 +58,7 @@ export default function Signup() {
     setErrors((prev) => ({ ...prev, [field]: validators[field](value) }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const next: FieldErrors = {
       name: validateName(name),
@@ -64,10 +70,36 @@ export default function Signup() {
     if (next.name || next.email || next.password) return;
 
     setIsLoading(true);
-    setTimeout(() => {
-      login({ name: name.trim(), email: email.trim() });
-    }, 600);
+    setFormError(null);
+    try {
+      const result = await signUp({
+        fullName: name.trim(),
+        email: email.trim(),
+        password,
+      });
+      if (result.emailConfirmationRequired) {
+        setNeedsConfirmation(true);
+      }
+      // When a session is available, AuthProvider routes via RedirectIfAuthenticated / guards.
+    } catch {
+      setFormError("We couldn't create your account. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    setFormError(null);
+    try {
+      await signInWithGoogle();
+    } catch {
+      setFormError("We couldn't sign you in. Please try again.");
+      setGoogleLoading(false);
+    }
+  };
+
+  const busy = isLoading || googleLoading;
 
   return (
     <div className="grid min-h-[100dvh] lg:grid-cols-2">
@@ -100,101 +132,133 @@ export default function Signup() {
         </Link>
 
         <div className="mx-auto w-full max-w-sm">
-          <h1 className="font-bold tracking-tight">Create an account</h1>
-          <p className="mt-2 text-muted-foreground">Organise your A-Level revision in one place.</p>
-
-          <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
-            <div className="space-y-2">
-              <Label htmlFor="name">Full name</Label>
-              <Input
-                id="name"
-                autoComplete="name"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  if (touched.name) {
-                    setErrors((prev) => ({ ...prev, name: validateName(e.target.value) }));
-                  }
-                }}
-                onBlur={() => handleBlur("name")}
-                placeholder="Jordan Mensah"
-                className={cn("h-11", errors.name && touched.name && "border-destructive")}
-                aria-invalid={Boolean(errors.name && touched.name)}
-                aria-describedby={errors.name && touched.name ? "name-error" : undefined}
-              />
-              {errors.name && touched.name && (
-                <p id="name-error" className="text-sm text-destructive" role="alert">
-                  {errors.name}
-                </p>
-              )}
+          {needsConfirmation ? (
+            <div className="space-y-4">
+              <h1 className="font-bold tracking-tight">Check your email</h1>
+              <p className="text-muted-foreground">
+                If an account was created, we sent a confirmation link. Open it to continue, then
+                sign in.
+              </p>
+              <Button asChild className="h-11 w-full cursor-pointer">
+                <Link href="/login">Back to login</Link>
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (touched.email) {
-                    setErrors((prev) => ({ ...prev, email: validateEmail(e.target.value) }));
-                  }
-                }}
-                onBlur={() => handleBlur("email")}
-                placeholder="you@school.edu"
-                className={cn("h-11", errors.email && touched.email && "border-destructive")}
-                aria-invalid={Boolean(errors.email && touched.email)}
-                aria-describedby={errors.email && touched.email ? "email-error" : undefined}
-              />
-              {errors.email && touched.email && (
-                <p id="email-error" className="text-sm text-destructive" role="alert">
-                  {errors.email}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (touched.password) {
-                    setErrors((prev) => ({ ...prev, password: validatePassword(e.target.value) }));
-                  }
-                }}
-                onBlur={() => handleBlur("password")}
-                className={cn("h-11", errors.password && touched.password && "border-destructive")}
-                aria-invalid={Boolean(errors.password && touched.password)}
-                aria-describedby={
-                  errors.password && touched.password ? "password-error" : "password-hint"
-                }
-              />
-              {errors.password && touched.password ? (
-                <p id="password-error" className="text-sm text-destructive" role="alert">
-                  {errors.password}
-                </p>
-              ) : (
-                <p id="password-hint" className="text-xs text-muted-foreground">
-                  At least 8 characters.
-                </p>
-              )}
-            </div>
+          ) : (
+            <>
+              <h1 className="font-bold tracking-tight">Create your account</h1>
+              <p className="mt-2 text-muted-foreground">Start Lockdin with your school email.</p>
 
-            <Button type="submit" className="h-11 w-full cursor-pointer text-base active:scale-[0.98]" disabled={isLoading}>
-              {isLoading ? "Creating account…" : "Create account"}
-            </Button>
-          </form>
+              {googleAuthEnabled && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-8 h-11 w-full cursor-pointer text-base"
+                    disabled={busy}
+                    onClick={() => void handleGoogle()}
+                  >
+                    {googleLoading ? "Connecting…" : "Continue with Google"}
+                  </Button>
 
-          <p className="mt-8 text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
-              Log in
-            </Link>
-          </p>
+                  <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
+                    <span className="h-px flex-1 bg-border" />
+                    or
+                    <span className="h-px flex-1 bg-border" />
+                  </div>
+                </>
+              )}
+
+              <form
+                onSubmit={(e) => void handleSubmit(e)}
+                className={googleAuthEnabled ? "space-y-4" : "mt-8 space-y-4"}
+                noValidate
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full name</Label>
+                  <Input
+                    id="name"
+                    autoComplete="name"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (touched.name) {
+                        setErrors((prev) => ({ ...prev, name: validateName(e.target.value) }));
+                      }
+                    }}
+                    onBlur={() => handleBlur("name")}
+                    className={cn("h-11", errors.name && touched.name && "border-destructive")}
+                  />
+                  {errors.name && touched.name && (
+                    <p className="text-sm text-destructive" role="alert">{errors.name}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (touched.email) {
+                        setErrors((prev) => ({ ...prev, email: validateEmail(e.target.value) }));
+                      }
+                    }}
+                    onBlur={() => handleBlur("email")}
+                    className={cn("h-11", errors.email && touched.email && "border-destructive")}
+                  />
+                  {errors.email && touched.email && (
+                    <p className="text-sm text-destructive" role="alert">{errors.email}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (touched.password) {
+                        setErrors((prev) => ({
+                          ...prev,
+                          password: validatePassword(e.target.value),
+                        }));
+                      }
+                    }}
+                    onBlur={() => handleBlur("password")}
+                    className={cn("h-11", errors.password && touched.password && "border-destructive")}
+                  />
+                  {errors.password && touched.password && (
+                    <p className="text-sm text-destructive" role="alert">{errors.password}</p>
+                  )}
+                </div>
+
+                {formError && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {formError}
+                  </p>
+                )}
+
+                <Button
+                  type="submit"
+                  className="h-11 w-full cursor-pointer text-base active:scale-[0.98]"
+                  disabled={busy}
+                >
+                  {isLoading ? "Creating account…" : "Create account"}
+                </Button>
+              </form>
+
+              <p className="mt-8 text-sm text-muted-foreground">
+                Already have an account?{" "}
+                <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+                  Sign in
+                </Link>
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>

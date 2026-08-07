@@ -4,7 +4,7 @@ import request from "supertest";
 
 /**
  * Empty thenable query chain that matches the subset of the Drizzle builder
- * used by dashboard.ts (select/from/where/orderBy/limit).
+ * used by dashboard.ts (select/from/where/orderBy).
  */
 function emptyQuery() {
   const result: never[] = [];
@@ -30,25 +30,47 @@ vi.mock("@workspace/db", () => {
     db,
     subjectsTable: {},
     syllabusTopicsTable: {},
-    tasksTable: {},
-    pastPaperAttemptsTable: {},
-    assessmentComponentsTable: {},
-    examDatesTable: {},
   };
 });
+
+vi.mock("../middlewares/require-auth.js", () => ({
+  requireAuth: (
+    req: express.Request,
+    _res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    req.userId = "02444f79-c2bb-4596-ae99-d5d6877f1001";
+    req.accessToken = "test-token";
+    next();
+  },
+}));
+
+vi.mock("../lib/supabase-user-client.js", () => ({
+  createUserScopedSupabaseClient: () => ({}),
+}));
+
+vi.mock("../lib/user-tasks.js", () => ({
+  listUserTaskRows: async () => ({ data: [], error: null }),
+  mappedUserTasks: () => [],
+}));
+
+vi.mock("../lib/enrich-task.js", () => ({
+  enrichTasks: async () => [],
+}));
 
 describe("GET /api/dashboard/summary — empty / new-user DB", () => {
   let app: express.Express;
 
   beforeAll(async () => {
-    // Import after mock so the route binds to the empty db stub.
     const { default: dashboardRouter } = await import("./dashboard.js");
     app = express();
     app.use("/api", dashboardRouter);
   });
 
   it("returns 200 with an empty dashboard payload (no subjects/tasks/exams/papers)", async () => {
-    const res = await request(app).get("/api/dashboard/summary");
+    const res = await request(app)
+      .get("/api/dashboard/summary")
+      .set("Authorization", "Bearer test-token");
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({

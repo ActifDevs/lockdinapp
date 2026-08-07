@@ -6,18 +6,33 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * Shared catalogue subject. Progress, task-count, and past-paper fields are
+ * neutral placeholders until per-user ownership exists for those features.
+ */
 export interface Subject {
   id: number;
   name: string;
   code: string;
   color: string;
+  /** Neutral placeholder; always 0 (not derived from shared topic status) */
   syllabusProgress: number;
+  /** Count of syllabus topics in the shared catalogue for this subject */
   topicsTotal: number;
+  /** Neutral placeholder; always 0 */
   topicsCompleted: number;
+  /** Neutral placeholder; always 0 */
   topicsInProgress: number;
+  /** Neutral placeholder; always 0 (not user-task derived) */
   upcomingTasksCount: number;
-  /** @nullable */
+  /**
+     * Neutral placeholder; always null until past-paper ownership
+     * @nullable
+     */
   recentPaperScore: number | null;
-  /** @nullable */
+  /**
+     * Neutral placeholder; always null until past-paper ownership
+     * @nullable
+     */
   recentPaperLabel: string | null;
 }

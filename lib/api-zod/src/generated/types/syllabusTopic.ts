@@ -7,13 +7,21 @@
  */
 import type { SyllabusTopicStatus } from './syllabusTopicStatus';
 
+/**
+ * Shared syllabus topic reference. status is always presented as not_started
+ * and notes as null — stored shared progress fields are not exposed as user data.
+ */
 export interface SyllabusTopic {
   id: number;
   unitId: number;
   subjectId: number;
   title: string;
+  /** Neutral placeholder; always not_started in catalogue responses */
   status: SyllabusTopicStatus;
-  /** @nullable */
+  /**
+     * Neutral placeholder; always null in catalogue responses
+     * @nullable
+     */
   notes: string | null;
   orderIndex: number;
   learningOutcomes: string[];

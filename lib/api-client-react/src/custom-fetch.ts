@@ -7,6 +7,7 @@ export type ErrorType<T = unknown> = ApiError<T>;
 export type BodyType<T> = T;
 
 export type AuthTokenGetter = () => Promise<string | null> | string | null;
+export type UnauthorizedHandler = () => Promise<void> | void;
 
 const NO_BODY_STATUS = new Set([204, 205, 304]);
 const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
@@ -17,6 +18,7 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
+let _unauthorizedHandler: UnauthorizedHandler | null = null;
 
 /**
  * Set a base URL that is prepended to every relative request URL
@@ -42,6 +44,15 @@ export function setBaseUrl(url: string | null): void {
  */
 export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
+}
+
+/**
+ * Register a handler invoked when any API response is 401 Unauthorized.
+ * The handler is scheduled asynchronously and must not block the thrown ApiError.
+ * Pass `null` to clear.
+ */
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
+  _unauthorizedHandler = handler;
 }
 
 function isRequest(input: RequestInfo | URL): input is Request {
@@ -364,7 +375,16 @@ export async function customFetch<T = unknown>(
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
-    throw new ApiError(response, errorData, requestInfo);
+    const apiError = new ApiError(response, errorData, requestInfo);
+    if (response.status === 401 && _unauthorizedHandler) {
+      const handler = _unauthorizedHandler;
+      queueMicrotask(() => {
+        void Promise.resolve()
+          .then(() => handler())
+          .catch(() => undefined);
+      });
+    }
+    throw apiError;
   }
 
   return (await parseSuccessBody(response, responseType, requestInfo)) as T;

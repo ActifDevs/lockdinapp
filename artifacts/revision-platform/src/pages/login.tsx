@@ -1,10 +1,11 @@
 import { BrandName } from "@/components/brand-name";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
-import { useState } from "react";
+import { getLoginReason } from "@/components/auth-provider";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { IllustAuthDesk } from "@/components/illustrations";
 
@@ -25,9 +26,31 @@ function validatePassword(value: string) {
   return undefined;
 }
 
+function mapLoginError(err: unknown): string {
+  const message = err instanceof Error ? err.message.toLowerCase() : "";
+  if (
+    message.includes("invalid login") ||
+    message.includes("invalid credentials") ||
+    message.includes("email not confirmed")
+  ) {
+    return "Email or password is incorrect.";
+  }
+  return "We couldn't sign you in. Please try again.";
+}
+
+const googleAuthEnabled =
+  import.meta.env.VITE_GOOGLE_AUTH_ENABLED === "true";
+
 export default function Login() {
-  const { login } = useAuth();
+  const { login, signInWithGoogle } = useAuth();
+  const search = useSearch();
+  const profileLoadReason = useMemo(
+    () => getLoginReason(search) === "profile-load",
+    [search],
+  );
   const [isLoading, setIsLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -41,7 +64,7 @@ export default function Login() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const next: FieldErrors = {
       email: validateEmail(email),
@@ -52,10 +75,29 @@ export default function Login() {
     if (next.email || next.password) return;
 
     setIsLoading(true);
-    setTimeout(() => {
-      login({ email: email.trim() });
-    }, 600);
+    setFormError(null);
+    try {
+      await login(email, password);
+      // RedirectIfAuthenticated honors a safe `next` query when onboarded.
+    } catch (err) {
+      setFormError(mapLoginError(err));
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    setFormError(null);
+    try {
+      await signInWithGoogle();
+    } catch {
+      setFormError("We couldn't sign you in. Please try again.");
+      setGoogleLoading(false);
+    }
+  };
+
+  const busy = isLoading || googleLoading;
 
   return (
     <div className="grid min-h-[100dvh] lg:grid-cols-2">
@@ -91,7 +133,37 @@ export default function Login() {
           <h1 className="font-bold tracking-tight">Welcome back</h1>
           <p className="mt-2 text-muted-foreground">Log in to continue your revision.</p>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
+          {profileLoadReason && (
+            <p className="mt-4 text-sm text-destructive" role="alert">
+              We couldn&apos;t load your account. Please sign in again.
+            </p>
+          )}
+
+          {googleAuthEnabled && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-8 h-11 w-full cursor-pointer text-base"
+                disabled={busy}
+                onClick={() => void handleGoogle()}
+              >
+                {googleLoading ? "Connecting…" : "Continue with Google"}
+              </Button>
+
+              <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />
+                or
+                <span className="h-px flex-1 bg-border" />
+              </div>
+            </>
+          )}
+
+          <form
+            onSubmit={(e) => void handleSubmit(e)}
+            className={googleAuthEnabled ? "space-y-4" : "mt-8 space-y-4"}
+            noValidate
+          >
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -150,7 +222,13 @@ export default function Login() {
               )}
             </div>
 
-            <Button type="submit" className="h-11 w-full cursor-pointer text-base active:scale-[0.98]" disabled={isLoading}>
+            {formError && (
+              <p className="text-sm text-destructive" role="alert">
+                {formError}
+              </p>
+            )}
+
+            <Button type="submit" className="h-11 w-full cursor-pointer text-base active:scale-[0.98]" disabled={busy}>
               {isLoading ? "Signing in…" : "Sign in"}
             </Button>
           </form>

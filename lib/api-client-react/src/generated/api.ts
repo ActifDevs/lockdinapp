@@ -21,7 +21,9 @@ import type {
 
 import type {
   AssessmentComponent,
+  CompleteOnboardingInput,
   DashboardSummary,
+  ErrorMessage,
   ExamDate,
   ExamDateInput,
   HealthStatus,
@@ -29,11 +31,12 @@ import type {
   ListTasksParams,
   PastPaperAttempt,
   PastPaperAttemptInput,
+  Profile,
+  ProfileUpdate,
   ProgressOverview,
   Subject,
   SubjectInput,
   SubjectPerformance,
-  SyllabusTopic,
   SyllabusTopicUpdate,
   SyllabusUnit,
   Task,
@@ -154,7 +157,11 @@ export const getListSubjectsUrl = () => {
 }
 
 /**
- * @summary List all subjects for the current user
+ * Returns importer/admin-managed reference subjects. Not user-scoped.
+ * Progress, task-count, and past-paper fields are neutral placeholders
+ * (syllabusProgress/topicsCompleted/topicsInProgress = 0; upcomingTasksCount = 0;
+ * recent paper fields null) until per-user ownership exists for those features.
+ * @summary List the shared public subject catalogue
  */
 export const listSubjects = async ( options?: RequestInit): Promise<Subject[]> => {
 
@@ -201,7 +208,7 @@ export type ListSubjectsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary List all subjects for the current user
+ * @summary List the shared public subject catalogue
  */
 
 export function useListSubjects<TData = Awaited<ReturnType<typeof listSubjects>>, TError = ErrorType<unknown>>(
@@ -231,11 +238,15 @@ export const getCreateSubjectUrl = () => {
 }
 
 /**
- * @summary Add a subject to the workspace (idempotent by code)
+ * Ordinary users must not insert into the global catalogue.
+ * Subjects are populated by the syllabus importer / admin processes.
+ * No admin role is exposed in this API version. No database write is performed.
+ * @deprecated
+ * @summary Disabled — subject catalogue is read-only shared reference data
  */
-export const createSubject = async (subjectInput: SubjectInput, options?: RequestInit): Promise<Subject> => {
+export const createSubject = async (subjectInput: SubjectInput, options?: RequestInit): Promise<unknown> => {
 
-  return customFetch<Subject>(getCreateSubjectUrl(),
+  return customFetch<unknown>(getCreateSubjectUrl(),
   {
     ...options,
     method: 'POST',
@@ -248,7 +259,7 @@ export const createSubject = async (subjectInput: SubjectInput, options?: Reques
 
 
 
-export const getCreateSubjectMutationOptions = <TError = ErrorType<unknown>,
+export const getCreateSubjectMutationOptions = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubject>>, TError,{data: BodyType<SubjectInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createSubject>>, TError,{data: BodyType<SubjectInput>}, TContext> => {
 
@@ -277,12 +288,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateSubjectMutationResult = NonNullable<Awaited<ReturnType<typeof createSubject>>>
     export type CreateSubjectMutationBody = BodyType<SubjectInput>
-    export type CreateSubjectMutationError = ErrorType<unknown>
+    export type CreateSubjectMutationError = ErrorType<ErrorMessage>
 
     /**
- * @summary Add a subject to the workspace (idempotent by code)
+ * @deprecated
+ * @summary Disabled — subject catalogue is read-only shared reference data
  */
-export const useCreateSubject = <TError = ErrorType<unknown>,
+export const useCreateSubject = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubject>>, TError,{data: BodyType<SubjectInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createSubject>>,
@@ -302,7 +314,7 @@ export const getGetSubjectUrl = (subjectId: number,) => {
 }
 
 /**
- * @summary Get a single subject with detail
+ * @summary Get a shared catalogue subject with neutral placeholder enrichment
  */
 export const getSubject = async (subjectId: number, options?: RequestInit): Promise<Subject> => {
 
@@ -349,7 +361,7 @@ export type GetSubjectQueryError = ErrorType<void>
 
 
 /**
- * @summary Get a single subject with detail
+ * @summary Get a shared catalogue subject with neutral placeholder enrichment
  */
 
 export function useGetSubject<TData = Awaited<ReturnType<typeof getSubject>>, TError = ErrorType<void>>(
@@ -379,11 +391,13 @@ export const getDeleteSubjectUrl = (subjectId: number,) => {
 }
 
 /**
- * @summary Remove a subject and its related data
+ * Ordinary users must not delete catalogue rows. No database delete is performed.
+ * @deprecated
+ * @summary Disabled — subject catalogue is read-only shared reference data
  */
-export const deleteSubject = async (subjectId: number, options?: RequestInit): Promise<void> => {
+export const deleteSubject = async (subjectId: number, options?: RequestInit): Promise<unknown> => {
 
-  return customFetch<void>(getDeleteSubjectUrl(subjectId),
+  return customFetch<unknown>(getDeleteSubjectUrl(subjectId),
   {
     ...options,
     method: 'DELETE'
@@ -396,7 +410,7 @@ export const deleteSubject = async (subjectId: number, options?: RequestInit): P
 
 
 
-export const getDeleteSubjectMutationOptions = <TError = ErrorType<void>,
+export const getDeleteSubjectMutationOptions = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSubject>>, TError,{subjectId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteSubject>>, TError,{subjectId: number}, TContext> => {
 
@@ -425,12 +439,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteSubjectMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSubject>>>
 
-    export type DeleteSubjectMutationError = ErrorType<void>
+    export type DeleteSubjectMutationError = ErrorType<ErrorMessage>
 
     /**
- * @summary Remove a subject and its related data
+ * @deprecated
+ * @summary Disabled — subject catalogue is read-only shared reference data
  */
-export const useDeleteSubject = <TError = ErrorType<void>,
+export const useDeleteSubject = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSubject>>, TError,{subjectId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteSubject>>,
@@ -450,7 +465,10 @@ export const getGetSubjectSyllabusUrl = (subjectId: number,) => {
 }
 
 /**
- * @summary Get syllabus topics grouped by unit for a subject
+ * Returns units, topic titles, and learning outcomes from shared reference data.
+ * Topic status is always presented as not_started and notes as null —
+ * stored shared syllabus_topics.status/notes are not treated as per-user progress.
+ * @summary Get syllabus reference structure for a subject
  */
 export const getSubjectSyllabus = async (subjectId: number, options?: RequestInit): Promise<SyllabusUnit[]> => {
 
@@ -497,7 +515,7 @@ export type GetSubjectSyllabusQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Get syllabus topics grouped by unit for a subject
+ * @summary Get syllabus reference structure for a subject
  */
 
 export function useGetSubjectSyllabus<TData = Awaited<ReturnType<typeof getSubjectSyllabus>>, TError = ErrorType<unknown>>(
@@ -527,7 +545,9 @@ export const getGetSubjectPerformanceUrl = (subjectId: number,) => {
 }
 
 /**
- * @summary Get past paper performance summary for a subject
+ * Returns a contract-safe empty performance payload. Does not query
+ * past_paper_attempts (no per-user ownership yet).
+ * @summary Past-paper performance placeholder (ownership not implemented)
  */
 export const getSubjectPerformance = async (subjectId: number, options?: RequestInit): Promise<SubjectPerformance> => {
 
@@ -551,7 +571,7 @@ export const getGetSubjectPerformanceQueryKey = (subjectId: number,) => {
     }
 
 
-export const getGetSubjectPerformanceQueryOptions = <TData = Awaited<ReturnType<typeof getSubjectPerformance>>, TError = ErrorType<unknown>>(subjectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSubjectPerformance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetSubjectPerformanceQueryOptions = <TData = Awaited<ReturnType<typeof getSubjectPerformance>>, TError = ErrorType<ErrorMessage>>(subjectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSubjectPerformance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -570,14 +590,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetSubjectPerformanceQueryResult = NonNullable<Awaited<ReturnType<typeof getSubjectPerformance>>>
-export type GetSubjectPerformanceQueryError = ErrorType<unknown>
+export type GetSubjectPerformanceQueryError = ErrorType<ErrorMessage>
 
 
 /**
- * @summary Get past paper performance summary for a subject
+ * @summary Past-paper performance placeholder (ownership not implemented)
  */
 
-export function useGetSubjectPerformance<TData = Awaited<ReturnType<typeof getSubjectPerformance>>, TError = ErrorType<unknown>>(
+export function useGetSubjectPerformance<TData = Awaited<ReturnType<typeof getSubjectPerformance>>, TError = ErrorType<ErrorMessage>>(
  subjectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSubjectPerformance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -681,12 +701,16 @@ export const getUpdateSyllabusTopicUrl = (topicId: number,) => {
 }
 
 /**
- * @summary Update a syllabus topic status or notes
+ * syllabus_topics.status and notes are shared student-progress fields and
+ * must not be mutated until user-owned syllabus progress exists.
+ * No database update is performed.
+ * @deprecated
+ * @summary Temporarily unavailable — per-user syllabus progress not implemented
  */
 export const updateSyllabusTopic = async (topicId: number,
-    syllabusTopicUpdate: SyllabusTopicUpdate, options?: RequestInit): Promise<SyllabusTopic> => {
+    syllabusTopicUpdate: SyllabusTopicUpdate, options?: RequestInit): Promise<unknown> => {
 
-  return customFetch<SyllabusTopic>(getUpdateSyllabusTopicUrl(topicId),
+  return customFetch<unknown>(getUpdateSyllabusTopicUrl(topicId),
   {
     ...options,
     method: 'PATCH',
@@ -699,7 +723,7 @@ export const updateSyllabusTopic = async (topicId: number,
 
 
 
-export const getUpdateSyllabusTopicMutationOptions = <TError = ErrorType<unknown>,
+export const getUpdateSyllabusTopicMutationOptions = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSyllabusTopic>>, TError,{topicId: number;data: BodyType<SyllabusTopicUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateSyllabusTopic>>, TError,{topicId: number;data: BodyType<SyllabusTopicUpdate>}, TContext> => {
 
@@ -728,12 +752,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateSyllabusTopicMutationResult = NonNullable<Awaited<ReturnType<typeof updateSyllabusTopic>>>
     export type UpdateSyllabusTopicMutationBody = BodyType<SyllabusTopicUpdate>
-    export type UpdateSyllabusTopicMutationError = ErrorType<unknown>
+    export type UpdateSyllabusTopicMutationError = ErrorType<ErrorMessage>
 
     /**
- * @summary Update a syllabus topic status or notes
+ * @deprecated
+ * @summary Temporarily unavailable — per-user syllabus progress not implemented
  */
-export const useUpdateSyllabusTopic = <TError = ErrorType<unknown>,
+export const useUpdateSyllabusTopic = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSyllabusTopic>>, TError,{topicId: number;data: BodyType<SyllabusTopicUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateSyllabusTopic>>,
@@ -760,7 +785,7 @@ export const getListTasksUrl = (params?: ListTasksParams,) => {
 }
 
 /**
- * @summary List revision tasks
+ * @summary List revision tasks for the authenticated user
  */
 export const listTasks = async (params?: ListTasksParams, options?: RequestInit): Promise<Task[]> => {
 
@@ -784,7 +809,7 @@ export const getListTasksQueryKey = (params?: ListTasksParams,) => {
     }
 
 
-export const getListTasksQueryOptions = <TData = Awaited<ReturnType<typeof listTasks>>, TError = ErrorType<unknown>>(params?: ListTasksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListTasksQueryOptions = <TData = Awaited<ReturnType<typeof listTasks>>, TError = ErrorType<ErrorMessage>>(params?: ListTasksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -803,14 +828,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListTasksQueryResult = NonNullable<Awaited<ReturnType<typeof listTasks>>>
-export type ListTasksQueryError = ErrorType<unknown>
+export type ListTasksQueryError = ErrorType<ErrorMessage>
 
 
 /**
- * @summary List revision tasks
+ * @summary List revision tasks for the authenticated user
  */
 
-export function useListTasks<TData = Awaited<ReturnType<typeof listTasks>>, TError = ErrorType<unknown>>(
+export function useListTasks<TData = Awaited<ReturnType<typeof listTasks>>, TError = ErrorType<ErrorMessage>>(
  params?: ListTasksParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -837,7 +862,7 @@ export const getCreateTaskUrl = () => {
 }
 
 /**
- * @summary Create a new revision task
+ * @summary Create a new revision task owned by the authenticated user
  */
 export const createTask = async (taskInput: TaskInput, options?: RequestInit): Promise<Task> => {
 
@@ -854,7 +879,7 @@ export const createTask = async (taskInput: TaskInput, options?: RequestInit): P
 
 
 
-export const getCreateTaskMutationOptions = <TError = ErrorType<unknown>,
+export const getCreateTaskMutationOptions = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTask>>, TError,{data: BodyType<TaskInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createTask>>, TError,{data: BodyType<TaskInput>}, TContext> => {
 
@@ -883,12 +908,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateTaskMutationResult = NonNullable<Awaited<ReturnType<typeof createTask>>>
     export type CreateTaskMutationBody = BodyType<TaskInput>
-    export type CreateTaskMutationError = ErrorType<unknown>
+    export type CreateTaskMutationError = ErrorType<ErrorMessage>
 
     /**
- * @summary Create a new revision task
+ * @summary Create a new revision task owned by the authenticated user
  */
-export const useCreateTask = <TError = ErrorType<unknown>,
+export const useCreateTask = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTask>>, TError,{data: BodyType<TaskInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createTask>>,
@@ -908,7 +933,7 @@ export const getUpdateTaskUrl = (taskId: number,) => {
 }
 
 /**
- * @summary Update a task (mark complete, change deadline, etc.)
+ * @summary Update a task owned by the authenticated user
  */
 export const updateTask = async (taskId: number,
     taskUpdate: TaskUpdate, options?: RequestInit): Promise<Task> => {
@@ -926,7 +951,7 @@ export const updateTask = async (taskId: number,
 
 
 
-export const getUpdateTaskMutationOptions = <TError = ErrorType<unknown>,
+export const getUpdateTaskMutationOptions = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTask>>, TError,{taskId: number;data: BodyType<TaskUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateTask>>, TError,{taskId: number;data: BodyType<TaskUpdate>}, TContext> => {
 
@@ -955,12 +980,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateTaskMutationResult = NonNullable<Awaited<ReturnType<typeof updateTask>>>
     export type UpdateTaskMutationBody = BodyType<TaskUpdate>
-    export type UpdateTaskMutationError = ErrorType<unknown>
+    export type UpdateTaskMutationError = ErrorType<ErrorMessage>
 
     /**
- * @summary Update a task (mark complete, change deadline, etc.)
+ * @summary Update a task owned by the authenticated user
  */
-export const useUpdateTask = <TError = ErrorType<unknown>,
+export const useUpdateTask = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTask>>, TError,{taskId: number;data: BodyType<TaskUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateTask>>,
@@ -980,7 +1005,7 @@ export const getDeleteTaskUrl = (taskId: number,) => {
 }
 
 /**
- * @summary Delete a task
+ * @summary Delete a task owned by the authenticated user
  */
 export const deleteTask = async (taskId: number, options?: RequestInit): Promise<void> => {
 
@@ -997,7 +1022,7 @@ export const deleteTask = async (taskId: number, options?: RequestInit): Promise
 
 
 
-export const getDeleteTaskMutationOptions = <TError = ErrorType<unknown>,
+export const getDeleteTaskMutationOptions = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTask>>, TError,{taskId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteTask>>, TError,{taskId: number}, TContext> => {
 
@@ -1026,12 +1051,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteTaskMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTask>>>
 
-    export type DeleteTaskMutationError = ErrorType<unknown>
+    export type DeleteTaskMutationError = ErrorType<ErrorMessage>
 
     /**
- * @summary Delete a task
+ * @summary Delete a task owned by the authenticated user
  */
-export const useDeleteTask = <TError = ErrorType<unknown>,
+export const useDeleteTask = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTask>>, TError,{taskId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteTask>>,
@@ -1058,7 +1083,10 @@ export const getListPastPaperAttemptsUrl = (params?: ListPastPaperAttemptsParams
 }
 
 /**
- * @summary List past paper attempts
+ * Requires Bearer auth. Returns [] without querying past_paper_attempts.
+ * Does not expose global attempt rows. Feature is not implemented for
+ * multi-tenant use until an ownership migration lands.
+ * @summary Authenticated empty list — past-paper ownership not implemented
  */
 export const listPastPaperAttempts = async (params?: ListPastPaperAttemptsParams, options?: RequestInit): Promise<PastPaperAttempt[]> => {
 
@@ -1082,7 +1110,7 @@ export const getListPastPaperAttemptsQueryKey = (params?: ListPastPaperAttemptsP
     }
 
 
-export const getListPastPaperAttemptsQueryOptions = <TData = Awaited<ReturnType<typeof listPastPaperAttempts>>, TError = ErrorType<unknown>>(params?: ListPastPaperAttemptsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPastPaperAttempts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListPastPaperAttemptsQueryOptions = <TData = Awaited<ReturnType<typeof listPastPaperAttempts>>, TError = ErrorType<ErrorMessage>>(params?: ListPastPaperAttemptsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPastPaperAttempts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -1101,14 +1129,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListPastPaperAttemptsQueryResult = NonNullable<Awaited<ReturnType<typeof listPastPaperAttempts>>>
-export type ListPastPaperAttemptsQueryError = ErrorType<unknown>
+export type ListPastPaperAttemptsQueryError = ErrorType<ErrorMessage>
 
 
 /**
- * @summary List past paper attempts
+ * @summary Authenticated empty list — past-paper ownership not implemented
  */
 
-export function useListPastPaperAttempts<TData = Awaited<ReturnType<typeof listPastPaperAttempts>>, TError = ErrorType<unknown>>(
+export function useListPastPaperAttempts<TData = Awaited<ReturnType<typeof listPastPaperAttempts>>, TError = ErrorType<ErrorMessage>>(
  params?: ListPastPaperAttemptsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPastPaperAttempts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -1135,11 +1163,13 @@ export const getCreatePastPaperAttemptUrl = () => {
 }
 
 /**
- * @summary Log a past paper attempt (Subject + Component + Variant + Session)
+ * No insert is performed. Requires Bearer auth.
+ * @deprecated
+ * @summary Temporarily unavailable — past-paper ownership not implemented
  */
-export const createPastPaperAttempt = async (pastPaperAttemptInput: PastPaperAttemptInput, options?: RequestInit): Promise<PastPaperAttempt> => {
+export const createPastPaperAttempt = async (pastPaperAttemptInput: PastPaperAttemptInput, options?: RequestInit): Promise<unknown> => {
 
-  return customFetch<PastPaperAttempt>(getCreatePastPaperAttemptUrl(),
+  return customFetch<unknown>(getCreatePastPaperAttemptUrl(),
   {
     ...options,
     method: 'POST',
@@ -1152,7 +1182,7 @@ export const createPastPaperAttempt = async (pastPaperAttemptInput: PastPaperAtt
 
 
 
-export const getCreatePastPaperAttemptMutationOptions = <TError = ErrorType<unknown>,
+export const getCreatePastPaperAttemptMutationOptions = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPastPaperAttempt>>, TError,{data: BodyType<PastPaperAttemptInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createPastPaperAttempt>>, TError,{data: BodyType<PastPaperAttemptInput>}, TContext> => {
 
@@ -1181,12 +1211,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreatePastPaperAttemptMutationResult = NonNullable<Awaited<ReturnType<typeof createPastPaperAttempt>>>
     export type CreatePastPaperAttemptMutationBody = BodyType<PastPaperAttemptInput>
-    export type CreatePastPaperAttemptMutationError = ErrorType<unknown>
+    export type CreatePastPaperAttemptMutationError = ErrorType<ErrorMessage>
 
     /**
- * @summary Log a past paper attempt (Subject + Component + Variant + Session)
+ * @deprecated
+ * @summary Temporarily unavailable — past-paper ownership not implemented
  */
-export const useCreatePastPaperAttempt = <TError = ErrorType<unknown>,
+export const useCreatePastPaperAttempt = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPastPaperAttempt>>, TError,{data: BodyType<PastPaperAttemptInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createPastPaperAttempt>>,
@@ -1206,11 +1237,13 @@ export const getDeletePastPaperAttemptUrl = (pastPaperAttemptId: number,) => {
 }
 
 /**
- * @summary Delete a past paper attempt
+ * No delete is performed. Requires Bearer auth.
+ * @deprecated
+ * @summary Temporarily unavailable — past-paper ownership not implemented
  */
-export const deletePastPaperAttempt = async (pastPaperAttemptId: number, options?: RequestInit): Promise<void> => {
+export const deletePastPaperAttempt = async (pastPaperAttemptId: number, options?: RequestInit): Promise<unknown> => {
 
-  return customFetch<void>(getDeletePastPaperAttemptUrl(pastPaperAttemptId),
+  return customFetch<unknown>(getDeletePastPaperAttemptUrl(pastPaperAttemptId),
   {
     ...options,
     method: 'DELETE'
@@ -1223,7 +1256,7 @@ export const deletePastPaperAttempt = async (pastPaperAttemptId: number, options
 
 
 
-export const getDeletePastPaperAttemptMutationOptions = <TError = ErrorType<unknown>,
+export const getDeletePastPaperAttemptMutationOptions = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePastPaperAttempt>>, TError,{pastPaperAttemptId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deletePastPaperAttempt>>, TError,{pastPaperAttemptId: number}, TContext> => {
 
@@ -1252,12 +1285,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeletePastPaperAttemptMutationResult = NonNullable<Awaited<ReturnType<typeof deletePastPaperAttempt>>>
 
-    export type DeletePastPaperAttemptMutationError = ErrorType<unknown>
+    export type DeletePastPaperAttemptMutationError = ErrorType<ErrorMessage>
 
     /**
- * @summary Delete a past paper attempt
+ * @deprecated
+ * @summary Temporarily unavailable — past-paper ownership not implemented
  */
-export const useDeletePastPaperAttempt = <TError = ErrorType<unknown>,
+export const useDeletePastPaperAttempt = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePastPaperAttempt>>, TError,{pastPaperAttemptId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deletePastPaperAttempt>>,
@@ -1277,7 +1311,9 @@ export const getListExamDatesUrl = () => {
 }
 
 /**
- * @summary List exam dates
+ * Requires Bearer auth. Returns [] without querying exam_dates.
+ * Does not expose global exam-date rows.
+ * @summary Authenticated empty list — exam-date ownership not implemented
  */
 export const listExamDates = async ( options?: RequestInit): Promise<ExamDate[]> => {
 
@@ -1301,7 +1337,7 @@ export const getListExamDatesQueryKey = () => {
     }
 
 
-export const getListExamDatesQueryOptions = <TData = Awaited<ReturnType<typeof listExamDates>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listExamDates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListExamDatesQueryOptions = <TData = Awaited<ReturnType<typeof listExamDates>>, TError = ErrorType<ErrorMessage>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listExamDates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -1320,14 +1356,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListExamDatesQueryResult = NonNullable<Awaited<ReturnType<typeof listExamDates>>>
-export type ListExamDatesQueryError = ErrorType<unknown>
+export type ListExamDatesQueryError = ErrorType<ErrorMessage>
 
 
 /**
- * @summary List exam dates
+ * @summary Authenticated empty list — exam-date ownership not implemented
  */
 
-export function useListExamDates<TData = Awaited<ReturnType<typeof listExamDates>>, TError = ErrorType<unknown>>(
+export function useListExamDates<TData = Awaited<ReturnType<typeof listExamDates>>, TError = ErrorType<ErrorMessage>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listExamDates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -1354,11 +1390,13 @@ export const getCreateExamDateUrl = () => {
 }
 
 /**
- * @summary Add an exam date
+ * No insert is performed. Requires Bearer auth.
+ * @deprecated
+ * @summary Temporarily unavailable — exam-date ownership not implemented
  */
-export const createExamDate = async (examDateInput: ExamDateInput, options?: RequestInit): Promise<ExamDate> => {
+export const createExamDate = async (examDateInput: ExamDateInput, options?: RequestInit): Promise<unknown> => {
 
-  return customFetch<ExamDate>(getCreateExamDateUrl(),
+  return customFetch<unknown>(getCreateExamDateUrl(),
   {
     ...options,
     method: 'POST',
@@ -1371,7 +1409,7 @@ export const createExamDate = async (examDateInput: ExamDateInput, options?: Req
 
 
 
-export const getCreateExamDateMutationOptions = <TError = ErrorType<unknown>,
+export const getCreateExamDateMutationOptions = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createExamDate>>, TError,{data: BodyType<ExamDateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createExamDate>>, TError,{data: BodyType<ExamDateInput>}, TContext> => {
 
@@ -1400,12 +1438,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateExamDateMutationResult = NonNullable<Awaited<ReturnType<typeof createExamDate>>>
     export type CreateExamDateMutationBody = BodyType<ExamDateInput>
-    export type CreateExamDateMutationError = ErrorType<unknown>
+    export type CreateExamDateMutationError = ErrorType<ErrorMessage>
 
     /**
- * @summary Add an exam date
+ * @deprecated
+ * @summary Temporarily unavailable — exam-date ownership not implemented
  */
-export const useCreateExamDate = <TError = ErrorType<unknown>,
+export const useCreateExamDate = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createExamDate>>, TError,{data: BodyType<ExamDateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createExamDate>>,
@@ -1425,11 +1464,13 @@ export const getDeleteExamDateUrl = (examDateId: number,) => {
 }
 
 /**
- * @summary Delete an exam date
+ * No delete is performed. Requires Bearer auth.
+ * @deprecated
+ * @summary Temporarily unavailable — exam-date ownership not implemented
  */
-export const deleteExamDate = async (examDateId: number, options?: RequestInit): Promise<void> => {
+export const deleteExamDate = async (examDateId: number, options?: RequestInit): Promise<unknown> => {
 
-  return customFetch<void>(getDeleteExamDateUrl(examDateId),
+  return customFetch<unknown>(getDeleteExamDateUrl(examDateId),
   {
     ...options,
     method: 'DELETE'
@@ -1442,7 +1483,7 @@ export const deleteExamDate = async (examDateId: number, options?: RequestInit):
 
 
 
-export const getDeleteExamDateMutationOptions = <TError = ErrorType<unknown>,
+export const getDeleteExamDateMutationOptions = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteExamDate>>, TError,{examDateId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteExamDate>>, TError,{examDateId: number}, TContext> => {
 
@@ -1471,12 +1512,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteExamDateMutationResult = NonNullable<Awaited<ReturnType<typeof deleteExamDate>>>
 
-    export type DeleteExamDateMutationError = ErrorType<unknown>
+    export type DeleteExamDateMutationError = ErrorType<ErrorMessage>
 
     /**
- * @summary Delete an exam date
+ * @deprecated
+ * @summary Temporarily unavailable — exam-date ownership not implemented
  */
-export const useDeleteExamDate = <TError = ErrorType<unknown>,
+export const useDeleteExamDate = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteExamDate>>, TError,{examDateId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof deleteExamDate>>,
@@ -1485,6 +1527,230 @@ export const useDeleteExamDate = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteExamDateMutationOptions(options));
+    }
+
+export const getGetCurrentProfileUrl = () => {
+
+
+
+
+  return `/api/profile`
+}
+
+/**
+ * @summary Get the authenticated user's profile
+ */
+export const getCurrentProfile = async ( options?: RequestInit): Promise<Profile> => {
+
+  return customFetch<Profile>(getGetCurrentProfileUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCurrentProfileQueryKey = () => {
+    return [
+    `/api/profile`
+    ] as const;
+    }
+
+
+export const getGetCurrentProfileQueryOptions = <TData = Awaited<ReturnType<typeof getCurrentProfile>>, TError = ErrorType<ErrorMessage>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCurrentProfileQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentProfile>>> = ({ signal }) => getCurrentProfile({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCurrentProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCurrentProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getCurrentProfile>>>
+export type GetCurrentProfileQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary Get the authenticated user's profile
+ */
+
+export function useGetCurrentProfile<TData = Awaited<ReturnType<typeof getCurrentProfile>>, TError = ErrorType<ErrorMessage>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCurrentProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCurrentProfileQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCurrentProfileUrl = () => {
+
+
+
+
+  return `/api/profile`
+}
+
+/**
+ * Allowed fields: fullName, level, examSession.
+ * username and onboardedAt cannot be changed through this endpoint.
+ * @summary Update allowed profile fields for the authenticated user
+ */
+export const updateCurrentProfile = async (profileUpdate: ProfileUpdate, options?: RequestInit): Promise<Profile> => {
+
+  return customFetch<Profile>(getUpdateCurrentProfileUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(profileUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateCurrentProfileMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCurrentProfile>>, TError,{data: BodyType<ProfileUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCurrentProfile>>, TError,{data: BodyType<ProfileUpdate>}, TContext> => {
+
+const mutationKey = ['updateCurrentProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCurrentProfile>>, {data: BodyType<ProfileUpdate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateCurrentProfile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCurrentProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateCurrentProfile>>>
+    export type UpdateCurrentProfileMutationBody = BodyType<ProfileUpdate>
+    export type UpdateCurrentProfileMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary Update allowed profile fields for the authenticated user
+ */
+export const useUpdateCurrentProfile = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCurrentProfile>>, TError,{data: BodyType<ProfileUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCurrentProfile>>,
+        TError,
+        {data: BodyType<ProfileUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateCurrentProfileMutationOptions(options));
+    }
+
+export const getCompleteCurrentUserOnboardingUrl = () => {
+
+
+
+
+  return `/api/profile/complete-onboarding`
+}
+
+/**
+ * Sets username and onboarded_at and creates one starter task per selected
+ * subject (1–3) via lockdin_complete_onboarding. Idempotent when retried
+ * with the same username after success.
+ * @summary Complete onboarding atomically for the authenticated user
+ */
+export const completeCurrentUserOnboarding = async (completeOnboardingInput: CompleteOnboardingInput, options?: RequestInit): Promise<Profile> => {
+
+  return customFetch<Profile>(getCompleteCurrentUserOnboardingUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(completeOnboardingInput)
+  }
+);}
+
+
+
+
+
+export const getCompleteCurrentUserOnboardingMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeCurrentUserOnboarding>>, TError,{data: BodyType<CompleteOnboardingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeCurrentUserOnboarding>>, TError,{data: BodyType<CompleteOnboardingInput>}, TContext> => {
+
+const mutationKey = ['completeCurrentUserOnboarding'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeCurrentUserOnboarding>>, {data: BodyType<CompleteOnboardingInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  completeCurrentUserOnboarding(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteCurrentUserOnboardingMutationResult = NonNullable<Awaited<ReturnType<typeof completeCurrentUserOnboarding>>>
+    export type CompleteCurrentUserOnboardingMutationBody = BodyType<CompleteOnboardingInput>
+    export type CompleteCurrentUserOnboardingMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary Complete onboarding atomically for the authenticated user
+ */
+export const useCompleteCurrentUserOnboarding = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeCurrentUserOnboarding>>, TError,{data: BodyType<CompleteOnboardingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completeCurrentUserOnboarding>>,
+        TError,
+        {data: BodyType<CompleteOnboardingInput>},
+        TContext
+      > => {
+      return useMutation(getCompleteCurrentUserOnboardingMutationOptions(options));
     }
 
 export const getGetDashboardSummaryUrl = () => {
@@ -1496,7 +1762,10 @@ export const getGetDashboardSummaryUrl = () => {
 }
 
 /**
- * @summary Get dashboard overview — today's tasks, streak, subject progress
+ * Task metrics are Auth-scoped. subjectProgressSummary.syllabusProgress is
+ * always 0 (neutral placeholder). recentPerformance and upcomingExams are
+ * empty until past-paper/exam ownership exists.
+ * @summary Get dashboard overview for the authenticated user
  */
 export const getDashboardSummary = async ( options?: RequestInit): Promise<DashboardSummary> => {
 
@@ -1520,7 +1789,7 @@ export const getGetDashboardSummaryQueryKey = () => {
     }
 
 
-export const getGetDashboardSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getDashboardSummary>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetDashboardSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getDashboardSummary>>, TError = ErrorType<ErrorMessage>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -1539,14 +1808,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetDashboardSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardSummary>>>
-export type GetDashboardSummaryQueryError = ErrorType<unknown>
+export type GetDashboardSummaryQueryError = ErrorType<ErrorMessage>
 
 
 /**
- * @summary Get dashboard overview — today's tasks, streak, subject progress
+ * @summary Get dashboard overview for the authenticated user
  */
 
-export function useGetDashboardSummary<TData = Awaited<ReturnType<typeof getDashboardSummary>>, TError = ErrorType<unknown>>(
+export function useGetDashboardSummary<TData = Awaited<ReturnType<typeof getDashboardSummary>>, TError = ErrorType<ErrorMessage>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -1573,7 +1842,9 @@ export const getGetProgressOverviewUrl = () => {
 }
 
 /**
- * @summary Get consolidated progress analytics across all subjects
+ * Task completion metrics are Auth-scoped. Syllabus completion fields are
+ * neutral placeholders (0). Past-paper totals are 0 until ownership exists.
+ * @summary Get progress analytics for the authenticated user
  */
 export const getProgressOverview = async ( options?: RequestInit): Promise<ProgressOverview> => {
 
@@ -1597,7 +1868,7 @@ export const getGetProgressOverviewQueryKey = () => {
     }
 
 
-export const getGetProgressOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getProgressOverview>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProgressOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetProgressOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getProgressOverview>>, TError = ErrorType<ErrorMessage>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProgressOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -1616,14 +1887,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetProgressOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getProgressOverview>>>
-export type GetProgressOverviewQueryError = ErrorType<unknown>
+export type GetProgressOverviewQueryError = ErrorType<ErrorMessage>
 
 
 /**
- * @summary Get consolidated progress analytics across all subjects
+ * @summary Get progress analytics for the authenticated user
  */
 
-export function useGetProgressOverview<TData = Awaited<ReturnType<typeof getProgressOverview>>, TError = ErrorType<unknown>>(
+export function useGetProgressOverview<TData = Awaited<ReturnType<typeof getProgressOverview>>, TError = ErrorType<ErrorMessage>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProgressOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
