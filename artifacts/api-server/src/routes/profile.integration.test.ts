@@ -429,18 +429,45 @@ describe("profile and atomic onboarding (local)", () => {
       .get("/api/user-subjects")
       .set("Authorization", `Bearer ${tokenB}`);
     expect(listA.status).toBe(200);
-    expect(listA.body.map((item: { subject: { id: number } }) => item.subject.id)).toEqual(
-      subjectIds.slice(0, 2).sort((a, b) => a - b),
-    );
+    expect(
+      listA.body.map((item: { subject: { id: number } }) => item.subject.id),
+    ).toEqual(subjectIds.slice(0, 2).sort((a, b) => a - b));
     expect(listB.status).toBe(200);
     expect(listB.body).toHaveLength(1);
 
-    const replace = await request(app)
-      .put("/api/user-subjects")
-      .set("Authorization", `Bearer ${tokenA}`)
-      .send({ subjectIds: subjectIds.slice(0, 5) });
-    expect(replace.status).toBe(200);
-    expect(replace.body).toHaveLength(5);
+    const replaceFor = async (token: string, selected: number[]) => {
+      const response = await request(app)
+        .put("/api/user-subjects")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ subjectIds: selected });
+      expect(response.status).toBe(200);
+      expect(
+        response.body.map(
+          (item: { subject: { id: number } }) => item.subject.id,
+        ),
+      ).toEqual([...selected].sort((a, b) => a - b));
+    };
+
+    await replaceFor(tokenA, [subjectIds[0]]);
+    await replaceFor(tokenA, subjectIds.slice(0, 5));
+    await replaceFor(tokenA, [subjectIds[5]]);
+    await replaceFor(tokenA, [subjectIds[0]]);
+    await replaceFor(tokenA, subjectIds.slice(1, 6));
+    await replaceFor(tokenA, subjectIds.slice(1, 5));
+    await replaceFor(tokenA, subjectIds.slice(0, 5));
+    await replaceFor(tokenA, subjectIds.slice(0, 4));
+    await replaceFor(tokenA, subjectIds.slice(0, 5));
+
+    await replaceFor(tokenB, [subjectIds[5]]);
+    const aAfterBReplacement = await request(app)
+      .get("/api/user-subjects")
+      .set("Authorization", `Bearer ${tokenA}`);
+    expect(aAfterBReplacement.status).toBe(200);
+    expect(
+      aAfterBReplacement.body.map(
+        (item: { subject: { id: number } }) => item.subject.id,
+      ),
+    ).toEqual(subjectIds.slice(0, 5).sort((a, b) => a - b));
 
     const tasksAfterReplacement = await db.execute(sql`
       select count(*)::int as n from public.tasks where user_id = ${userAId}
@@ -468,21 +495,57 @@ describe("profile and atomic onboarding (local)", () => {
       .get("/api/user-subjects")
       .set("Authorization", `Bearer ${tokenB}`);
     expect(bUnchanged.body).toHaveLength(1);
+
+    const integrity = await db.execute(sql`
+      select membership.subject_id,
+             membership.syllabus_version_id,
+             version.is_current,
+             version.subject_id as version_subject_id
+      from public.user_subjects membership
+      join public.syllabus_versions version
+        on version.id = membership.syllabus_version_id
+      where membership.user_id = ${userAId}
+      order by membership.subject_id
+    `);
+    expect(integrity.rows).toHaveLength(5);
+    expect(new Set(integrity.rows.map((row) => row.subject_id)).size).toBe(5);
+    expect(integrity.rows.every((row) => row.is_current === true)).toBe(true);
+    expect(
+      integrity.rows.every((row) => row.subject_id === row.version_subject_id),
+    ).toBe(true);
   });
 
-  it("enforces direct RLS CRUD isolation and the five-subject ceiling", async () => {
+  it("allows owner SELECT but denies all direct Data API membership writes", async () => {
     const userA = createClient(env.url, env.publishableKey, {
       global: { headers: { Authorization: `Bearer ${tokenA}` } },
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
     });
     const userB = createClient(env.url, env.publishableKey, {
       global: { headers: { Authorization: `Bearer ${tokenB}` } },
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    });
+    const anonymous = createClient(env.url, env.publishableKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
     });
     const versions = await db.execute(sql`
       select subject_id, id from public.syllabus_versions
       where is_current = true and subject_id in (
-        ${sql.join(subjectIds.map((id) => sql`${id}`), sql`, `)}
+        ${sql.join(
+          subjectIds.map((id) => sql`${id}`),
+          sql`, `,
+        )}
       )
     `);
     const versionBySubject = new Map(
@@ -493,49 +556,66 @@ describe("profile and atomic onboarding (local)", () => {
     expect(own.error).toBeNull();
     expect(own.data).toHaveLength(5);
     expect(own.data?.every((row) => row.user_id === userAId)).toBe(true);
-    const ownB = await userB.from("user_subjects").select("user_id, subject_id");
+    const ownB = await userB
+      .from("user_subjects")
+      .select("user_id, subject_id");
     expect(ownB.error).toBeNull();
     expect(ownB.data).toHaveLength(1);
     expect(ownB.data?.every((row) => row.user_id === userBId)).toBe(true);
+
+    const anonymousSelect = await anonymous
+      .from("user_subjects")
+      .select("user_id, subject_id");
+    expect(anonymousSelect.error).toMatchObject({ code: "42501" });
+
+    const expectWriteDenied = (
+      error: { code?: string; message?: string } | null,
+    ) => {
+      expect(error).toMatchObject({ code: "42501" });
+      expect(error?.message).toContain("permission denied");
+    };
 
     const crossInsert = await userA.from("user_subjects").insert({
       user_id: userBId,
       subject_id: subjectIds[1],
       syllabus_version_id: versionBySubject.get(subjectIds[1])!,
     });
-    expect(crossInsert.error).toBeTruthy();
+    expectWriteDenied(crossInsert.error);
+
+    const ownInsert = await userA.from("user_subjects").insert({
+      user_id: userAId,
+      subject_id: subjectIds[5],
+      syllabus_version_id: versionBySubject.get(subjectIds[5])!,
+    });
+    expectWriteDenied(ownInsert.error);
 
     const crossUpdate = await userA
       .from("user_subjects")
       .update({ syllabus_version_id: versionBySubject.get(subjectIds[0])! })
       .eq("user_id", userBId)
       .select();
-    expect(crossUpdate.error).toBeNull();
-    expect(crossUpdate.data).toEqual([]);
+    expectWriteDenied(crossUpdate.error);
 
     const crossDelete = await userA
       .from("user_subjects")
       .delete()
       .eq("user_id", userBId)
       .select();
-    expect(crossDelete.error).toBeNull();
-    expect(crossDelete.data).toEqual([]);
+    expectWriteDenied(crossDelete.error);
 
     const bCrossUpdate = await userB
       .from("user_subjects")
       .update({ syllabus_version_id: versionBySubject.get(subjectIds[0])! })
       .eq("user_id", userAId)
       .select();
-    expect(bCrossUpdate.error).toBeNull();
-    expect(bCrossUpdate.data).toEqual([]);
+    expectWriteDenied(bCrossUpdate.error);
 
     const bCrossDelete = await userB
       .from("user_subjects")
       .delete()
       .eq("user_id", userAId)
       .select();
-    expect(bCrossDelete.error).toBeNull();
-    expect(bCrossDelete.data).toEqual([]);
+    expectWriteDenied(bCrossDelete.error);
 
     const ownSubject = subjectIds[4];
     const ownUpdate = await userA
@@ -543,30 +623,29 @@ describe("profile and atomic onboarding (local)", () => {
       .update({ syllabus_version_id: versionBySubject.get(ownSubject)! })
       .eq("subject_id", ownSubject)
       .select();
-    expect(ownUpdate.error).toBeNull();
-    expect(ownUpdate.data).toHaveLength(1);
+    expectWriteDenied(ownUpdate.error);
 
     const ownDelete = await userA
       .from("user_subjects")
       .delete()
       .eq("subject_id", ownSubject)
       .select();
-    expect(ownDelete.error).toBeNull();
-    expect(ownDelete.data).toHaveLength(1);
+    expectWriteDenied(ownDelete.error);
 
-    const ownInsert = await userA.from("user_subjects").insert({
-      user_id: userAId,
-      subject_id: ownSubject,
-      syllabus_version_id: versionBySubject.get(ownSubject)!,
+    await expect(
+      db.execute(sql`
+        insert into public.user_subjects (user_id, subject_id, syllabus_version_id)
+        values (
+          ${userAId},
+          ${subjectIds[5]},
+          ${versionBySubject.get(subjectIds[5])!}
+        )
+      `),
+    ).rejects.toMatchObject({
+      cause: {
+        message: expect.stringContaining("user_subject_limit_exceeded"),
+      },
     });
-    expect(ownInsert.error).toBeNull();
-
-    const sixth = await userA.from("user_subjects").insert({
-      user_id: userAId,
-      subject_id: subjectIds[5],
-      syllabus_version_id: versionBySubject.get(subjectIds[5])!,
-    });
-    expect(sixth.error?.message).toContain("user_subject_limit_exceeded");
 
     const bCount = await db.execute(sql`
       select count(*)::int as n from public.user_subjects where user_id = ${userBId}
@@ -638,8 +717,7 @@ describe("profile and atomic onboarding (local)", () => {
     `);
     expect(security.rows[0].relrowsecurity).toBe(true);
     expect(String(security.rows[0].policies)).toBe(
-      "{user_subjects_delete_own,user_subjects_insert_own," +
-        "user_subjects_select_own,user_subjects_update_own}",
+      "{user_subjects_select_own}",
     );
 
     const grants = await db.execute(sql`
@@ -650,16 +728,13 @@ describe("profile and atomic onboarding (local)", () => {
       order by grantee, privilege_type
     `);
     expect(grants.rows).toEqual([
-      { grantee: "authenticated", privilege_type: "DELETE" },
-      { grantee: "authenticated", privilege_type: "INSERT" },
       { grantee: "authenticated", privilege_type: "SELECT" },
-      { grantee: "authenticated", privilege_type: "UPDATE" },
     ]);
 
     const journal = await db.execute(sql`
       select count(*)::int as n from drizzle.__drizzle_migrations
     `);
-    expect(Number(journal.rows[0].n)).toBe(5);
+    expect(Number(journal.rows[0].n)).toBe(6);
   });
 
   it("function privileges and definition are correct", async () => {

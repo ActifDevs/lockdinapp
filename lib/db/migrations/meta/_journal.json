@@ -36,6 +36,13 @@
       "when": 1786108276313,
       "tag": "0004_colossal_pixie",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786112424076,
+      "tag": "0005_restrict_user_subject_writes",
+      "breakpoints": true
     }
   ]
 }
