@@ -522,9 +522,19 @@ describe("two-user local Supabase task isolation (exact)", () => {
     const patchTopicId = topicId ?? 1;
     const topicPatch = await request(app)
       .patch(`/api/syllabus-topics/${patchTopicId}`)
-      .send({ status: "completed", notes: "should not persist" });
-    expect(topicPatch.status).toBe(503);
-    expect(topicPatch.body.error).toBe(FEATURE_TEMPORARILY_UNAVAILABLE);
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({ status: "completed", notes: "owned progress" });
+    expect(topicPatch.status).toBe(200);
+    expect(topicPatch.body).toEqual({
+      topicId: patchTopicId,
+      status: "completed",
+      notes: "owned progress",
+    });
+
+    const topicReset = await request(app)
+      .delete(`/api/syllabus-topics/${patchTopicId}`)
+      .set("Authorization", `Bearer ${tokenA}`);
+    expect(topicReset.status).toBe(204);
   });
 
   it("concurrent A/B requests do not exchange bearer context", async () => {
