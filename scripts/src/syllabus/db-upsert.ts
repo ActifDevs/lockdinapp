@@ -209,7 +209,21 @@ export async function upsertSyllabus(syllabus: NormalizedSyllabus): Promise<Upse
 
     // ================= topics (bulk) =================
     const allUnitIds = [...unitIdByTitle.values()];
-    const existingTopics = allUnitIds.length > 0 ? await tx.select().from(syllabusTopicsTable).where(inArray(syllabusTopicsTable.unitId, allUnitIds)) : [];
+    // Project reference columns only — hosted DB may lack legacy status/notes.
+    const topicReferenceColumns = {
+      id: syllabusTopicsTable.id,
+      unitId: syllabusTopicsTable.unitId,
+      subjectId: syllabusTopicsTable.subjectId,
+      title: syllabusTopicsTable.title,
+      orderIndex: syllabusTopicsTable.orderIndex,
+    } as const;
+    const existingTopics =
+      allUnitIds.length > 0
+        ? await tx
+            .select(topicReferenceColumns)
+            .from(syllabusTopicsTable)
+            .where(inArray(syllabusTopicsTable.unitId, allUnitIds))
+        : [];
     const existingTopicByUnitAndTitle = new Map(existingTopics.map((t) => [`${t.unitId}|${t.title}`, t]));
 
     const topicIdByUnitAndTitle = new Map<string, number>();
@@ -237,7 +251,10 @@ export async function upsertSyllabus(syllabus: NormalizedSyllabus): Promise<Upse
     }
     if (topicsToInsert.length > 0) {
       const toInsert = topicsToInsert.map(({ __key, ...rest }) => rest);
-      const inserted = await tx.insert(syllabusTopicsTable).values(toInsert).returning();
+      const inserted = await tx
+        .insert(syllabusTopicsTable)
+        .values(toInsert)
+        .returning(topicReferenceColumns);
       inserted.forEach((row, idx) => {
         topicIdByUnitAndTitle.set(topicsToInsert[idx].__key, row.id);
         bump(counts.topics, "created");

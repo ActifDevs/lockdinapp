@@ -107,7 +107,10 @@ describe("upsertSyllabus (integration)", () => {
     const [subject] = await db.select().from(subjectsTable).where(eq(subjectsTable.code, IDEMPOTENCY_CODE));
     const units = await db.select().from(syllabusUnitsTable).where(eq(syllabusUnitsTable.subjectId, subject.id));
     expect(units).toHaveLength(1);
-    const topics = await db.select().from(syllabusTopicsTable).where(eq(syllabusTopicsTable.unitId, units[0].id));
+    const topics = await db
+      .select({ id: syllabusTopicsTable.id })
+      .from(syllabusTopicsTable)
+      .where(eq(syllabusTopicsTable.unitId, units[0].id));
     expect(topics).toHaveLength(1);
     const outcomes = await db.select().from(syllabusLearningOutcomesTable).where(eq(syllabusLearningOutcomesTable.topicId, topics[0].id));
     expect(outcomes).toHaveLength(1);
