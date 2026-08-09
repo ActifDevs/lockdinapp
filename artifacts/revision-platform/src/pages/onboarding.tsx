@@ -21,7 +21,12 @@ import {
 
 export default function Onboarding() {
   const { firstName, user, completeOnboarding } = useAuth();
-  const { data: subjects = [], isLoading: subjectsLoading } = useListSubjects();
+  const {
+    data: subjects = [],
+    isLoading: subjectsLoading,
+    isError: subjectsError,
+    refetch: refetchSubjects,
+  } = useListSubjects();
   const examOptions = useMemo(() => [...getUpcomingExamSessions(), "Other"], []);
 
   const [step, setStep] = useState(1);
@@ -217,6 +222,26 @@ export default function Onboarding() {
                 <div className="flex justify-center py-8">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
+              ) : subjectsError ? (
+                <div className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-5">
+                  <p className="text-sm text-destructive" role="alert">
+                    We couldn’t load the subject catalogue. Check your connection and try again.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="cursor-pointer"
+                    onClick={() => void refetchSubjects()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              ) : filteredSubjects.length === 0 ? (
+                <p className="text-sm text-muted-foreground" role="status">
+                  {search.trim()
+                    ? "No subjects match that search."
+                    : "No catalogue subjects are available yet."}
+                </p>
               ) : (
                 <ul className="max-h-72 space-y-2 overflow-y-auto">
                   {filteredSubjects.map((subject) => {

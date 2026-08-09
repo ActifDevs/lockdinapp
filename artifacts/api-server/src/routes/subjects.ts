@@ -43,18 +43,22 @@ const router: IRouter = Router();
 router.get("/subjects", async (_req, res): Promise<void> => {
   const subjects = await db.select().from(subjectsTable).orderBy(subjectsTable.id);
 
-  const topics = await db.select().from(syllabusTopicsTable);
-  const topicsBySubjectId = new Map<number, typeof topics>();
-  for (const topic of topics) {
-    const list = topicsBySubjectId.get(topic.subjectId) ?? [];
-    list.push(topic);
-    topicsBySubjectId.set(topic.subjectId, list);
+  // Count-only projection: catalogue list needs topicsTotal, not topic rows.
+  // Avoid selecting legacy/shared progress columns that pre-Slice-2B code assumed.
+  const topicCounts = await db
+    .select({ subjectId: syllabusTopicsTable.subjectId })
+    .from(syllabusTopicsTable);
+  const topicsBySubjectId = new Map<number, number>();
+  for (const topic of topicCounts) {
+    topicsBySubjectId.set(
+      topic.subjectId,
+      (topicsBySubjectId.get(topic.subjectId) ?? 0) + 1,
+    );
   }
 
-  const result = subjects.map((subject) => {
-    const subjectTopics = topicsBySubjectId.get(subject.id) ?? [];
-    return catalogueEnrichment(subject, subjectTopics.length);
-  });
+  const result = subjects.map((subject) =>
+    catalogueEnrichment(subject, topicsBySubjectId.get(subject.id) ?? 0),
+  );
 
   res.json(ListSubjectsResponse.parse(result));
 });
@@ -87,7 +91,7 @@ router.get("/subjects/:subjectId", async (req, res): Promise<void> => {
   }
 
   const topics = await db
-    .select()
+    .select({ id: syllabusTopicsTable.id })
     .from(syllabusTopicsTable)
     .where(eq(syllabusTopicsTable.subjectId, subject.id));
 

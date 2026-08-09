@@ -69,6 +69,9 @@ describe("auth pages wiring", () => {
     expect(src).not.toMatch(/createTask/);
     expect(src).not.toMatch(/SUBJECT_CATALOG/);
     expect(src).toMatch(/subjectIds:\s*selectedIds/);
+    expect(src).toMatch(/subjectsError/);
+    expect(src).toMatch(/refetchSubjects/);
+    expect(src).toMatch(/couldn’t load the subject catalogue/i);
   });
 
   it("settings manages durable membership without catalogue writes", () => {
