@@ -10,7 +10,7 @@ import { createClient } from "@supabase/supabase-js";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../../..");
@@ -89,8 +89,6 @@ describe("two-user local Supabase topic progress isolation", () => {
   let tokenB = "";
   let subjectId = 0;
   let topicId = 0;
-  let sharedTopicStatusBefore = "";
-  let sharedTopicNotesBefore: string | null = null;
 
   beforeAll(async () => {
     process.env.DATABASE_URL = env.dbUrl;
@@ -140,7 +138,10 @@ describe("two-user local Supabase topic progress isolation", () => {
 
     const { db, subjectsTable, syllabusTopicsTable } = await import("@workspace/db");
     const [topic] = await db
-      .select()
+      .select({
+        id: syllabusTopicsTable.id,
+        subjectId: syllabusTopicsTable.subjectId,
+      })
       .from(syllabusTopicsTable)
       .orderBy(syllabusTopicsTable.id)
       .limit(1);
@@ -149,8 +150,6 @@ describe("two-user local Supabase topic progress isolation", () => {
     }
     topicId = topic.id;
     subjectId = topic.subjectId;
-    sharedTopicStatusBefore = topic.status;
-    sharedTopicNotesBefore = topic.notes;
 
     const [subject] = await db
       .select()
@@ -302,11 +301,28 @@ describe("two-user local Supabase topic progress isolation", () => {
 
     const { db, syllabusTopicsTable } = await import("@workspace/db");
     const [shared] = await db
-      .select()
+      .select({
+        id: syllabusTopicsTable.id,
+        title: syllabusTopicsTable.title,
+        subjectId: syllabusTopicsTable.subjectId,
+        unitId: syllabusTopicsTable.unitId,
+        orderIndex: syllabusTopicsTable.orderIndex,
+      })
       .from(syllabusTopicsTable)
       .where(eq(syllabusTopicsTable.id, topicId));
-    expect(shared.status).toBe(sharedTopicStatusBefore);
-    expect(shared.notes).toBe(sharedTopicNotesBefore);
+    expect(shared?.id).toBe(topicId);
+    // Slice 2B: legacy shared progress columns are gone; API progress is topic_progress-only.
+    expect(shared).not.toHaveProperty("status");
+    expect(shared).not.toHaveProperty("notes");
+
+    const legacyCols = await db.execute(sql`
+      select column_name
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'syllabus_topics'
+        and column_name in ('status', 'notes')
+    `);
+    expect(legacyCols.rows).toEqual([]);
 
     const clientA = createClient(env.url, env.publishableKey, {
       global: { headers: { Authorization: `Bearer ${tokenA}` } },
