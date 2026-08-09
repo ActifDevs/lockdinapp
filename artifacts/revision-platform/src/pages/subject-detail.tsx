@@ -1,4 +1,4 @@
-import { useGetSubject, getGetSubjectQueryKey, useGetSubjectSyllabus, getGetSubjectSyllabusQueryKey, useGetSubjectPerformance, getGetSubjectPerformanceQueryKey, useListTasks, getListTasksQueryKey, useListPastPaperAttempts, getListPastPaperAttemptsQueryKey, useUpdateSyllabusTopic, useUpdateTask, type SyllabusUnit, type SyllabusTopic } from "@workspace/api-client-react";
+import { useGetSubject, getGetSubjectQueryKey, useGetSubjectSyllabus, getGetSubjectSyllabusQueryKey, useGetSubjectPerformance, getGetSubjectPerformanceQueryKey, useListTasks, getListTasksQueryKey, useListPastPaperAttempts, getListPastPaperAttemptsQueryKey, useUpdateSyllabusTopic, useUpdateTask, getGetProgressOverviewQueryKey, type SyllabusUnit, type SyllabusTopic } from "@workspace/api-client-react";
 import { Link, useRoute } from "wouter";
 import { lazy, Suspense, useEffect, useState, type CSSProperties } from "react";
 import { APP_NAME } from "@/lib/app-config";
@@ -82,6 +82,7 @@ export default function SubjectDetail() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetSubjectSyllabusQueryKey(subjectId!) });
         queryClient.invalidateQueries({ queryKey: getGetSubjectQueryKey(subjectId!) });
+        queryClient.invalidateQueries({ queryKey: getGetProgressOverviewQueryKey() });
         queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       }
     }
@@ -154,6 +155,16 @@ export default function SubjectDetail() {
       </div>
     );
   }
+
+  const allSyllabusTopics = syllabus?.flatMap((unit) => unit.topics) ?? [];
+  const syllabusProgress =
+    allSyllabusTopics.length === 0
+      ? 0
+      : Math.round(
+          (allSyllabusTopics.filter((topic) => topic.status === "completed").length /
+            allSyllabusTopics.length) *
+            100,
+        );
 
   const cycleTopicStatus = (topicId: number, currentStatus: string) => {
     let nextStatus: 'not_started' | 'in_progress' | 'completed' = 'in_progress';
@@ -270,7 +281,7 @@ export default function SubjectDetail() {
             <div className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:gap-6">
               <div className="flex items-center gap-4">
                 <ProgressRing
-                  value={subject.syllabusProgress}
+                  value={syllabusProgress}
                   label={`${subject.name} syllabus`}
                   color={accent}
                   size={56}
@@ -278,7 +289,7 @@ export default function SubjectDetail() {
                 />
                 <div>
                   <p className="card-label">Syllabus</p>
-                  <p className="text-2xl font-bold tabular-nums">{subject.syllabusProgress}%</p>
+                  <p className="text-2xl font-bold tabular-nums">{syllabusProgress}%</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 rounded-xl border border-border/50 bg-muted/20 p-4 sm:border-l sm:border-border/50 sm:bg-transparent sm:p-0 sm:pl-6 lg:border-l">
