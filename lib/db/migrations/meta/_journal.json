@@ -43,6 +43,13 @@
       "when": 1786112424076,
       "tag": "0005_restrict_user_subject_writes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786296025143,
+      "tag": "0006_slippery_squirrel_girl",
+      "breakpoints": true
     }
   ]
 }

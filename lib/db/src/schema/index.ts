@@ -7,6 +7,7 @@ export * from "./syllabusLearningOutcomes";
 export * from "./learningOutcomeComponents";
 export * from "./profiles";
 export * from "./userSubjects";
+export * from "./topicProgress";
 export * from "./tasks";
 export * from "./pastPaperAttempts";
 export * from "./examDates";
