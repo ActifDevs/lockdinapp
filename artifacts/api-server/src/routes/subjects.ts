@@ -22,6 +22,13 @@ import {
 } from "@workspace/api-zod";
 import { temporarilyUnavailableBody } from "../lib/feature-quarantine";
 import { catalogueEnrichment } from "../lib/catalogue-subject";
+import { optionalAuth } from "../middlewares/optional-auth";
+import { createUserScopedSupabaseClient } from "../lib/supabase-user-client";
+import {
+  listCallerTopicProgress,
+  progressMapFromRows,
+} from "../lib/topic-progress";
+import { sendSupabaseError } from "../lib/supabase-errors";
 
 const router: IRouter = Router();
 
@@ -29,9 +36,9 @@ const router: IRouter = Router();
  * Shared subject catalogue — public and read-only.
  *
  * Subjects are importer/admin-managed reference data. Ordinary users must not
- * create or delete catalogue rows. Syllabus topic status/notes are shared
- * student-progress fields and are NOT treated as per-user data: catalogue
- * responses use neutral placeholders (progress 0, status not_started, notes null).
+ * create or delete catalogue rows. List/detail catalogue enrichment remains
+ * neutral for syllabusProgress until a dedicated owned-progress merge is added
+ * on those endpoints; topic status/notes are merged only on the syllabus GET.
  */
 router.get("/subjects", async (_req, res): Promise<void> => {
   const subjects = await db.select().from(subjectsTable).orderBy(subjectsTable.id);
@@ -97,59 +104,86 @@ router.delete("/subjects/:subjectId", async (_req, res): Promise<void> => {
   });
 });
 
-router.get("/subjects/:subjectId/syllabus", async (req, res): Promise<void> => {
-  const params = GetSubjectSyllabusParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+router.get(
+  "/subjects/:subjectId/syllabus",
+  optionalAuth,
+  async (req, res): Promise<void> => {
+    const params = GetSubjectSyllabusParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
 
-  const units = await db
-    .select()
-    .from(syllabusUnitsTable)
-    .where(eq(syllabusUnitsTable.subjectId, params.data.subjectId))
-    .orderBy(syllabusUnitsTable.orderIndex);
+    const units = await db
+      .select()
+      .from(syllabusUnitsTable)
+      .where(eq(syllabusUnitsTable.subjectId, params.data.subjectId))
+      .orderBy(syllabusUnitsTable.orderIndex);
 
-  const unitIds = units.map((u) => u.id);
-  const topics = unitIds.length
-    ? await db
-        .select()
-        .from(syllabusTopicsTable)
-        .where(inArray(syllabusTopicsTable.unitId, unitIds))
-        .orderBy(syllabusTopicsTable.orderIndex)
-    : [];
+    const unitIds = units.map((u) => u.id);
+    const topics = unitIds.length
+      ? await db
+          .select()
+          .from(syllabusTopicsTable)
+          .where(inArray(syllabusTopicsTable.unitId, unitIds))
+          .orderBy(syllabusTopicsTable.orderIndex)
+      : [];
 
-  const topicIds = topics.map((t) => t.id);
-  const outcomes = topicIds.length
-    ? await db
-        .select()
-        .from(syllabusLearningOutcomesTable)
-        .where(inArray(syllabusLearningOutcomesTable.topicId, topicIds))
-        .orderBy(syllabusLearningOutcomesTable.orderIndex)
-    : [];
+    const topicIds = topics.map((t) => t.id);
+    const outcomes = topicIds.length
+      ? await db
+          .select()
+          .from(syllabusLearningOutcomesTable)
+          .where(inArray(syllabusLearningOutcomesTable.topicId, topicIds))
+          .orderBy(syllabusLearningOutcomesTable.orderIndex)
+      : [];
 
-  const outcomesByTopicId = new Map<number, string[]>();
-  for (const outcome of outcomes) {
-    const list = outcomesByTopicId.get(outcome.topicId) ?? [];
-    list.push(outcome.outcome);
-    outcomesByTopicId.set(outcome.topicId, list);
-  }
+    const outcomesByTopicId = new Map<number, string[]>();
+    for (const outcome of outcomes) {
+      const list = outcomesByTopicId.get(outcome.topicId) ?? [];
+      list.push(outcome.outcome);
+      outcomesByTopicId.set(outcome.topicId, list);
+    }
 
-  // Neutralise shared status/notes — titles and learning outcomes remain.
-  const result = units.map((unit) => ({
-    ...unit,
-    topics: topics
-      .filter((t) => t.unitId === unit.id)
-      .map((topic) => ({
-        ...topic,
-        status: "not_started" as const,
-        notes: null,
-        learningOutcomes: outcomesByTopicId.get(topic.id) ?? [],
-      })),
-  }));
+    let progressByTopicId = new Map<
+      number,
+      { status: "not_started" | "in_progress" | "completed"; notes: string | null }
+    >();
 
-  res.json(GetSubjectSyllabusResponse.parse(result));
-});
+    if (req.accessToken && topicIds.length > 0) {
+      const client = createUserScopedSupabaseClient(req.accessToken);
+      const { data, error } = await listCallerTopicProgress(client, topicIds);
+      if (error) {
+        sendSupabaseError(res, error, "subject_syllabus_topic_progress");
+        return;
+      }
+      progressByTopicId = progressMapFromRows(data);
+    }
+
+    // Shared syllabus_topics.status/notes are never returned. Merge caller rows
+    // when authenticated; missing rows default to not_started / null notes.
+    const result = units.map((unit) => ({
+      ...unit,
+      topics: topics
+        .filter((t) => t.unitId === unit.id)
+        .map((topic) => {
+          const progress = progressByTopicId.get(topic.id);
+          return {
+            id: topic.id,
+            unitId: topic.unitId,
+            subjectId: topic.subjectId,
+            title: topic.title,
+            orderIndex: topic.orderIndex,
+            status: progress?.status ?? ("not_started" as const),
+            notes: progress?.notes ?? null,
+            learningOutcomes: outcomesByTopicId.get(topic.id) ?? [],
+          };
+        }),
+    }));
+
+    res.json(GetSubjectSyllabusResponse.parse(result));
+  },
+);
 
 router.get("/subjects/:subjectId/assessment-components", async (req, res): Promise<void> => {
   const params = ListAssessmentComponentsParams.safeParse(req.params);

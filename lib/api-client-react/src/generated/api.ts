@@ -37,6 +37,7 @@ import type {
   Subject,
   SubjectInput,
   SubjectPerformance,
+  SyllabusTopicProgress,
   SyllabusTopicUpdate,
   SyllabusUnit,
   Task,
@@ -468,8 +469,10 @@ export const getGetSubjectSyllabusUrl = (subjectId: number,) => {
 
 /**
  * Returns units, topic titles, and learning outcomes from shared reference data.
- * Topic status is always presented as not_started and notes as null —
- * stored shared syllabus_topics.status/notes are not treated as per-user progress.
+ * When a valid Bearer token is provided, each topic's status and notes are merged
+ * from the caller's topic_progress rows. Missing progress rows default to
+ * not_started with null notes. Unauthenticated callers receive the same defaults.
+ * Shared syllabus_topics.status/notes columns are never exposed as user data.
  * @summary Get syllabus reference structure for a subject
  */
 export const getSubjectSyllabus = async (subjectId: number, options?: RequestInit): Promise<SyllabusUnit[]> => {
@@ -494,7 +497,7 @@ export const getGetSubjectSyllabusQueryKey = (subjectId: number,) => {
     }
 
 
-export const getGetSubjectSyllabusQueryOptions = <TData = Awaited<ReturnType<typeof getSubjectSyllabus>>, TError = ErrorType<unknown>>(subjectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSubjectSyllabus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetSubjectSyllabusQueryOptions = <TData = Awaited<ReturnType<typeof getSubjectSyllabus>>, TError = ErrorType<ErrorMessage>>(subjectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSubjectSyllabus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -513,14 +516,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetSubjectSyllabusQueryResult = NonNullable<Awaited<ReturnType<typeof getSubjectSyllabus>>>
-export type GetSubjectSyllabusQueryError = ErrorType<unknown>
+export type GetSubjectSyllabusQueryError = ErrorType<ErrorMessage>
 
 
 /**
  * @summary Get syllabus reference structure for a subject
  */
 
-export function useGetSubjectSyllabus<TData = Awaited<ReturnType<typeof getSubjectSyllabus>>, TError = ErrorType<unknown>>(
+export function useGetSubjectSyllabus<TData = Awaited<ReturnType<typeof getSubjectSyllabus>>, TError = ErrorType<ErrorMessage>>(
  subjectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSubjectSyllabus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -703,16 +706,17 @@ export const getUpdateSyllabusTopicUrl = (topicId: number,) => {
 }
 
 /**
- * syllabus_topics.status and notes are shared student-progress fields and
- * must not be mutated until user-owned syllabus progress exists.
- * No database update is performed.
- * @deprecated
- * @summary Temporarily unavailable — per-user syllabus progress not implemented
+ * Upserts the caller's topic_progress row for the given shared topic.
+ * Ownership is derived from the verified Bearer token; client-supplied
+ * userId/user_id fields are rejected. Setting status to not_started with
+ * an empty/absent note deletes the caller's row (reset-to-default).
+ * Shared syllabus_topics rows are never mutated.
+ * @summary Upsert the authenticated user's progress for a syllabus topic
  */
 export const updateSyllabusTopic = async (topicId: number,
-    syllabusTopicUpdate: SyllabusTopicUpdate, options?: RequestInit): Promise<unknown> => {
+    syllabusTopicUpdate: SyllabusTopicUpdate, options?: RequestInit): Promise<SyllabusTopicProgress> => {
 
-  return customFetch<unknown>(getUpdateSyllabusTopicUrl(topicId),
+  return customFetch<SyllabusTopicProgress>(getUpdateSyllabusTopicUrl(topicId),
   {
     ...options,
     method: 'PATCH',
@@ -757,8 +761,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateSyllabusTopicMutationError = ErrorType<ErrorMessage>
 
     /**
- * @deprecated
- * @summary Temporarily unavailable — per-user syllabus progress not implemented
+ * @summary Upsert the authenticated user's progress for a syllabus topic
  */
 export const useUpdateSyllabusTopic = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSyllabusTopic>>, TError,{topicId: number;data: BodyType<SyllabusTopicUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -769,6 +772,79 @@ export const useUpdateSyllabusTopic = <TError = ErrorType<ErrorMessage>,
         TContext
       > => {
       return useMutation(getUpdateSyllabusTopicMutationOptions(options));
+    }
+
+export const getResetSyllabusTopicProgressUrl = (topicId: number,) => {
+
+
+
+
+  return `/api/syllabus-topics/${topicId}`
+}
+
+/**
+ * Deletes the caller's topic_progress row for the topic. Shared syllabus
+ * topics are never mutated. Absence of a row is already the default state.
+ * @summary Reset the authenticated user's progress for a syllabus topic
+ */
+export const resetSyllabusTopicProgress = async (topicId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getResetSyllabusTopicProgressUrl(topicId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getResetSyllabusTopicProgressMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetSyllabusTopicProgress>>, TError,{topicId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetSyllabusTopicProgress>>, TError,{topicId: number}, TContext> => {
+
+const mutationKey = ['resetSyllabusTopicProgress'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetSyllabusTopicProgress>>, {topicId: number}> = (props) => {
+          const {topicId} = props ?? {};
+
+          return  resetSyllabusTopicProgress(topicId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetSyllabusTopicProgressMutationResult = NonNullable<Awaited<ReturnType<typeof resetSyllabusTopicProgress>>>
+
+    export type ResetSyllabusTopicProgressMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary Reset the authenticated user's progress for a syllabus topic
+ */
+export const useResetSyllabusTopicProgress = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetSyllabusTopicProgress>>, TError,{topicId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetSyllabusTopicProgress>>,
+        TError,
+        {topicId: number},
+        TContext
+      > => {
+      return useMutation(getResetSyllabusTopicProgressMutationOptions(options));
     }
 
 export const getListTasksUrl = (params?: ListTasksParams,) => {
@@ -1995,8 +2071,9 @@ export const getGetProgressOverviewUrl = () => {
 }
 
 /**
- * Task completion metrics are Auth-scoped. Syllabus completion fields are
- * neutral placeholders (0). Past-paper totals are 0 until ownership exists.
+ * Task completion metrics are Auth-scoped. Syllabus completion is computed
+ * from the caller's topic_progress against enrolled subjects' topic counts.
+ * Past-paper totals remain 0 until ownership exists.
  * @summary Get progress analytics for the authenticated user
  */
 export const getProgressOverview = async ( options?: RequestInit): Promise<ProgressOverview> => {

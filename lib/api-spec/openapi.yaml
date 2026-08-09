@@ -133,8 +133,10 @@ paths:
       summary: Get syllabus reference structure for a subject
       description: |
         Returns units, topic titles, and learning outcomes from shared reference data.
-        Topic status is always presented as not_started and notes as null —
-        stored shared syllabus_topics.status/notes are not treated as per-user progress.
+        When a valid Bearer token is provided, each topic's status and notes are merged
+        from the caller's topic_progress rows. Missing progress rows default to
+        not_started with null notes. Unauthenticated callers receive the same defaults.
+        Shared syllabus_topics.status/notes columns are never exposed as user data.
       parameters:
         - name: subjectId
           in: path
@@ -143,13 +145,19 @@ paths:
             type: integer
       responses:
         "200":
-          description: Syllabus units with topics (neutral status/notes placeholders)
+          description: Syllabus units with topics (caller progress when authenticated)
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/SyllabusUnit"
+        "401":
+          description: Authorization header present but invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
 
   /subjects/{subjectId}/performance:
     get:
@@ -204,12 +212,15 @@ paths:
     patch:
       operationId: updateSyllabusTopic
       tags: [syllabus]
-      summary: Temporarily unavailable — per-user syllabus progress not implemented
+      summary: Upsert the authenticated user's progress for a syllabus topic
       description: |
-        syllabus_topics.status and notes are shared student-progress fields and
-        must not be mutated until user-owned syllabus progress exists.
-        No database update is performed.
-      deprecated: true
+        Upserts the caller's topic_progress row for the given shared topic.
+        Ownership is derived from the verified Bearer token; client-supplied
+        userId/user_id fields are rejected. Setting status to not_started with
+        an empty/absent note deletes the caller's row (reset-to-default).
+        Shared syllabus_topics rows are never mutated.
+      security:
+        - bearerAuth: []
       parameters:
         - name: topicId
           in: path
@@ -223,8 +234,62 @@ paths:
             schema:
               $ref: "#/components/schemas/SyllabusTopicUpdate"
       responses:
-        "503":
-          description: Feature temporarily unavailable until ownership migration
+        "200":
+          description: Updated caller topic progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyllabusTopicProgress"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Topic not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    delete:
+      operationId: resetSyllabusTopicProgress
+      tags: [syllabus]
+      summary: Reset the authenticated user's progress for a syllabus topic
+      description: |
+        Deletes the caller's topic_progress row for the topic. Shared syllabus
+        topics are never mutated. Absence of a row is already the default state.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: topicId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Caller progress reset (row deleted if present)
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Topic not found
           content:
             application/json:
               schema:
@@ -728,8 +793,9 @@ paths:
       tags: [progress]
       summary: Get progress analytics for the authenticated user
       description: |
-        Task completion metrics are Auth-scoped. Syllabus completion fields are
-        neutral placeholders (0). Past-paper totals are 0 until ownership exists.
+        Task completion metrics are Auth-scoped. Syllabus completion is computed
+        from the caller's topic_progress against enrolled subjects' topic counts.
+        Past-paper totals remain 0 until ownership exists.
       security:
         - bearerAuth: []
       responses:
@@ -992,8 +1058,9 @@ components:
     SyllabusTopic:
       type: object
       description: |
-        Shared syllabus topic reference. status is always presented as not_started
-        and notes as null — stored shared progress fields are not exposed as user data.
+        Shared syllabus topic reference with caller-owned progress fields merged
+        when authenticated. Missing topic_progress rows default to not_started
+        and null notes. Shared syllabus_topics.status/notes are never returned.
       properties:
         id:
           type: integer
@@ -1006,10 +1073,10 @@ components:
         status:
           type: string
           enum: [not_started, in_progress, completed]
-          description: Neutral placeholder; always not_started in catalogue responses
+          description: Caller-owned progress status; defaults to not_started
         notes:
           type: ["string", "null"]
-          description: Neutral placeholder; always null in catalogue responses
+          description: Caller-owned notes; defaults to null
         orderIndex:
           type: integer
         learningOutcomes:
@@ -1033,7 +1100,26 @@ components:
           type: string
           enum: [not_started, in_progress, completed]
         notes:
+          type: ["string", "null"]
+          maxLength: 2000
+      required:
+        - status
+
+    SyllabusTopicProgress:
+      type: object
+      description: Authenticated caller's progress for one shared syllabus topic
+      properties:
+        topicId:
+          type: integer
+        status:
           type: string
+          enum: [not_started, in_progress, completed]
+        notes:
+          type: ["string", "null"]
+      required:
+        - topicId
+        - status
+        - notes
 
     Task:
       type: object

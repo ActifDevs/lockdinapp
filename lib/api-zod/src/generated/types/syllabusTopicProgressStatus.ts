@@ -6,13 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-/**
- * Caller-owned progress status; defaults to not_started
- */
-export type SyllabusTopicStatus = typeof SyllabusTopicStatus[keyof typeof SyllabusTopicStatus];
+export type SyllabusTopicProgressStatus = typeof SyllabusTopicProgressStatus[keyof typeof SyllabusTopicProgressStatus];
 
 
-export const SyllabusTopicStatus = {
+export const SyllabusTopicProgressStatus = {
   not_started: 'not_started',
   in_progress: 'in_progress',
   completed: 'completed',

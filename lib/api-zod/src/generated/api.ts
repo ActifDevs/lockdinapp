@@ -96,8 +96,10 @@ export const DeleteSubjectResponse = zod.void()
 
 /**
  * Returns units, topic titles, and learning outcomes from shared reference data.
- * Topic status is always presented as not_started and notes as null —
- * stored shared syllabus_topics.status/notes are not treated as per-user progress.
+ * When a valid Bearer token is provided, each topic's status and notes are merged
+ * from the caller's topic_progress rows. Missing progress rows default to
+ * not_started with null notes. Unauthenticated callers receive the same defaults.
+ * Shared syllabus_topics.status/notes columns are never exposed as user data.
  * @summary Get syllabus reference structure for a subject
  */
 export const GetSubjectSyllabusParams = zod.object({
@@ -114,11 +116,11 @@ export const GetSubjectSyllabusResponseItem = zod.object({
   "unitId": zod.number(),
   "subjectId": zod.number(),
   "title": zod.string(),
-  "status": zod.enum(['not_started', 'in_progress', 'completed']).describe('Neutral placeholder; always not_started in catalogue responses'),
-  "notes": zod.string().nullable().describe('Neutral placeholder; always null in catalogue responses'),
+  "status": zod.enum(['not_started', 'in_progress', 'completed']).describe('Caller-owned progress status; defaults to not_started'),
+  "notes": zod.string().nullable().describe('Caller-owned notes; defaults to null'),
   "orderIndex": zod.number(),
   "learningOutcomes": zod.array(zod.string())
-}).describe('Shared syllabus topic reference. status is always presented as not_started\nand notes as null — stored shared progress fields are not exposed as user data.\n'))
+}).describe('Shared syllabus topic reference with caller-owned progress fields merged\nwhen authenticated. Missing topic_progress rows default to not_started\nand null notes. Shared syllabus_topics.status\/notes are never returned.\n'))
 })
 export const GetSubjectSyllabusResponse = zod.array(GetSubjectSyllabusResponseItem)
 
@@ -176,22 +178,43 @@ export const ListAssessmentComponentsResponse = zod.array(ListAssessmentComponen
 
 
 /**
- * syllabus_topics.status and notes are shared student-progress fields and
- * must not be mutated until user-owned syllabus progress exists.
- * No database update is performed.
- * @deprecated
- * @summary Temporarily unavailable — per-user syllabus progress not implemented
+ * Upserts the caller's topic_progress row for the given shared topic.
+ * Ownership is derived from the verified Bearer token; client-supplied
+ * userId/user_id fields are rejected. Setting status to not_started with
+ * an empty/absent note deletes the caller's row (reset-to-default).
+ * Shared syllabus_topics rows are never mutated.
+ * @summary Upsert the authenticated user's progress for a syllabus topic
  */
 export const UpdateSyllabusTopicParams = zod.object({
   "topicId": zod.coerce.number()
 })
 
+export const updateSyllabusTopicBodyNotesMax = 2000;
+
+
+
 export const UpdateSyllabusTopicBody = zod.object({
-  "status": zod.enum(['not_started', 'in_progress', 'completed']).optional(),
-  "notes": zod.string().optional()
+  "status": zod.enum(['not_started', 'in_progress', 'completed']),
+  "notes": zod.string().max(updateSyllabusTopicBodyNotesMax).nullish()
 })
 
-export const UpdateSyllabusTopicResponse = zod.void()
+export const UpdateSyllabusTopicResponse = zod.object({
+  "topicId": zod.number(),
+  "status": zod.enum(['not_started', 'in_progress', 'completed']),
+  "notes": zod.string().nullable()
+}).describe('Authenticated caller\'s progress for one shared syllabus topic')
+
+
+/**
+ * Deletes the caller's topic_progress row for the topic. Shared syllabus
+ * topics are never mutated. Absence of a row is already the default state.
+ * @summary Reset the authenticated user's progress for a syllabus topic
+ */
+export const ResetSyllabusTopicProgressParams = zod.object({
+  "topicId": zod.coerce.number()
+})
+
+export const ResetSyllabusTopicProgressResponse = zod.void()
 
 
 /**
@@ -634,8 +657,9 @@ export const GetDashboardSummaryResponse = zod.object({
 
 
 /**
- * Task completion metrics are Auth-scoped. Syllabus completion fields are
- * neutral placeholders (0). Past-paper totals are 0 until ownership exists.
+ * Task completion metrics are Auth-scoped. Syllabus completion is computed
+ * from the caller's topic_progress against enrolled subjects' topic counts.
+ * Past-paper totals remain 0 until ownership exists.
  * @summary Get progress analytics for the authenticated user
  */
 export const GetProgressOverviewResponse = zod.object({

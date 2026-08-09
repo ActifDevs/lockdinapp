@@ -141,7 +141,7 @@ export interface SubjectInput {
 }
 
 /**
- * Neutral placeholder; always not_started in catalogue responses
+ * Caller-owned progress status; defaults to not_started
  */
 export type SyllabusTopicStatus = typeof SyllabusTopicStatus[keyof typeof SyllabusTopicStatus];
 
@@ -153,18 +153,19 @@ export const SyllabusTopicStatus = {
 } as const;
 
 /**
- * Shared syllabus topic reference. status is always presented as not_started
- * and notes as null — stored shared progress fields are not exposed as user data.
+ * Shared syllabus topic reference with caller-owned progress fields merged
+ * when authenticated. Missing topic_progress rows default to not_started
+ * and null notes. Shared syllabus_topics.status/notes are never returned.
  */
 export interface SyllabusTopic {
   id: number;
   unitId: number;
   subjectId: number;
   title: string;
-  /** Neutral placeholder; always not_started in catalogue responses */
+  /** Caller-owned progress status; defaults to not_started */
   status: SyllabusTopicStatus;
   /**
-     * Neutral placeholder; always null in catalogue responses
+     * Caller-owned notes; defaults to null
      * @nullable
      */
   notes: string | null;
@@ -190,8 +191,31 @@ export const SyllabusTopicUpdateStatus = {
 } as const;
 
 export interface SyllabusTopicUpdate {
-  status?: SyllabusTopicUpdateStatus;
-  notes?: string;
+  status: SyllabusTopicUpdateStatus;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+}
+
+export type SyllabusTopicProgressStatus = typeof SyllabusTopicProgressStatus[keyof typeof SyllabusTopicProgressStatus];
+
+
+export const SyllabusTopicProgressStatus = {
+  not_started: 'not_started',
+  in_progress: 'in_progress',
+  completed: 'completed',
+} as const;
+
+/**
+ * Authenticated caller's progress for one shared syllabus topic
+ */
+export interface SyllabusTopicProgress {
+  topicId: number;
+  status: SyllabusTopicProgressStatus;
+  /** @nullable */
+  notes: string | null;
 }
 
 export type TaskPriority = typeof TaskPriority[keyof typeof TaskPriority];
