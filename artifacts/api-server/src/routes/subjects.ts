@@ -46,21 +46,35 @@ function catalogueEnrichment(subject: typeof subjectsTable.$inferSelect, topicsT
   };
 }
 
+/**
+ * Reference columns only. Hosted DB no longer has syllabus_topics.status/notes;
+ * never use an unprojected select() against this table on the live request path.
+ */
+const syllabusTopicReferenceColumns = {
+  id: syllabusTopicsTable.id,
+  unitId: syllabusTopicsTable.unitId,
+  subjectId: syllabusTopicsTable.subjectId,
+  title: syllabusTopicsTable.title,
+  orderIndex: syllabusTopicsTable.orderIndex,
+} as const;
+
 router.get("/subjects", async (_req, res): Promise<void> => {
   const subjects = await db.select().from(subjectsTable).orderBy(subjectsTable.id);
 
-  const topics = await db.select().from(syllabusTopicsTable);
-  const topicsBySubjectId = new Map<number, typeof topics>();
-  for (const topic of topics) {
-    const list = topicsBySubjectId.get(topic.subjectId) ?? [];
-    list.push(topic);
-    topicsBySubjectId.set(topic.subjectId, list);
+  const topicCounts = await db
+    .select({ subjectId: syllabusTopicsTable.subjectId })
+    .from(syllabusTopicsTable);
+  const topicsBySubjectId = new Map<number, number>();
+  for (const topic of topicCounts) {
+    topicsBySubjectId.set(
+      topic.subjectId,
+      (topicsBySubjectId.get(topic.subjectId) ?? 0) + 1,
+    );
   }
 
-  const result = subjects.map((subject) => {
-    const subjectTopics = topicsBySubjectId.get(subject.id) ?? [];
-    return catalogueEnrichment(subject, subjectTopics.length);
-  });
+  const result = subjects.map((subject) =>
+    catalogueEnrichment(subject, topicsBySubjectId.get(subject.id) ?? 0),
+  );
 
   res.json(ListSubjectsResponse.parse(result));
 });
@@ -93,7 +107,7 @@ router.get("/subjects/:subjectId", async (req, res): Promise<void> => {
   }
 
   const topics = await db
-    .select()
+    .select({ id: syllabusTopicsTable.id })
     .from(syllabusTopicsTable)
     .where(eq(syllabusTopicsTable.subjectId, subject.id));
 
@@ -126,7 +140,7 @@ router.get("/subjects/:subjectId/syllabus", async (req, res): Promise<void> => {
   const unitIds = units.map((u) => u.id);
   const topics = unitIds.length
     ? await db
-        .select()
+        .select(syllabusTopicReferenceColumns)
         .from(syllabusTopicsTable)
         .where(inArray(syllabusTopicsTable.unitId, unitIds))
         .orderBy(syllabusTopicsTable.orderIndex)
@@ -148,13 +162,17 @@ router.get("/subjects/:subjectId/syllabus", async (req, res): Promise<void> => {
     outcomesByTopicId.set(outcome.topicId, list);
   }
 
-  // Neutralise shared status/notes — titles and learning outcomes remain.
+  // Neutral placeholders — do not read status/notes from the DB row.
   const result = units.map((unit) => ({
     ...unit,
     topics: topics
       .filter((t) => t.unitId === unit.id)
       .map((topic) => ({
-        ...topic,
+        id: topic.id,
+        unitId: topic.unitId,
+        subjectId: topic.subjectId,
+        title: topic.title,
+        orderIndex: topic.orderIndex,
         status: "not_started" as const,
         notes: null,
         learningOutcomes: outcomesByTopicId.get(topic.id) ?? [],
