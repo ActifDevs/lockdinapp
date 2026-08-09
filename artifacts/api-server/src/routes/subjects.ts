@@ -38,7 +38,7 @@ const router: IRouter = Router();
  * Subjects are importer/admin-managed reference data. Ordinary users must not
  * create or delete catalogue rows. List/detail catalogue enrichment remains
  * neutral for syllabusProgress until a dedicated owned-progress merge is added
- * on those endpoints; topic status/notes are merged only on the syllabus GET.
+ * on those endpoints; caller topic progress is merged only on the syllabus GET.
  */
 router.get("/subjects", async (_req, res): Promise<void> => {
   const subjects = await db.select().from(subjectsTable).orderBy(subjectsTable.id);
@@ -160,8 +160,8 @@ router.get(
       progressByTopicId = progressMapFromRows(data);
     }
 
-    // Shared syllabus_topics.status/notes are never returned. Merge caller rows
-    // when authenticated; missing rows default to not_started / null notes.
+    // Reconstruct field-by-field (never spread the DB row). Merge caller
+    // topic_progress when authenticated; missing rows default to not_started / null.
     const result = units.map((unit) => ({
       ...unit,
       topics: topics

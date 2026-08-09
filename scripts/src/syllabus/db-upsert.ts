@@ -39,9 +39,8 @@ function bump(bucket: { created: number; updated: number; unchanged: number }, k
  * to take minutes per file against a hosted Postgres instance (network round-trip
  * bound), which this avoids.
  *
- * `syllabus_topics.status`/`notes` (pre-existing progress fields living on the shared
- * row) are deliberately never written by this function, whether the topic is newly
- * created (defaults to `not_started`/`null` via the column default) or already exists.
+ * Per-user progress lives in `topic_progress` and is never written here.
+ * This function only upserts shared reference fields (titles, order, subject).
  */
 export async function upsertSyllabus(syllabus: NormalizedSyllabus): Promise<UpsertCounts> {
   return db.transaction(async (tx) => {
@@ -225,7 +224,7 @@ export async function upsertSyllabus(syllabus: NormalizedSyllabus): Promise<Upse
           topicsToInsert.push({ unitId, subjectId: subject.id, title: topic.title, orderIndex: topic.orderIndex, __key: key } as any);
         } else {
           topicIdByUnitAndTitle.set(key, existing.id);
-          // status/notes intentionally never included in this update — never overwrite recorded progress.
+          // Shared reference fields only — per-user progress is in topic_progress.
           if (existing.orderIndex !== topic.orderIndex || existing.subjectId !== subject.id) {
             topicUpdates.push({ id: existing.id, orderIndex: topic.orderIndex });
             bump(counts.topics, "updated");

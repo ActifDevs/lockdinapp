@@ -472,7 +472,7 @@ export const getGetSubjectSyllabusUrl = (subjectId: number,) => {
  * When a valid Bearer token is provided, each topic's status and notes are merged
  * from the caller's topic_progress rows. Missing progress rows default to
  * not_started with null notes. Unauthenticated callers receive the same defaults.
- * Shared syllabus_topics.status/notes columns are never exposed as user data.
+ * Progress fields come from topic_progress, not shared catalogue columns.
  * @summary Get syllabus reference structure for a subject
  */
 export const getSubjectSyllabus = async (subjectId: number, options?: RequestInit): Promise<SyllabusUnit[]> => {
