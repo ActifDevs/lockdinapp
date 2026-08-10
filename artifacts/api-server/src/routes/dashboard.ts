@@ -13,7 +13,7 @@ const router: IRouter = Router();
  * Dashboard: Auth-scoped task metrics only.
  * Past-paper / exam sections are emptied (not multi-tenant yet).
  * subjectProgressSummary uses neutral syllabusProgress = 0 placeholders —
- * shared syllabus_topics.status is not per-user data.
+ * enrolled topic_progress aggregates are not yet wired on this endpoint.
  *
  * Today's mission uses the due-today set (deadline === today) only:
  * - todayTasksTotal = all owned tasks due today

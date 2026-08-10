@@ -99,7 +99,7 @@ export const DeleteSubjectResponse = zod.void()
  * When a valid Bearer token is provided, each topic's status and notes are merged
  * from the caller's topic_progress rows. Missing progress rows default to
  * not_started with null notes. Unauthenticated callers receive the same defaults.
- * Shared syllabus_topics.status/notes columns are never exposed as user data.
+ * Progress fields come from topic_progress, not shared catalogue columns.
  * @summary Get syllabus reference structure for a subject
  */
 export const GetSubjectSyllabusParams = zod.object({
@@ -120,7 +120,7 @@ export const GetSubjectSyllabusResponseItem = zod.object({
   "notes": zod.string().nullable().describe('Caller-owned notes; defaults to null'),
   "orderIndex": zod.number(),
   "learningOutcomes": zod.array(zod.string())
-}).describe('Shared syllabus topic reference with caller-owned progress fields merged\nwhen authenticated. Missing topic_progress rows default to not_started\nand null notes. Shared syllabus_topics.status\/notes are never returned.\n'))
+}).describe('Shared syllabus topic reference with caller-owned progress fields merged\nwhen authenticated. Missing topic_progress rows default to not_started\nand null notes. Progress fields come from topic_progress only.\n'))
 })
 export const GetSubjectSyllabusResponse = zod.array(GetSubjectSyllabusResponseItem)
 

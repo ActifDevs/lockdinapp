@@ -136,7 +136,7 @@ paths:
         When a valid Bearer token is provided, each topic's status and notes are merged
         from the caller's topic_progress rows. Missing progress rows default to
         not_started with null notes. Unauthenticated callers receive the same defaults.
-        Shared syllabus_topics.status/notes columns are never exposed as user data.
+        Progress fields come from topic_progress, not shared catalogue columns.
       parameters:
         - name: subjectId
           in: path
@@ -1060,7 +1060,7 @@ components:
       description: |
         Shared syllabus topic reference with caller-owned progress fields merged
         when authenticated. Missing topic_progress rows default to not_started
-        and null notes. Shared syllabus_topics.status/notes are never returned.
+        and null notes. Progress fields come from topic_progress only.
       properties:
         id:
           type: integer

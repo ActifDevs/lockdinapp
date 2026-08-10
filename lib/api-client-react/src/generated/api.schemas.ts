@@ -155,7 +155,7 @@ export const SyllabusTopicStatus = {
 /**
  * Shared syllabus topic reference with caller-owned progress fields merged
  * when authenticated. Missing topic_progress rows default to not_started
- * and null notes. Shared syllabus_topics.status/notes are never returned.
+ * and null notes. Progress fields come from topic_progress only.
  */
 export interface SyllabusTopic {
   id: number;

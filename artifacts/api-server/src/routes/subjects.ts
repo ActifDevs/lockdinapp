@@ -38,23 +38,27 @@ const router: IRouter = Router();
  * Subjects are importer/admin-managed reference data. Ordinary users must not
  * create or delete catalogue rows. List/detail catalogue enrichment remains
  * neutral for syllabusProgress until a dedicated owned-progress merge is added
- * on those endpoints; topic status/notes are merged only on the syllabus GET.
+ * on those endpoints; caller topic progress is merged only on the syllabus GET.
  */
 router.get("/subjects", async (_req, res): Promise<void> => {
   const subjects = await db.select().from(subjectsTable).orderBy(subjectsTable.id);
 
-  const topics = await db.select().from(syllabusTopicsTable);
-  const topicsBySubjectId = new Map<number, typeof topics>();
-  for (const topic of topics) {
-    const list = topicsBySubjectId.get(topic.subjectId) ?? [];
-    list.push(topic);
-    topicsBySubjectId.set(topic.subjectId, list);
+  // Count-only projection: catalogue list needs topicsTotal, not topic rows.
+  // Avoid selecting legacy/shared progress columns that pre-Slice-2B code assumed.
+  const topicCounts = await db
+    .select({ subjectId: syllabusTopicsTable.subjectId })
+    .from(syllabusTopicsTable);
+  const topicsBySubjectId = new Map<number, number>();
+  for (const topic of topicCounts) {
+    topicsBySubjectId.set(
+      topic.subjectId,
+      (topicsBySubjectId.get(topic.subjectId) ?? 0) + 1,
+    );
   }
 
-  const result = subjects.map((subject) => {
-    const subjectTopics = topicsBySubjectId.get(subject.id) ?? [];
-    return catalogueEnrichment(subject, subjectTopics.length);
-  });
+  const result = subjects.map((subject) =>
+    catalogueEnrichment(subject, topicsBySubjectId.get(subject.id) ?? 0),
+  );
 
   res.json(ListSubjectsResponse.parse(result));
 });
@@ -87,7 +91,7 @@ router.get("/subjects/:subjectId", async (req, res): Promise<void> => {
   }
 
   const topics = await db
-    .select()
+    .select({ id: syllabusTopicsTable.id })
     .from(syllabusTopicsTable)
     .where(eq(syllabusTopicsTable.subjectId, subject.id));
 
@@ -160,8 +164,8 @@ router.get(
       progressByTopicId = progressMapFromRows(data);
     }
 
-    // Shared syllabus_topics.status/notes are never returned. Merge caller rows
-    // when authenticated; missing rows default to not_started / null notes.
+    // Reconstruct field-by-field (never spread the DB row). Merge caller
+    // topic_progress when authenticated; missing rows default to not_started / null.
     const result = units.map((unit) => ({
       ...unit,
       topics: topics
