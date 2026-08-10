@@ -32,6 +32,34 @@ CREATE POLICY "past_paper_attempts_delete_own" ON public.past_paper_attempts
 	USING ((select auth.uid()) = user_id);--> statement-breakpoint
 
 REVOKE ALL PRIVILEGES ON TABLE public.past_paper_attempts FROM PUBLIC, anon, authenticated;--> statement-breakpoint
-REVOKE ALL PRIVILEGES ON SEQUENCE public.past_papers_id_seq FROM PUBLIC, anon, authenticated;--> statement-breakpoint
 GRANT SELECT, INSERT, DELETE ON TABLE public.past_paper_attempts TO authenticated;--> statement-breakpoint
-GRANT USAGE, SELECT ON SEQUENCE public.past_papers_id_seq TO authenticated;
+DO $sequence_grant$
+DECLARE
+	sequence_schema name;
+	sequence_name name;
+BEGIN
+	SELECT namespace.nspname, sequence.relname
+	INTO sequence_schema, sequence_name
+	FROM pg_class AS sequence
+	INNER JOIN pg_namespace AS namespace ON namespace.oid = sequence.relnamespace
+	WHERE sequence.oid = pg_get_serial_sequence('public.past_paper_attempts', 'id')::regclass
+		AND sequence.relkind = 'S';
+
+	IF sequence_name IS NULL THEN
+		RAISE EXCEPTION USING
+			ERRCODE = '55000',
+			MESSAGE = 'past_paper_attempts_id_sequence_missing';
+	END IF;
+
+	EXECUTE format(
+		'REVOKE ALL PRIVILEGES ON SEQUENCE %I.%I FROM PUBLIC, anon, authenticated',
+		sequence_schema,
+		sequence_name
+	);
+	EXECUTE format(
+		'GRANT USAGE, SELECT ON SEQUENCE %I.%I TO authenticated',
+		sequence_schema,
+		sequence_name
+	);
+END
+$sequence_grant$;

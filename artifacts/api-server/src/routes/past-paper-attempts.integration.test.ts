@@ -524,12 +524,26 @@ describe("two-user local Supabase past-paper ownership and year", () => {
         (select count(*)::int from information_schema.role_table_grants
           where table_schema = 'public' and table_name = 'past_paper_attempts'
             and grantee = 'anon') as anon_grants,
+        pg_get_serial_sequence('public.past_paper_attempts', 'id') as backing_sequence,
         json_build_object(
-          'usage', has_sequence_privilege('authenticated', 'public.past_papers_id_seq', 'USAGE'),
-          'select', has_sequence_privilege('authenticated', 'public.past_papers_id_seq', 'SELECT')
+          'usage', has_sequence_privilege(
+            'authenticated',
+            pg_get_serial_sequence('public.past_paper_attempts', 'id'),
+            'USAGE'
+          ),
+          'select', has_sequence_privilege(
+            'authenticated',
+            pg_get_serial_sequence('public.past_paper_attempts', 'id'),
+            'SELECT'
+          ),
+          'update', has_sequence_privilege(
+            'authenticated',
+            pg_get_serial_sequence('public.past_paper_attempts', 'id'),
+            'UPDATE'
+          )
         ) as sequence_grants
     `);
-    expect(security.rows[0]).toEqual({
+    expect(security.rows[0]).toMatchObject({
       rls: true,
       delete_action: "c",
       policies: [
@@ -544,8 +558,9 @@ describe("two-user local Supabase past-paper ownership and year", () => {
       ],
       year_check: "CHECK (((year >= 1000) AND (year <= 9999)))",
       anon_grants: 0,
-      sequence_grants: { usage: true, select: true },
+      sequence_grants: { usage: true, select: true, update: false },
     });
+    expect(security.rows[0].backing_sequence).toEqual(expect.any(String));
 
     const migrationPath = path.join(
       repoRoot,
@@ -570,6 +585,87 @@ describe("two-user local Supabase past-paper ownership and year", () => {
       latest: "1786394449630",
       latest_hash: expectedHash,
     });
+  });
+
+  it("resolves the backing sequence across both historical names", async () => {
+    const { pool } = await import("@workspace/db");
+    const client = await pool.connect();
+    const migrationPath = path.join(
+      repoRoot,
+      "lib",
+      "db",
+      "migrations",
+      "0008_uneven_mojo.sql",
+    );
+    const migration = readFileSync(migrationPath, "utf8");
+    const blockStart = migration.indexOf("DO $sequence_grant$");
+    const blockTerminator = "$sequence_grant$;";
+    const blockEnd = migration.indexOf(blockTerminator, blockStart);
+    expect(blockStart).toBeGreaterThanOrEqual(0);
+    expect(blockEnd).toBeGreaterThan(blockStart);
+    const sequenceGrantBlock = migration.slice(
+      blockStart,
+      blockEnd + blockTerminator.length,
+    );
+
+    try {
+      await client.query("begin");
+      const before = await client.query<{ backing_sequence: string }>(
+        "select pg_get_serial_sequence('public.past_paper_attempts', 'id') as backing_sequence",
+      );
+      const currentName = before.rows[0]?.backing_sequence;
+      const alternateName =
+        currentName === "public.past_papers_id_seq"
+          ? "public.past_paper_attempts_id_seq"
+          : "public.past_papers_id_seq";
+
+      if (currentName === "public.past_papers_id_seq") {
+        await client.query(
+          "alter sequence public.past_papers_id_seq rename to past_paper_attempts_id_seq",
+        );
+      } else if (currentName === "public.past_paper_attempts_id_seq") {
+        await client.query(
+          "alter sequence public.past_paper_attempts_id_seq rename to past_papers_id_seq",
+        );
+      } else {
+        throw new Error(`Unexpected backing sequence: ${currentName}`);
+      }
+
+      await client.query(sequenceGrantBlock);
+      const after = await client.query<{
+        backing_sequence: string;
+        usage: boolean;
+        select: boolean;
+        update: boolean;
+      }>(`
+        select
+          pg_get_serial_sequence('public.past_paper_attempts', 'id') as backing_sequence,
+          has_sequence_privilege(
+            'authenticated',
+            pg_get_serial_sequence('public.past_paper_attempts', 'id'),
+            'USAGE'
+          ) as usage,
+          has_sequence_privilege(
+            'authenticated',
+            pg_get_serial_sequence('public.past_paper_attempts', 'id'),
+            'SELECT'
+          ) as select,
+          has_sequence_privilege(
+            'authenticated',
+            pg_get_serial_sequence('public.past_paper_attempts', 'id'),
+            'UPDATE'
+          ) as update
+      `);
+      expect(after.rows[0]).toEqual({
+        backing_sequence: alternateName,
+        usage: true,
+        select: true,
+        update: false,
+      });
+    } finally {
+      await client.query("rollback");
+      client.release();
+    }
   });
 
   it("lets User A delete only their own attempt", async () => {
