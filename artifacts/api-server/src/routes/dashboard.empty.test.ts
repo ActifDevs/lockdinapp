@@ -58,6 +58,11 @@ vi.mock("../lib/enrich-task.js", () => ({
   enrichTasks: async () => [],
 }));
 
+vi.mock("../lib/past-paper-attempts.js", () => ({
+  listUserPastPaperRows: async () => ({ data: [], error: null }),
+  enrichPastPaperRows: async () => [],
+}));
+
 describe("GET /api/dashboard/summary — empty / new-user DB", () => {
   let app: express.Express;
 

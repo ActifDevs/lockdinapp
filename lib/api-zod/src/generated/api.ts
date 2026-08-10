@@ -33,9 +33,9 @@ export const ListSubjectsResponseItem = zod.object({
   "topicsCompleted": zod.number().describe('Neutral placeholder; always 0'),
   "topicsInProgress": zod.number().describe('Neutral placeholder; always 0'),
   "upcomingTasksCount": zod.number().describe('Neutral placeholder; always 0 (not user-task derived)'),
-  "recentPaperScore": zod.number().nullable().describe('Neutral placeholder; always null until past-paper ownership'),
-  "recentPaperLabel": zod.string().nullable().describe('Neutral placeholder; always null until past-paper ownership')
-}).describe('Shared catalogue subject. Progress, task-count, and past-paper fields are\nneutral placeholders until per-user ownership exists for those features.\n')
+  "recentPaperScore": zod.number().nullable().describe('Neutral placeholder; always null on shared catalogue responses'),
+  "recentPaperLabel": zod.string().nullable().describe('Neutral placeholder; always null on shared catalogue responses')
+}).describe('Shared catalogue subject. User-specific progress, task-count, and past-paper\nfields remain neutral placeholders on this public catalogue response.\n')
 export const ListSubjectsResponse = zod.array(ListSubjectsResponseItem)
 
 
@@ -77,9 +77,9 @@ export const GetSubjectResponse = zod.object({
   "topicsCompleted": zod.number().describe('Neutral placeholder; always 0'),
   "topicsInProgress": zod.number().describe('Neutral placeholder; always 0'),
   "upcomingTasksCount": zod.number().describe('Neutral placeholder; always 0 (not user-task derived)'),
-  "recentPaperScore": zod.number().nullable().describe('Neutral placeholder; always null until past-paper ownership'),
-  "recentPaperLabel": zod.string().nullable().describe('Neutral placeholder; always null until past-paper ownership')
-}).describe('Shared catalogue subject. Progress, task-count, and past-paper fields are\nneutral placeholders until per-user ownership exists for those features.\n')
+  "recentPaperScore": zod.number().nullable().describe('Neutral placeholder; always null on shared catalogue responses'),
+  "recentPaperLabel": zod.string().nullable().describe('Neutral placeholder; always null on shared catalogue responses')
+}).describe('Shared catalogue subject. User-specific progress, task-count, and past-paper\nfields remain neutral placeholders on this public catalogue response.\n')
 
 
 /**
@@ -126,9 +126,9 @@ export const GetSubjectSyllabusResponse = zod.array(GetSubjectSyllabusResponseIt
 
 
 /**
- * Returns a contract-safe empty performance payload. Does not query
- * past_paper_attempts (no per-user ownership yet).
- * @summary Past-paper performance placeholder (ownership not implemented)
+ * Requires Bearer auth. Latest, average, best, count, trend and component
+ * breakdown are calculated only from the caller's attempts.
+ * @summary Get caller-owned past-paper performance for one subject
  */
 export const GetSubjectPerformanceParams = zod.object({
   "subjectId": zod.coerce.number()
@@ -318,14 +318,18 @@ export const DeleteTaskResponse = zod.void()
 
 
 /**
- * Requires Bearer auth. Returns [] without querying past_paper_attempts.
- * Does not expose global attempt rows. Feature is not implemented for
- * multi-tenant use until an ownership migration lands.
- * @summary Authenticated empty list — past-paper ownership not implemented
+ * Returns only caller-owned attempts, newest first. The optional subjectId
+ * filter remains inside the caller ownership boundary.
+ * @summary List the authenticated user's past-paper attempts
  */
 export const ListPastPaperAttemptsQueryParams = zod.object({
   "subjectId": zod.coerce.number().optional()
 })
+
+export const listPastPaperAttemptsResponseYearMin = 1000;
+export const listPastPaperAttemptsResponseYearMax = 9999;
+
+
 
 export const ListPastPaperAttemptsResponseItem = zod.object({
   "id": zod.number(),
@@ -336,6 +340,7 @@ export const ListPastPaperAttemptsResponseItem = zod.object({
   "componentName": zod.string().nullable(),
   "variant": zod.number().nullable(),
   "session": zod.enum(['May/June', 'Oct/Nov', 'Feb/Mar', 'Specimen']),
+  "year": zod.number().min(listPastPaperAttemptsResponseYearMin).max(listPastPaperAttemptsResponseYearMax),
   "paperLabel": zod.string(),
   "score": zod.number(),
   "totalMarks": zod.number(),
@@ -349,11 +354,14 @@ export const ListPastPaperAttemptsResponse = zod.array(ListPastPaperAttemptsResp
 
 
 /**
- * No insert is performed. Requires Bearer auth.
- * @deprecated
- * @summary Temporarily unavailable — past-paper ownership not implemented
+ * Ownership is derived from the verified Bearer token. The client cannot
+ * choose user_id, and percentage is calculated from score / totalMarks.
+ * @summary Log a caller-owned past-paper attempt
  */
 export const createPastPaperAttemptBodyVariantMax = 5;
+
+export const createPastPaperAttemptBodyYearMin = 1000;
+export const createPastPaperAttemptBodyYearMax = 9999;
 
 
 
@@ -362,6 +370,7 @@ export const CreatePastPaperAttemptBody = zod.object({
   "componentId": zod.number(),
   "variant": zod.number().min(1).max(createPastPaperAttemptBodyVariantMax).optional(),
   "session": zod.enum(['May/June', 'Oct/Nov', 'Feb/Mar', 'Specimen']),
+  "year": zod.number().min(createPastPaperAttemptBodyYearMin).max(createPastPaperAttemptBodyYearMax),
   "score": zod.number(),
   "totalMarks": zod.number(),
   "dateAttempted": zod.string(),
@@ -369,13 +378,35 @@ export const CreatePastPaperAttemptBody = zod.object({
   "notes": zod.string().optional()
 })
 
-export const CreatePastPaperAttemptResponse = zod.void()
+export const createPastPaperAttemptResponseYearMin = 1000;
+export const createPastPaperAttemptResponseYearMax = 9999;
+
+
+
+export const CreatePastPaperAttemptResponse = zod.object({
+  "id": zod.number(),
+  "subjectId": zod.number(),
+  "subjectName": zod.string(),
+  "subjectColor": zod.string(),
+  "componentId": zod.number().nullable(),
+  "componentName": zod.string().nullable(),
+  "variant": zod.number().nullable(),
+  "session": zod.enum(['May/June', 'Oct/Nov', 'Feb/Mar', 'Specimen']),
+  "year": zod.number().min(createPastPaperAttemptResponseYearMin).max(createPastPaperAttemptResponseYearMax),
+  "paperLabel": zod.string(),
+  "score": zod.number(),
+  "totalMarks": zod.number(),
+  "percentage": zod.number(),
+  "dateAttempted": zod.string(),
+  "timeTakenMinutes": zod.number().nullable(),
+  "notes": zod.string().nullable(),
+  "createdAt": zod.string()
+})
 
 
 /**
- * No delete is performed. Requires Bearer auth.
- * @deprecated
- * @summary Temporarily unavailable — past-paper ownership not implemented
+ * Foreign-owned and missing IDs both return 404.
+ * @summary Delete a caller-owned past-paper attempt
  */
 export const DeletePastPaperAttemptParams = zod.object({
   "pastPaperAttemptId": zod.coerce.number()
@@ -443,9 +474,9 @@ export const ListCurrentUserSubjectsResponseItem = zod.object({
   "topicsCompleted": zod.number().describe('Neutral placeholder; always 0'),
   "topicsInProgress": zod.number().describe('Neutral placeholder; always 0'),
   "upcomingTasksCount": zod.number().describe('Neutral placeholder; always 0 (not user-task derived)'),
-  "recentPaperScore": zod.number().nullable().describe('Neutral placeholder; always null until past-paper ownership'),
-  "recentPaperLabel": zod.string().nullable().describe('Neutral placeholder; always null until past-paper ownership')
-}).describe('Shared catalogue subject. Progress, task-count, and past-paper fields are\nneutral placeholders until per-user ownership exists for those features.\n'),
+  "recentPaperScore": zod.number().nullable().describe('Neutral placeholder; always null on shared catalogue responses'),
+  "recentPaperLabel": zod.string().nullable().describe('Neutral placeholder; always null on shared catalogue responses')
+}).describe('Shared catalogue subject. User-specific progress, task-count, and past-paper\nfields remain neutral placeholders on this public catalogue response.\n'),
   "syllabusVersion": zod.object({
   "id": zod.number(),
   "label": zod.string(),
@@ -483,9 +514,9 @@ export const ReplaceCurrentUserSubjectsResponseItem = zod.object({
   "topicsCompleted": zod.number().describe('Neutral placeholder; always 0'),
   "topicsInProgress": zod.number().describe('Neutral placeholder; always 0'),
   "upcomingTasksCount": zod.number().describe('Neutral placeholder; always 0 (not user-task derived)'),
-  "recentPaperScore": zod.number().nullable().describe('Neutral placeholder; always null until past-paper ownership'),
-  "recentPaperLabel": zod.string().nullable().describe('Neutral placeholder; always null until past-paper ownership')
-}).describe('Shared catalogue subject. Progress, task-count, and past-paper fields are\nneutral placeholders until per-user ownership exists for those features.\n'),
+  "recentPaperScore": zod.number().nullable().describe('Neutral placeholder; always null on shared catalogue responses'),
+  "recentPaperLabel": zod.string().nullable().describe('Neutral placeholder; always null on shared catalogue responses')
+}).describe('Shared catalogue subject. User-specific progress, task-count, and past-paper\nfields remain neutral placeholders on this public catalogue response.\n'),
   "syllabusVersion": zod.object({
   "id": zod.number(),
   "label": zod.string(),
@@ -590,8 +621,8 @@ export const CompleteCurrentUserOnboardingResponse = zod.object({
 
 /**
  * Task metrics are Auth-scoped. subjectProgressSummary.syllabusProgress is
- * always 0 (neutral placeholder). recentPerformance and upcomingExams are
- * empty until past-paper/exam ownership exists.
+ * always 0 (neutral placeholder). recentPerformance is calculated from the
+ * caller's past-paper attempts; upcomingExams remains empty until exam ownership.
  * @summary Get dashboard overview for the authenticated user
  */
 export const GetDashboardSummaryResponse = zod.object({
@@ -659,7 +690,7 @@ export const GetDashboardSummaryResponse = zod.object({
 /**
  * Task completion metrics are Auth-scoped. Syllabus completion is computed
  * from the caller's topic_progress against enrolled subjects' topic counts.
- * Past-paper totals remain 0 until ownership exists.
+ * Past-paper totals count only the caller's owned attempts.
  * @summary Get progress analytics for the authenticated user
  */
 export const GetProgressOverviewResponse = zod.object({

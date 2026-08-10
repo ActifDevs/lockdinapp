@@ -57,6 +57,13 @@
       "when": 1786302770787,
       "tag": "0007_eager_squadron_supreme",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786394449630,
+      "tag": "0008_uneven_mojo",
+      "breakpoints": true
     }
   ]
 }

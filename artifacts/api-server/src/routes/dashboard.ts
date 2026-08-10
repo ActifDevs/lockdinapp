@@ -6,12 +6,16 @@ import { createUserScopedSupabaseClient } from "../lib/supabase-user-client";
 import { listUserTaskRows, mappedUserTasks } from "../lib/user-tasks";
 import { enrichTasks } from "../lib/enrich-task";
 import { sendSupabaseError } from "../lib/supabase-errors";
+import {
+  enrichPastPaperRows,
+  listUserPastPaperRows,
+} from "../lib/past-paper-attempts";
 
 const router: IRouter = Router();
 
 /**
  * Dashboard: Auth-scoped task metrics only.
- * Past-paper / exam sections are emptied (not multi-tenant yet).
+ * Past-paper performance is caller-owned; exam sections remain empty.
  * subjectProgressSummary uses neutral syllabusProgress = 0 placeholders —
  * enrolled topic_progress aggregates are not yet wired on this endpoint.
  *
@@ -43,6 +47,34 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
   }
 
   const allTasks = mappedUserTasks(rows);
+
+  const { data: pastPaperRows, error: pastPaperError } =
+    await listUserPastPaperRows(client, userId);
+  if (pastPaperError) {
+    sendSupabaseError(res, pastPaperError, "dashboard_past_paper_attempts");
+    return;
+  }
+  const attempts = await enrichPastPaperRows(pastPaperRows);
+  const attemptsBySubject = new Map<number, typeof attempts>();
+  for (const attempt of attempts) {
+    const list = attemptsBySubject.get(attempt.subjectId) ?? [];
+    list.push(attempt);
+    attemptsBySubject.set(attempt.subjectId, list);
+  }
+  const round = (value: number) => Math.round(value * 10) / 10;
+  const recentPerformance = [...attemptsBySubject.values()].map((subjectAttempts) => {
+    const latest = subjectAttempts[0];
+    const previous = subjectAttempts[1];
+    return {
+      subjectId: latest.subjectId,
+      subjectName: latest.subjectName,
+      subjectColor: latest.subjectColor,
+      paperLabel: latest.paperLabel,
+      previousPercentage: previous ? round(previous.percentage) : null,
+      latestPercentage: round(latest.percentage),
+      change: previous ? round(latest.percentage - previous.percentage) : null,
+    };
+  });
   const todayDueTasks = allTasks.filter((task) => task.deadline === today);
   const todayTaskCores = todayDueTasks.filter((task) => !task.completed);
   const upcomingCores = allTasks
@@ -86,7 +118,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
       todayTasks,
       upcomingDeadlines,
       subjectProgressSummary,
-      recentPerformance: [],
+      recentPerformance,
       upcomingExams: [],
     }),
   );

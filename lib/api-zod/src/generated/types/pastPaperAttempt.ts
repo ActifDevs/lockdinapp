@@ -19,6 +19,11 @@ export interface PastPaperAttempt {
   /** @nullable */
   variant: number | null;
   session: PastPaperAttemptSession;
+  /**
+     * @minimum 1000
+     * @maximum 9999
+     */
+  year: number;
   paperLabel: string;
   score: number;
   totalMarks: number;

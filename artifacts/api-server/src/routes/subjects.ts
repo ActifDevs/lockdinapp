@@ -20,15 +20,19 @@ import {
   ListAssessmentComponentsParams,
   ListAssessmentComponentsResponse,
 } from "@workspace/api-zod";
-import { temporarilyUnavailableBody } from "../lib/feature-quarantine";
 import { catalogueEnrichment } from "../lib/catalogue-subject";
 import { optionalAuth } from "../middlewares/optional-auth";
+import { requireAuth } from "../middlewares/require-auth";
 import { createUserScopedSupabaseClient } from "../lib/supabase-user-client";
 import {
   listCallerTopicProgress,
   progressMapFromRows,
 } from "../lib/topic-progress";
 import { sendSupabaseError } from "../lib/supabase-errors";
+import {
+  enrichPastPaperRows,
+  listUserPastPaperRows,
+} from "../lib/past-paper-attempts";
 
 const router: IRouter = Router();
 
@@ -224,11 +228,7 @@ router.get("/subjects/:subjectId/assessment-components", async (req, res): Promi
   );
 });
 
-/**
- * Quarantined: past_paper_attempts are not multi-tenant yet.
- * No query of pastPaperAttemptsTable. Contract-safe empty performance payload.
- */
-router.get("/subjects/:subjectId/performance", async (req, res): Promise<void> => {
+router.get("/subjects/:subjectId/performance", requireAuth, async (req, res): Promise<void> => {
   const params = GetSubjectPerformanceParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -245,17 +245,65 @@ router.get("/subjects/:subjectId/performance", async (req, res): Promise<void> =
     return;
   }
 
-  // Intentionally empty — do not leak global past-paper attempts.
+  const client = createUserScopedSupabaseClient(req.accessToken!);
+  const { data, error } = await listUserPastPaperRows(
+    client,
+    req.userId!,
+    subject.id,
+  );
+  if (error) {
+    sendSupabaseError(res, error, "subject_past_paper_performance");
+    return;
+  }
+
+  const attempts = await enrichPastPaperRows(data);
+  const percentages = attempts.map((attempt) => attempt.percentage);
+  const round = (value: number) => Math.round(value * 10) / 10;
+
+  const componentGroups = new Map<
+    string,
+    {
+      componentId: number | null;
+      componentName: string;
+      latestPercentage: number;
+      attempts: number;
+    }
+  >();
+  for (const attempt of attempts) {
+    const key = attempt.componentId === null ? "removed" : String(attempt.componentId);
+    const existing = componentGroups.get(key);
+    if (existing) {
+      existing.attempts += 1;
+    } else {
+      componentGroups.set(key, {
+        componentId: attempt.componentId,
+        componentName: attempt.componentName ?? "Component removed",
+        latestPercentage: round(attempt.percentage),
+        attempts: 1,
+      });
+    }
+  }
+
   res.json(
     GetSubjectPerformanceResponse.parse({
       subjectId: subject.id,
       subjectName: subject.name,
-      latestScore: null,
-      averageScore: null,
-      bestScore: null,
-      papersCompleted: 0,
-      trend: [],
-      componentBreakdown: [],
+      latestScore: attempts[0] ? round(attempts[0].percentage) : null,
+      averageScore:
+        percentages.length > 0
+          ? round(percentages.reduce((sum, value) => sum + value, 0) / percentages.length)
+          : null,
+      bestScore: percentages.length > 0 ? round(Math.max(...percentages)) : null,
+      papersCompleted: attempts.length,
+      trend: attempts
+        .slice()
+        .reverse()
+        .map((attempt) => ({
+          label: `${attempt.session} ${attempt.year}`,
+          percentage: round(attempt.percentage),
+          session: attempt.session,
+        })),
+      componentBreakdown: [...componentGroups.values()],
       insight: null,
     }),
   );

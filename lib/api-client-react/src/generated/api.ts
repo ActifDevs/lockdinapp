@@ -550,9 +550,9 @@ export const getGetSubjectPerformanceUrl = (subjectId: number,) => {
 }
 
 /**
- * Returns a contract-safe empty performance payload. Does not query
- * past_paper_attempts (no per-user ownership yet).
- * @summary Past-paper performance placeholder (ownership not implemented)
+ * Requires Bearer auth. Latest, average, best, count, trend and component
+ * breakdown are calculated only from the caller's attempts.
+ * @summary Get caller-owned past-paper performance for one subject
  */
 export const getSubjectPerformance = async (subjectId: number, options?: RequestInit): Promise<SubjectPerformance> => {
 
@@ -599,7 +599,7 @@ export type GetSubjectPerformanceQueryError = ErrorType<ErrorMessage>
 
 
 /**
- * @summary Past-paper performance placeholder (ownership not implemented)
+ * @summary Get caller-owned past-paper performance for one subject
  */
 
 export function useGetSubjectPerformance<TData = Awaited<ReturnType<typeof getSubjectPerformance>>, TError = ErrorType<ErrorMessage>>(
@@ -1161,10 +1161,9 @@ export const getListPastPaperAttemptsUrl = (params?: ListPastPaperAttemptsParams
 }
 
 /**
- * Requires Bearer auth. Returns [] without querying past_paper_attempts.
- * Does not expose global attempt rows. Feature is not implemented for
- * multi-tenant use until an ownership migration lands.
- * @summary Authenticated empty list — past-paper ownership not implemented
+ * Returns only caller-owned attempts, newest first. The optional subjectId
+ * filter remains inside the caller ownership boundary.
+ * @summary List the authenticated user's past-paper attempts
  */
 export const listPastPaperAttempts = async (params?: ListPastPaperAttemptsParams, options?: RequestInit): Promise<PastPaperAttempt[]> => {
 
@@ -1211,7 +1210,7 @@ export type ListPastPaperAttemptsQueryError = ErrorType<ErrorMessage>
 
 
 /**
- * @summary Authenticated empty list — past-paper ownership not implemented
+ * @summary List the authenticated user's past-paper attempts
  */
 
 export function useListPastPaperAttempts<TData = Awaited<ReturnType<typeof listPastPaperAttempts>>, TError = ErrorType<ErrorMessage>>(
@@ -1241,13 +1240,13 @@ export const getCreatePastPaperAttemptUrl = () => {
 }
 
 /**
- * No insert is performed. Requires Bearer auth.
- * @deprecated
- * @summary Temporarily unavailable — past-paper ownership not implemented
+ * Ownership is derived from the verified Bearer token. The client cannot
+ * choose user_id, and percentage is calculated from score / totalMarks.
+ * @summary Log a caller-owned past-paper attempt
  */
-export const createPastPaperAttempt = async (pastPaperAttemptInput: PastPaperAttemptInput, options?: RequestInit): Promise<unknown> => {
+export const createPastPaperAttempt = async (pastPaperAttemptInput: PastPaperAttemptInput, options?: RequestInit): Promise<PastPaperAttempt> => {
 
-  return customFetch<unknown>(getCreatePastPaperAttemptUrl(),
+  return customFetch<PastPaperAttempt>(getCreatePastPaperAttemptUrl(),
   {
     ...options,
     method: 'POST',
@@ -1292,8 +1291,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreatePastPaperAttemptMutationError = ErrorType<ErrorMessage>
 
     /**
- * @deprecated
- * @summary Temporarily unavailable — past-paper ownership not implemented
+ * @summary Log a caller-owned past-paper attempt
  */
 export const useCreatePastPaperAttempt = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPastPaperAttempt>>, TError,{data: BodyType<PastPaperAttemptInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1315,13 +1313,12 @@ export const getDeletePastPaperAttemptUrl = (pastPaperAttemptId: number,) => {
 }
 
 /**
- * No delete is performed. Requires Bearer auth.
- * @deprecated
- * @summary Temporarily unavailable — past-paper ownership not implemented
+ * Foreign-owned and missing IDs both return 404.
+ * @summary Delete a caller-owned past-paper attempt
  */
-export const deletePastPaperAttempt = async (pastPaperAttemptId: number, options?: RequestInit): Promise<unknown> => {
+export const deletePastPaperAttempt = async (pastPaperAttemptId: number, options?: RequestInit): Promise<void> => {
 
-  return customFetch<unknown>(getDeletePastPaperAttemptUrl(pastPaperAttemptId),
+  return customFetch<void>(getDeletePastPaperAttemptUrl(pastPaperAttemptId),
   {
     ...options,
     method: 'DELETE'
@@ -1366,8 +1363,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeletePastPaperAttemptMutationError = ErrorType<ErrorMessage>
 
     /**
- * @deprecated
- * @summary Temporarily unavailable — past-paper ownership not implemented
+ * @summary Delete a caller-owned past-paper attempt
  */
 export const useDeletePastPaperAttempt = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePastPaperAttempt>>, TError,{pastPaperAttemptId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1992,8 +1988,8 @@ export const getGetDashboardSummaryUrl = () => {
 
 /**
  * Task metrics are Auth-scoped. subjectProgressSummary.syllabusProgress is
- * always 0 (neutral placeholder). recentPerformance and upcomingExams are
- * empty until past-paper/exam ownership exists.
+ * always 0 (neutral placeholder). recentPerformance is calculated from the
+ * caller's past-paper attempts; upcomingExams remains empty until exam ownership.
  * @summary Get dashboard overview for the authenticated user
  */
 export const getDashboardSummary = async ( options?: RequestInit): Promise<DashboardSummary> => {
@@ -2073,7 +2069,7 @@ export const getGetProgressOverviewUrl = () => {
 /**
  * Task completion metrics are Auth-scoped. Syllabus completion is computed
  * from the caller's topic_progress against enrolled subjects' topic counts.
- * Past-paper totals remain 0 until ownership exists.
+ * Past-paper totals count only the caller's owned attempts.
  * @summary Get progress analytics for the authenticated user
  */
 export const getProgressOverview = async ( options?: RequestInit): Promise<ProgressOverview> => {

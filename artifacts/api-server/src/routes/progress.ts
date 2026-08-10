@@ -11,6 +11,7 @@ import {
   listCallerTopicProgress,
 } from "../lib/topic-progress";
 import { logger } from "../lib/logger";
+import { countUserPastPaperAttempts } from "../lib/past-paper-attempts";
 
 const router: IRouter = Router();
 
@@ -20,7 +21,7 @@ type MembershipRow = {
 
 /**
  * Progress overview: Auth-scoped task metrics + enrolled-subject syllabus
- * completion from the caller's topic_progress. Past-paper sections remain empty.
+ * completion from the caller's topic_progress and caller-owned past-paper count.
  */
 router.get("/progress/overview", requireAuth, async (req, res): Promise<void> => {
   const userId = req.userId!;
@@ -145,6 +146,12 @@ router.get("/progress/overview", requireAuth, async (req, res): Promise<void> =>
   }
 
   const totalTasksCompleted = allTasks.filter((t) => t.completed).length;
+  const { count: totalPapersLogged, error: pastPaperError } =
+    await countUserPastPaperAttempts(client, userId);
+  if (pastPaperError) {
+    sendSupabaseError(res, pastPaperError, "progress_past_paper_attempts");
+    return;
+  }
 
   res.json(
     GetProgressOverviewResponse.parse({
@@ -152,7 +159,7 @@ router.get("/progress/overview", requireAuth, async (req, res): Promise<void> =>
       weeklyTasksCompleted,
       subjectAttentionNeeded: [],
       totalTasksCompleted,
-      totalPapersLogged: 0,
+      totalPapersLogged,
       overallSyllabusProgress,
     }),
   );

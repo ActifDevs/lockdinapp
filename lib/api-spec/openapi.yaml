@@ -17,7 +17,7 @@ tags:
   - name: tasks
     description: Authenticated revision task operations (user-owned)
   - name: pastPaperAttempts
-    description: Past paper attempts — ownership not implemented; temporarily quarantined
+    description: Authenticated user-owned past-paper attempt operations
   - name: examDates
     description: Exam dates — ownership not implemented; temporarily quarantined
   - name: dashboard
@@ -163,10 +163,12 @@ paths:
     get:
       operationId: getSubjectPerformance
       tags: [subjects]
-      summary: Past-paper performance placeholder (ownership not implemented)
+      summary: Get caller-owned past-paper performance for one subject
       description: |
-        Returns a contract-safe empty performance payload. Does not query
-        past_paper_attempts (no per-user ownership yet).
+        Requires Bearer auth. Latest, average, best, count, trend and component
+        breakdown are calculated only from the caller's attempts.
+      security:
+        - bearerAuth: []
       parameters:
         - name: subjectId
           in: path
@@ -175,7 +177,7 @@ paths:
             type: integer
       responses:
         "200":
-          description: Empty performance summary placeholder
+          description: Caller-owned subject performance
           content:
             application/json:
               schema:
@@ -425,11 +427,10 @@ paths:
     get:
       operationId: listPastPaperAttempts
       tags: [pastPaperAttempts]
-      summary: Authenticated empty list — past-paper ownership not implemented
+      summary: List the authenticated user's past-paper attempts
       description: |
-        Requires Bearer auth. Returns [] without querying past_paper_attempts.
-        Does not expose global attempt rows. Feature is not implemented for
-        multi-tenant use until an ownership migration lands.
+        Returns only caller-owned attempts, newest first. The optional subjectId
+        filter remains inside the caller ownership boundary.
       security:
         - bearerAuth: []
       parameters:
@@ -440,7 +441,7 @@ paths:
             type: integer
       responses:
         "200":
-          description: Empty list placeholder
+          description: Caller-owned past-paper attempts
           content:
             application/json:
               schema:
@@ -456,9 +457,10 @@ paths:
     post:
       operationId: createPastPaperAttempt
       tags: [pastPaperAttempts]
-      summary: Temporarily unavailable — past-paper ownership not implemented
-      description: No insert is performed. Requires Bearer auth.
-      deprecated: true
+      summary: Log a caller-owned past-paper attempt
+      description: |
+        Ownership is derived from the verified Bearer token. The client cannot
+        choose user_id, and percentage is calculated from score / totalMarks.
       security:
         - bearerAuth: []
       requestBody:
@@ -468,8 +470,14 @@ paths:
             schema:
               $ref: "#/components/schemas/PastPaperAttemptInput"
       responses:
-        "503":
-          description: Feature temporarily unavailable until ownership migration
+        "201":
+          description: Attempt created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PastPaperAttempt"
+        "400":
+          description: Invalid paper identity, year, score, marks, date, or ownership field
           content:
             application/json:
               schema:
@@ -485,9 +493,8 @@ paths:
     delete:
       operationId: deletePastPaperAttempt
       tags: [pastPaperAttempts]
-      summary: Temporarily unavailable — past-paper ownership not implemented
-      description: No delete is performed. Requires Bearer auth.
-      deprecated: true
+      summary: Delete a caller-owned past-paper attempt
+      description: Foreign-owned and missing IDs both return 404.
       security:
         - bearerAuth: []
       parameters:
@@ -497,8 +504,10 @@ paths:
           schema:
             type: integer
       responses:
-        "503":
-          description: Feature temporarily unavailable until ownership migration
+        "204":
+          description: Attempt deleted
+        "404":
+          description: Attempt not found or not owned by the caller
           content:
             application/json:
               schema:
@@ -769,8 +778,8 @@ paths:
       summary: Get dashboard overview for the authenticated user
       description: |
         Task metrics are Auth-scoped. subjectProgressSummary.syllabusProgress is
-        always 0 (neutral placeholder). recentPerformance and upcomingExams are
-        empty until past-paper/exam ownership exists.
+        always 0 (neutral placeholder). recentPerformance is calculated from the
+        caller's past-paper attempts; upcomingExams remains empty until exam ownership.
       security:
         - bearerAuth: []
       responses:
@@ -795,7 +804,7 @@ paths:
       description: |
         Task completion metrics are Auth-scoped. Syllabus completion is computed
         from the caller's topic_progress against enrolled subjects' topic counts.
-        Past-paper totals remain 0 until ownership exists.
+        Past-paper totals count only the caller's owned attempts.
       security:
         - bearerAuth: []
       responses:
@@ -988,8 +997,8 @@ components:
     Subject:
       type: object
       description: |
-        Shared catalogue subject. Progress, task-count, and past-paper fields are
-        neutral placeholders until per-user ownership exists for those features.
+        Shared catalogue subject. User-specific progress, task-count, and past-paper
+        fields remain neutral placeholders on this public catalogue response.
       properties:
         id:
           type: integer
@@ -1016,10 +1025,10 @@ components:
           description: Neutral placeholder; always 0 (not user-task derived)
         recentPaperScore:
           type: ["number", "null"]
-          description: Neutral placeholder; always null until past-paper ownership
+          description: Neutral placeholder; always null on shared catalogue responses
         recentPaperLabel:
           type: ["string", "null"]
-          description: Neutral placeholder; always null until past-paper ownership
+          description: Neutral placeholder; always null on shared catalogue responses
       required:
         - id
         - name
@@ -1223,8 +1232,12 @@ components:
         session:
           type: string
           enum: [May/June, Oct/Nov, Feb/Mar, Specimen]
-        # Derived display string, e.g. "9700/42 — May/June". Never stored or typed by
-        # hand — constructed server-side from subject + component + variant + session.
+        year:
+          type: integer
+          minimum: 1000
+          maximum: 9999
+        # Derived display string, e.g. "9700/42 — May/June 2026". Never stored or typed
+        # by hand — constructed server-side from component + variant + session + year.
         paperLabel:
           type: string
         score:
@@ -1250,6 +1263,7 @@ components:
         - componentName
         - variant
         - session
+        - year
         - paperLabel
         - score
         - totalMarks
@@ -1273,6 +1287,10 @@ components:
         session:
           type: string
           enum: [May/June, Oct/Nov, Feb/Mar, Specimen]
+        year:
+          type: integer
+          minimum: 1000
+          maximum: 9999
         score:
           type: number
         totalMarks:
@@ -1287,6 +1305,7 @@ components:
         - subjectId
         - componentId
         - session
+        - year
         - score
         - totalMarks
         - dateAttempted
