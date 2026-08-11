@@ -31,6 +31,8 @@ import { Plus, Trash2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ChartSkeleton } from "@/components/charts/chart-skeleton";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
+import { formatPercentage } from "@/lib/format-percentage";
+import { buildAssessmentComponentOptions } from "@/lib/assessment-component-options";
 
 const ScoreTrendLineChart = lazy(
   () => import("@/components/charts/score-trend-line-chart"),
@@ -128,6 +130,7 @@ export default function PastPapers() {
       },
     }
   );
+  const componentOptions = buildAssessmentComponentOptions(components ?? []);
 
   // Component belongs to a specific subject — clear it (and any dependent
   // variant/session selection) whenever the subject changes so a stale
@@ -271,7 +274,7 @@ export default function PastPapers() {
                         </div>
                         <p className="text-xs text-muted-foreground">{paper.componentName ?? "Component removed"}</p>
                         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                          <span className="text-lg font-bold tabular">{paper.percentage}%</span>
+                          <span className="text-lg font-bold tabular">{formatPercentage(paper.percentage)}</span>
                           <span className="text-xs text-muted-foreground">
                             {paper.score}/{paper.totalMarks} marks
                           </span>
@@ -325,7 +328,7 @@ export default function PastPapers() {
                         <td className="px-6 py-4 text-muted-foreground">{paper.session} {paper.year}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-base tabular">{paper.percentage}%</span>
+                            <span className="font-semibold text-base tabular">{formatPercentage(paper.percentage)}</span>
                             <span className="text-xs text-muted-foreground">({paper.score}/{paper.totalMarks})</span>
                           </div>
                         </td>
@@ -404,8 +407,10 @@ export default function PastPapers() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {components?.map(c => (
-                          <SelectItem key={c.id} value={c.id.toString()}>{c.componentName}</SelectItem>
+                        {componentOptions.map((component) => (
+                          <SelectItem key={component.id} value={component.value}>
+                            {component.label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
