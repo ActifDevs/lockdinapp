@@ -6,6 +6,8 @@ import {
   getGetProgressOverviewQueryKey,
   useListSubjects,
   getListSubjectsQueryKey,
+  useListCurrentUserSubjects,
+  getListCurrentUserSubjectsQueryKey,
   useUpdateTask,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -45,6 +47,7 @@ import {
 } from "@/lib/dashboard-gamification";
 import { getQueryErrorMessage } from "@/lib/query-error-message";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
+import { selectMembershipSubjects } from "@/lib/selected-subjects";
 
 const WeeklyActivityBarChart = lazy(
   () => import("@/components/charts/weekly-activity-bar-chart"),
@@ -134,6 +137,10 @@ export default function Dashboard() {
 
   const { data: subjects } = useListSubjects({
     query: { queryKey: getListSubjectsQueryKey() },
+  });
+
+  const { data: subjectMemberships } = useListCurrentUserSubjects({
+    query: { queryKey: getListCurrentUserSubjectsQueryKey() },
   });
 
   const updateTask = useUpdateTask({
@@ -258,7 +265,7 @@ export default function Dashboard() {
   };
 
   const displayName = firstName || summary.studentName;
-  const subjectList = subjects ?? [];
+  const subjectList = selectMembershipSubjects(subjects, subjectMemberships);
   const hasWeeklyChart =
     !!progressOverview && progressOverview.weeklyTasksCompleted.length > 0;
 

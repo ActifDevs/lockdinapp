@@ -8,6 +8,7 @@ import {
   YAxis,
 } from "recharts";
 import { scoreTrendSummary } from "@/lib/chart-summaries";
+import { formatPercentage } from "@/lib/format-percentage";
 
 type ScoreTrendLineChartProps<T extends { percentage: number }> = {
   data: T[];
@@ -55,11 +56,13 @@ export default function ScoreTrendLineChart<T extends { percentage: number }>({
           <RechartsTooltip
             contentStyle={{
               borderRadius: "8px",
-              border: "1px solid var(--border)",
-              background: "var(--card)",
+              border: "1px solid hsl(var(--border))",
+              backgroundColor: "hsl(var(--card))",
+              color: "hsl(var(--foreground))",
             }}
-            itemStyle={{ color: "var(--foreground)" }}
-            formatter={(value: number) => [`${value}%`, "Score"]}
+            itemStyle={{ color: "hsl(var(--foreground))" }}
+            labelStyle={{ color: "hsl(var(--foreground))" }}
+            formatter={(value: number) => [formatPercentage(value), "Score"]}
             labelFormatter={tooltipLabelFormatter}
           />
           <Line

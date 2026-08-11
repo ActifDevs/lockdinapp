@@ -7,6 +7,9 @@ import {
   getListAssessmentComponentsQueryKey,
   useCreatePastPaperAttempt,
   useDeletePastPaperAttempt,
+  getGetDashboardSummaryQueryKey,
+  getGetProgressOverviewQueryKey,
+  getGetSubjectPerformanceQueryKey,
 } from "@workspace/api-client-react";
 import { PastPaperAttemptInputSession } from "@workspace/api-client-react";
 import { useState, lazy, Suspense, useEffect } from "react";
@@ -28,6 +31,8 @@ import { Plus, Trash2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ChartSkeleton } from "@/components/charts/chart-skeleton";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
+import { formatPercentage } from "@/lib/format-percentage";
+import { buildAssessmentComponentOptions } from "@/lib/assessment-component-options";
 
 const ScoreTrendLineChart = lazy(
   () => import("@/components/charts/score-trend-line-chart"),
@@ -42,6 +47,7 @@ const paperSchema = z.object({
   componentId: z.coerce.number().min(1, "Component is required"),
   variant: z.string().default(NO_VARIANT),
   session: z.string().min(1, "Session is required"),
+  year: z.coerce.number().int().min(1000, "Enter a four-digit year").max(9999, "Enter a four-digit year"),
   score: z.coerce.number().min(0, "Score cannot be negative"),
   totalMarks: z.coerce.number().min(1, "Total marks must be > 0"),
   dateAttempted: z.string().min(1, "Date is required"),
@@ -72,8 +78,12 @@ export default function PastPapers() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListPastPaperAttemptsQueryKey() });
-        queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] }); // update dashboard recent
-        queryClient.invalidateQueries({ queryKey: ["/api/progress"] });
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetProgressOverviewQueryKey() });
+        const subjectId = form.getValues("subjectId");
+        if (subjectId) {
+          queryClient.invalidateQueries({ queryKey: getGetSubjectPerformanceQueryKey(subjectId) });
+        }
         setIsAddDialogOpen(false);
         form.reset();
       }
@@ -82,9 +92,16 @@ export default function PastPapers() {
 
   const deleteAttempt = useDeletePastPaperAttempt({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_data, variables) => {
         queryClient.invalidateQueries({ queryKey: getListPastPaperAttemptsQueryKey() });
-        queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetProgressOverviewQueryKey() });
+        const subjectId = papers?.find(
+          (paper) => paper.id === variables.pastPaperAttemptId,
+        )?.subjectId;
+        if (subjectId) {
+          queryClient.invalidateQueries({ queryKey: getGetSubjectPerformanceQueryKey(subjectId) });
+        }
       }
     }
   });
@@ -94,6 +111,7 @@ export default function PastPapers() {
     defaultValues: {
       variant: NO_VARIANT,
       session: "",
+      year: "" as unknown as number,
       dateAttempted: new Date().toISOString().split('T')[0],
       timeTakenMinutes: "",
       notes: ""
@@ -112,6 +130,7 @@ export default function PastPapers() {
       },
     }
   );
+  const componentOptions = buildAssessmentComponentOptions(components ?? []);
 
   // Component belongs to a specific subject — clear it (and any dependent
   // variant/session selection) whenever the subject changes so a stale
@@ -127,6 +146,7 @@ export default function PastPapers() {
         componentId: data.componentId,
         variant: data.variant !== NO_VARIANT ? Number(data.variant) : undefined,
         session: data.session as PastPaperAttemptInputSession,
+        year: data.year,
         score: data.score,
         totalMarks: data.totalMarks,
         dateAttempted: new Date(data.dateAttempted).toISOString(),
@@ -138,7 +158,7 @@ export default function PastPapers() {
 
   // Prepare chart data: group by date across all papers or filtered
   const chartData = papers?.slice().reverse().map(p => ({
-    name: p.session,
+    name: `${p.session} ${p.year}`,
     date: format(parseISO(p.dateAttempted), "MMM d"),
     percentage: p.percentage,
     subject: p.subjectName,
@@ -254,7 +274,7 @@ export default function PastPapers() {
                         </div>
                         <p className="text-xs text-muted-foreground">{paper.componentName ?? "Component removed"}</p>
                         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                          <span className="text-lg font-bold tabular">{paper.percentage}%</span>
+                          <span className="text-lg font-bold tabular">{formatPercentage(paper.percentage)}</span>
                           <span className="text-xs text-muted-foreground">
                             {paper.score}/{paper.totalMarks} marks
                           </span>
@@ -305,10 +325,10 @@ export default function PastPapers() {
                           <div>{paper.paperLabel}</div>
                           <div className="text-xs text-muted-foreground">{paper.componentName ?? "Component removed"}</div>
                         </td>
-                        <td className="px-6 py-4 text-muted-foreground">{paper.session}</td>
+                        <td className="px-6 py-4 text-muted-foreground">{paper.session} {paper.year}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-base tabular">{paper.percentage}%</span>
+                            <span className="font-semibold text-base tabular">{formatPercentage(paper.percentage)}</span>
                             <span className="text-xs text-muted-foreground">({paper.score}/{paper.totalMarks})</span>
                           </div>
                         </td>
@@ -387,8 +407,10 @@ export default function PastPapers() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {components?.map(c => (
-                          <SelectItem key={c.id} value={c.id.toString()}>{c.componentName}</SelectItem>
+                        {componentOptions.map((component) => (
+                          <SelectItem key={component.id} value={component.value}>
+                            {component.label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -448,6 +470,27 @@ export default function PastPapers() {
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="year"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Paper Year</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        inputMode="numeric"
+                        min={1000}
+                        max={9999}
+                        placeholder="2024"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="form-grid-2">
                 <FormField

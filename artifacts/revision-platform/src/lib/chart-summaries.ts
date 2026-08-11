@@ -1,3 +1,5 @@
+import { formatPercentage } from "@/lib/format-percentage";
+
 export type WeeklyActivityPoint = {
   date: string;
   tasksCompleted: number;
@@ -30,8 +32,8 @@ export function scoreTrendSummary<T extends { percentage: number }>(
   const trend =
     change > 0 ? "up" : change < 0 ? "down" : "unchanged";
   const points = data
-    .map((point, index) => `${labelForPoint(point, index)}: ${point.percentage}%`)
+    .map((point, index) => `${labelForPoint(point, index)}: ${formatPercentage(point.percentage)}`)
     .join("; ");
 
-  return `Score trend over ${data.length} entries, latest ${latest.percentage}%, ${trend} from ${first.percentage}%. ${points}.`;
+  return `Score trend over ${data.length} entries, latest ${formatPercentage(latest.percentage)}, ${trend} from ${formatPercentage(first.percentage)}. ${points}.`;
 }

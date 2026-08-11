@@ -455,7 +455,12 @@ describe("two-user local Supabase task isolation (exact)", () => {
     const del = await request(app).delete(`/api/subjects/${subjectId}`);
     expect(del.status).toBe(403);
 
-    const perf = await request(app).get(`/api/subjects/${subjectId}/performance`);
+    const anonymousPerf = await request(app).get(`/api/subjects/${subjectId}/performance`);
+    expect(anonymousPerf.status).toBe(401);
+
+    const perf = await request(app)
+      .get(`/api/subjects/${subjectId}/performance`)
+      .set("Authorization", `Bearer ${tokenA}`);
     expect(perf.status).toBe(200);
     expect(perf.body.papersCompleted).toBe(0);
     expect(perf.body.latestScore).toBeNull();
@@ -472,34 +477,9 @@ describe("two-user local Supabase task isolation (exact)", () => {
     }
   });
 
-  it("unowned features are quarantined with safe placeholders", async () => {
+  it("keeps the remaining unowned exam-date feature quarantined", async () => {
     const anonPast = await request(app).get("/api/past-paper-attempts");
     expect(anonPast.status).toBe(401);
-
-    const pastGet = await request(app)
-      .get("/api/past-paper-attempts")
-      .set("Authorization", `Bearer ${tokenA}`);
-    expect(pastGet.status).toBe(200);
-    expect(pastGet.body).toEqual([]);
-
-    const pastPost = await request(app)
-      .post("/api/past-paper-attempts")
-      .set("Authorization", `Bearer ${tokenA}`)
-      .send({
-        subjectId,
-        componentId: 1,
-        session: "May/June",
-        score: 50,
-        totalMarks: 100,
-        dateAttempted: today,
-      });
-    expect(pastPost.status).toBe(503);
-    expect(pastPost.body.error).toBe(FEATURE_TEMPORARILY_UNAVAILABLE);
-
-    const pastDel = await request(app)
-      .delete("/api/past-paper-attempts/1")
-      .set("Authorization", `Bearer ${tokenA}`);
-    expect(pastDel.status).toBe(503);
 
     const examGet = await request(app)
       .get("/api/exam-dates")
