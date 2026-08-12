@@ -360,6 +360,52 @@ describe("AuthProvider", () => {
     expect(getCurrentProfile.mock.calls.length).toBe(calls);
   });
 
+  it("clears React Query cache including exam-date keys on auth identity switch", async () => {
+    getCurrentProfile.mockResolvedValue({
+      id: "user-b",
+      fullName: "User B",
+      username: "userb",
+      level: null,
+      examSession: null,
+      onboardedAt: null,
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+    });
+    getSession.mockResolvedValue({ data: { session: null } });
+
+    const { queryClient } = renderAuth();
+    await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("false"));
+
+    const examDatesKey = ["/api/exam-dates"] as const;
+    queryClient.setQueryData(examDatesKey, [
+      {
+        id: 1,
+        subjectId: 1,
+        subjectName: "Biology",
+        subjectColor: "#000",
+        paperCode: "P1",
+        date: "2026-12-01",
+        notes: null,
+      },
+    ]);
+    expect(queryClient.getQueryData(examDatesKey)).toBeTruthy();
+
+    await act(async () => {
+      authListener?.("SIGNED_IN", sessionFor("user-a", "a@example.com"));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
+      authListener?.("SIGNED_IN", sessionFor("user-b", "b@example.com"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-id").textContent).toBe("user-b");
+    });
+    expect(queryClient.getQueryData(examDatesKey)).toBeUndefined();
+  });
+
   it("stale profile from User A cannot replace User B", async () => {
     let resolveA: (value: unknown) => void = () => undefined;
     const profileA = new Promise((resolve) => {

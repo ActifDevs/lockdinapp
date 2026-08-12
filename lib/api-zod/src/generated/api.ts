@@ -632,7 +632,7 @@ export const CompleteCurrentUserOnboardingResponse = zod.object({
  * Task metrics are Auth-scoped. subjectProgressSummary.syllabusProgress is
  * always 0 (neutral placeholder). recentPerformance is calculated from the
  * caller's past-paper attempts; upcomingExams lists the caller's exam dates
- * from today through the next 60 days.
+ * with date >= today (no upper date window; Dashboard UI caps display at 4).
  * @summary Get dashboard overview for the authenticated user
  */
 export const GetDashboardSummaryResponse = zod.object({

@@ -20,7 +20,8 @@ const router: IRouter = Router();
 
 /**
  * Dashboard: Auth-scoped task metrics only.
- * Past-paper performance and upcoming exams are caller-owned.
+ * Past-paper performance and upcoming exams are caller-owned
+ * (upcoming exams: date >= today; UI caps display at 4).
  * subjectProgressSummary uses neutral syllabusProgress = 0 placeholders —
  * enrolled topic_progress aggregates are not yet wired on this endpoint.
  *

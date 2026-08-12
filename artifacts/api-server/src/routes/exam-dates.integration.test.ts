@@ -97,6 +97,7 @@ describe("two-user local Supabase exam-date ownership", () => {
   let subjectId = 0;
   let examANearId = 0;
   let examAFarId = 0;
+  let examABeyondId = 0;
   let examBId = 0;
 
   beforeAll(async () => {
@@ -253,6 +254,7 @@ describe("two-user local Supabase exam-date ownership", () => {
       .set("Authorization", `Bearer ${tokenA}`)
       .send({ subjectId, paperCode: "Far", date: beyondWindow });
     expect(createABeyond.status).toBe(201);
+    examABeyondId = createABeyond.body.id;
 
     const createB = await request(app)
       .post("/api/exam-dates")
@@ -276,6 +278,7 @@ describe("two-user local Supabase exam-date ownership", () => {
     const idsB = listB.body.map((row: { id: number }) => row.id);
     expect(idsA).toContain(examANearId);
     expect(idsA).toContain(examAFarId);
+    expect(idsA).toContain(examABeyondId);
     expect(idsA).not.toContain(examBId);
     expect(idsB).toEqual([examBId]);
 
@@ -289,8 +292,14 @@ describe("two-user local Supabase exam-date ownership", () => {
     const upcomingIds = dashboard.body.upcomingExams.map(
       (row: { id: number }) => row.id,
     );
-    expect(upcomingIds).toEqual([examANearId, examAFarId]);
+    // date >= today only — exams beyond +60 days must still be included.
+    expect(upcomingIds).toEqual([examANearId, examAFarId, examABeyondId]);
     expect(upcomingIds).not.toContain(examBId);
+    expect(
+      dashboard.body.upcomingExams.find(
+        (row: { id: number }) => row.id === examABeyondId,
+      )?.date,
+    ).toBe(beyondWindow);
 
     const dashboardB = await request(app)
       .get("/api/dashboard/summary")
@@ -314,6 +323,14 @@ describe("two-user local Supabase exam-date ownership", () => {
       .select("id")
       .eq("id", examANearId);
     expect(foreignSelect.data ?? []).toEqual([]);
+
+    const foreignDirectDelete = await clientB
+      .from("exam_dates")
+      .delete()
+      .eq("id", examANearId)
+      .select("id");
+    expect(foreignDirectDelete.error).toBeNull();
+    expect(foreignDirectDelete.data ?? []).toEqual([]);
 
     const updateDenied = await clientA
       .from("exam_dates")

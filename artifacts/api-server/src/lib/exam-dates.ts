@@ -26,9 +26,6 @@ export type EnrichedExamDate = {
 
 type SupabaseError = { code?: string; message?: string; status?: number };
 
-/** Calendar upcoming window: today through +60 days (matches Calendar page). */
-export const UPCOMING_EXAM_WINDOW_DAYS = 60;
-
 /** Load only the verified caller's exam dates. RLS independently enforces the same boundary. */
 export async function listUserExamDateRows(
   client: SupabaseClient,
@@ -48,17 +45,15 @@ export async function listUserExamDateRows(
   };
 }
 
+/**
+ * Dashboard upcoming set: caller-owned rows with date >= today.
+ * No upper date window. Presentation capping (4 items) stays on the Dashboard UI.
+ */
 export function filterUpcomingExamRows(
   rows: ExamDateRow[],
   todayIso: string,
-  windowDays = UPCOMING_EXAM_WINDOW_DAYS,
 ): ExamDateRow[] {
-  const today = new Date(`${todayIso}T00:00:00.000Z`);
-  const end = new Date(today);
-  end.setUTCDate(end.getUTCDate() + windowDays);
-  const endIso = end.toISOString().slice(0, 10);
-
-  return rows.filter((row) => row.date >= todayIso && row.date <= endIso);
+  return rows.filter((row) => row.date >= todayIso);
 }
 
 export async function enrichExamDateRows(
