@@ -576,14 +576,13 @@ describe("two-user local Supabase past-paper ownership and year", () => {
     expect(migration).not.toContain("FOR UPDATE TO authenticated");
 
     const journal = await db.execute(sql`
-      select count(*)::int as count, max(created_at)::text as latest,
-        (array_agg(hash order by created_at desc))[1] as latest_hash
+      select count(*)::int as count,
+        bool_or(hash = ${expectedHash}) as has_0008
       from drizzle.__drizzle_migrations
     `);
     expect(journal.rows[0]).toEqual({
-      count: 9,
-      latest: "1786394449630",
-      latest_hash: expectedHash,
+      count: 10,
+      has_0008: true,
     });
   });
 

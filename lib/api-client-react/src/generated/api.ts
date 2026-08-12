@@ -1385,9 +1385,10 @@ export const getListExamDatesUrl = () => {
 }
 
 /**
- * Requires Bearer auth. Returns [] without querying exam_dates.
- * Does not expose global exam-date rows.
- * @summary Authenticated empty list — exam-date ownership not implemented
+ * Returns only caller-owned exam dates in chronological order
+ * (date ASC, id ASC), with subject display fields enriched from the
+ * shared catalogue.
+ * @summary List the authenticated user's exam dates
  */
 export const listExamDates = async ( options?: RequestInit): Promise<ExamDate[]> => {
 
@@ -1434,7 +1435,7 @@ export type ListExamDatesQueryError = ErrorType<ErrorMessage>
 
 
 /**
- * @summary Authenticated empty list — exam-date ownership not implemented
+ * @summary List the authenticated user's exam dates
  */
 
 export function useListExamDates<TData = Awaited<ReturnType<typeof listExamDates>>, TError = ErrorType<ErrorMessage>>(
@@ -1464,13 +1465,14 @@ export const getCreateExamDateUrl = () => {
 }
 
 /**
- * No insert is performed. Requires Bearer auth.
- * @deprecated
- * @summary Temporarily unavailable — exam-date ownership not implemented
+ * Ownership is derived from the verified Bearer token. Ownership fields
+ * in the request body (userId, user_id, ownerId, owner_id) are rejected.
+ * PATCH/UPDATE is out of scope.
+ * @summary Create a caller-owned exam date
  */
-export const createExamDate = async (examDateInput: ExamDateInput, options?: RequestInit): Promise<unknown> => {
+export const createExamDate = async (examDateInput: ExamDateInput, options?: RequestInit): Promise<ExamDate> => {
 
-  return customFetch<unknown>(getCreateExamDateUrl(),
+  return customFetch<ExamDate>(getCreateExamDateUrl(),
   {
     ...options,
     method: 'POST',
@@ -1515,8 +1517,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateExamDateMutationError = ErrorType<ErrorMessage>
 
     /**
- * @deprecated
- * @summary Temporarily unavailable — exam-date ownership not implemented
+ * @summary Create a caller-owned exam date
  */
 export const useCreateExamDate = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createExamDate>>, TError,{data: BodyType<ExamDateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1538,13 +1539,12 @@ export const getDeleteExamDateUrl = (examDateId: number,) => {
 }
 
 /**
- * No delete is performed. Requires Bearer auth.
- * @deprecated
- * @summary Temporarily unavailable — exam-date ownership not implemented
+ * Foreign-owned and missing IDs both return 404.
+ * @summary Delete a caller-owned exam date
  */
-export const deleteExamDate = async (examDateId: number, options?: RequestInit): Promise<unknown> => {
+export const deleteExamDate = async (examDateId: number, options?: RequestInit): Promise<void> => {
 
-  return customFetch<unknown>(getDeleteExamDateUrl(examDateId),
+  return customFetch<void>(getDeleteExamDateUrl(examDateId),
   {
     ...options,
     method: 'DELETE'
@@ -1589,8 +1589,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeleteExamDateMutationError = ErrorType<ErrorMessage>
 
     /**
- * @deprecated
- * @summary Temporarily unavailable — exam-date ownership not implemented
+ * @summary Delete a caller-owned exam date
  */
 export const useDeleteExamDate = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteExamDate>>, TError,{examDateId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1989,7 +1988,8 @@ export const getGetDashboardSummaryUrl = () => {
 /**
  * Task metrics are Auth-scoped. subjectProgressSummary.syllabusProgress is
  * always 0 (neutral placeholder). recentPerformance is calculated from the
- * caller's past-paper attempts; upcomingExams remains empty until exam ownership.
+ * caller's past-paper attempts; upcomingExams lists the caller's exam dates
+ * from today through the next 60 days.
  * @summary Get dashboard overview for the authenticated user
  */
 export const getDashboardSummary = async ( options?: RequestInit): Promise<DashboardSummary> => {
