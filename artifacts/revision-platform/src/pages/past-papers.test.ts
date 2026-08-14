@@ -3,11 +3,17 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createElement, Fragment, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
-  useListSubjects: vi.fn(),
+  useListCurrentUserSubjects: vi.fn(),
   useListPastPaperAttempts: vi.fn(),
   useListAssessmentComponents: vi.fn(),
   useCreatePastPaperAttempt: vi.fn(),
@@ -25,12 +31,12 @@ vi.mock("@workspace/api-client-react", () => ({
     `/api/subjects/${subjectId}/assessment-components`,
   ],
   getListPastPaperAttemptsQueryKey: () => ["/api/past-paper-attempts"],
-  getListSubjectsQueryKey: () => ["/api/subjects"],
+  getListCurrentUserSubjectsQueryKey: () => ["/api/user-subjects"],
   useCreatePastPaperAttempt: apiMocks.useCreatePastPaperAttempt,
   useDeletePastPaperAttempt: apiMocks.useDeletePastPaperAttempt,
   useListAssessmentComponents: apiMocks.useListAssessmentComponents,
   useListPastPaperAttempts: apiMocks.useListPastPaperAttempts,
-  useListSubjects: apiMocks.useListSubjects,
+  useListCurrentUserSubjects: apiMocks.useListCurrentUserSubjects,
 }));
 
 vi.mock("@/components/charts/score-trend-line-chart", () => ({
@@ -85,8 +91,21 @@ const source = readFileSync(
 );
 
 beforeEach(() => {
-  apiMocks.useListSubjects.mockReturnValue({
-    data: [{ id: 9, name: "Mathematics", code: "9709", color: "#0f766e" }],
+  apiMocks.useListCurrentUserSubjects.mockReturnValue({
+    data: [
+      {
+        subject: {
+          id: 9,
+          name: "Mathematics",
+          code: "9709",
+          color: "#0f766e",
+          topicsTotal: 20,
+        },
+      },
+    ],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
   });
   apiMocks.useListPastPaperAttempts.mockReturnValue({
     data: [
@@ -102,7 +121,7 @@ beforeEach(() => {
         score: 50,
         totalMarks: 75,
         percentage: 66.666666,
-        dateAttempted: "2026-08-11T00:00:00.000Z",
+        dateAttempted: "2026-08-11",
       },
     ],
     isLoading: false,
@@ -182,6 +201,13 @@ describe("past-paper ownership and year UI wiring", () => {
     expect(source).not.toMatch(/userId:\s*data|ownerId:\s*data/);
   });
 
+  it("uses current memberships for selectors and submits the raw calendar date", () => {
+    expect(source).toMatch(/useListCurrentUserSubjects/);
+    expect(source).not.toMatch(/useListSubjects/);
+    expect(source).toMatch(/dateAttempted:\s*data\.dateAttempted/);
+    expect(source).not.toMatch(/new Date\(data\.dateAttempted\)\.toISOString/);
+  });
+
   it("invalidates every affected caller-owned aggregate after create/delete", () => {
     for (const key of [
       "getListPastPaperAttemptsQueryKey",
@@ -229,5 +255,82 @@ describe("past-paper ownership and year UI wiring", () => {
     expect(componentSelect).toHaveValue("42");
     fireEvent.change(componentSelect!, { target: { value: "46" } });
     expect(componentSelect).toHaveValue("46");
+  });
+
+  it("disables logging while memberships load", () => {
+    apiMocks.useListCurrentUserSubjects.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    renderPastPapers();
+    expect(
+      screen.getAllByRole("button", { name: /log paper/i })[0],
+    ).toBeDisabled();
+  });
+
+  it("shows a Settings CTA when there are no current memberships", () => {
+    apiMocks.useListCurrentUserSubjects.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    renderPastPapers();
+    expect(screen.getByText("Choose subjects in Settings")).toBeVisible();
+    expect(
+      screen.getAllByRole("button", { name: /log paper/i })[0],
+    ).toBeDisabled();
+    expect(screen.getByRole("option", { name: "All Subjects" })).toBeVisible();
+  });
+
+  it("resets an invalid filter and form subject after membership removal", async () => {
+    const view = renderPastPapers();
+    const mathematicsOptions = screen.getAllByRole("option", {
+      name: "Mathematics",
+    });
+    fireEvent.change(mathematicsOptions[0]!.closest("select")!, {
+      target: { value: "9" },
+    });
+    fireEvent.change(mathematicsOptions.at(-1)!.closest("select")!, {
+      target: { value: "9" },
+    });
+
+    apiMocks.useListCurrentUserSubjects.mockReturnValue({
+      data: [
+        {
+          subject: {
+            id: 10,
+            name: "Physics",
+            code: "9702",
+            color: "#1d4ed8",
+            topicsTotal: 18,
+          },
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    view.rerender(
+      createElement(
+        QueryClientProvider,
+        { client: new QueryClient() },
+        createElement(PastPapers),
+      ),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("option", { name: "All Subjects" }).closest("select"),
+      ).toHaveValue("all");
+      expect(
+        screen.queryByRole("option", { name: "Mathematics" }),
+      ).not.toBeInTheDocument();
+    });
+    expect(source).toContain(
+      'form.setValue("subjectId", undefined as unknown as number)',
+    );
   });
 });

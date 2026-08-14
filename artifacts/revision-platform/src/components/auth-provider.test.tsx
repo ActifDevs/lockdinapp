@@ -46,7 +46,8 @@ vi.mock("@workspace/api-client-react", () => ({
     completeCurrentUserOnboarding(...args),
   updateCurrentProfile: (...args: unknown[]) => updateCurrentProfile(...args),
   setAuthTokenGetter: (...args: unknown[]) => setAuthTokenGetter(...args),
-  setUnauthorizedHandler: (...args: unknown[]) => setUnauthorizedHandler(...args),
+  setUnauthorizedHandler: (...args: unknown[]) =>
+    setUnauthorizedHandler(...args),
 }));
 
 vi.mock("@/lib/app-url", () => ({
@@ -62,7 +63,10 @@ function Probe() {
       <div data-testid="onboarded">{String(auth.isOnboarded)}</div>
       <div data-testid="first-name">{auth.firstName ?? ""}</div>
       <div data-testid="user-id">{auth.user?.id ?? ""}</div>
-      <button type="button" onClick={() => void auth.login("a@b.com", "password1")}>
+      <button
+        type="button"
+        onClick={() => void auth.login("a@b.com", "password1")}
+      >
         login
       </button>
       <button
@@ -95,7 +99,11 @@ function PathProbe() {
 }
 
 function renderAuth(queryClient = new QueryClient()) {
-  const loc = memoryLocation({ path: "/dashboard", static: false, record: true });
+  const loc = memoryLocation({
+    path: "/dashboard",
+    static: false,
+    record: true,
+  });
   render(
     <QueryClientProvider client={queryClient}>
       <Router hook={loc.hook}>
@@ -139,6 +147,17 @@ describe("AuthProvider", () => {
     localStorage.setItem("lockdin_user", "{}");
     localStorage.setItem("onboarded", "true");
     localStorage.setItem("lockdin_subject_codes", "[]");
+    for (const key of [
+      "lockdin_longest_streak",
+      "lockdin_unlocked_achievements",
+      "lockdin_achievements_seeded",
+      "lockdin_morning_ping",
+      "lockdin_deadline_ping",
+      "lockdin_exam_ping",
+    ]) {
+      localStorage.setItem(key, "legacy");
+    }
+    localStorage.setItem("lockdin_longest_streak:user-a", "12");
     localStorage.setItem("sb-local-auth-token", "keep-me");
     getSession.mockResolvedValue({ data: { session: null } });
     getCurrentProfile.mockReset();
@@ -163,6 +182,24 @@ describe("AuthProvider", () => {
     expect(screen.getByTestId("authenticated").textContent).toBe("false");
     expect(localStorage.getItem("lockdin_auth")).toBeNull();
     expect(localStorage.getItem("sb-local-auth-token")).toBe("keep-me");
+  });
+
+  it("removes ambiguous personal keys and preserves user-qualified keys", async () => {
+    renderAuth();
+    await waitFor(() =>
+      expect(screen.getByTestId("loading").textContent).toBe("false"),
+    );
+    for (const key of [
+      "lockdin_longest_streak",
+      "lockdin_unlocked_achievements",
+      "lockdin_achievements_seeded",
+      "lockdin_morning_ping",
+      "lockdin_deadline_ping",
+      "lockdin_exam_ping",
+    ]) {
+      expect(localStorage.getItem(key)).toBeNull();
+    }
+    expect(localStorage.getItem("lockdin_longest_streak:user-a")).toBe("12");
   });
 
   it("session plus non-onboarded profile resolves to authenticated not onboarded", async () => {
@@ -206,7 +243,9 @@ describe("AuthProvider", () => {
     getCurrentProfile.mockImplementation(() => pending);
 
     renderAuth();
-    await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("false"));
+    await waitFor(() =>
+      expect(screen.getByTestId("loading").textContent).toBe("false"),
+    );
 
     await act(async () => {
       authListener?.("SIGNED_IN", sessionFor("user-a"));
@@ -269,13 +308,17 @@ describe("AuthProvider", () => {
     expect(screen.getByTestId("authenticated").textContent).toBe("false");
     expect(queryClient.getQueryData(["tasks"])).toBeUndefined();
     expect(signOut).toHaveBeenCalled();
-    expect(screen.getByTestId("path").textContent).toBe("/login?reason=profile-load");
+    expect(screen.getByTestId("path").textContent).toBe(
+      "/login?reason=profile-load",
+    );
     expect(document.body.textContent).not.toContain("raw profile boom");
   });
 
   it("signup sends full_name metadata", async () => {
     renderAuth();
-    await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("false"));
+    await waitFor(() =>
+      expect(screen.getByTestId("loading").textContent).toBe("false"),
+    );
     await act(async () => {
       screen.getByText("signup").click();
     });
@@ -291,7 +334,9 @@ describe("AuthProvider", () => {
 
   it("login calls signInWithPassword", async () => {
     renderAuth();
-    await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("false"));
+    await waitFor(() =>
+      expect(screen.getByTestId("loading").textContent).toBe("false"),
+    );
     await act(async () => {
       screen.getByText("login").click();
     });
@@ -303,7 +348,9 @@ describe("AuthProvider", () => {
 
   it("Google calls signInWithOAuth provider google", async () => {
     renderAuth();
-    await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("false"));
+    await waitFor(() =>
+      expect(screen.getByTestId("loading").textContent).toBe("false"),
+    );
     await act(async () => {
       screen.getByText("google").click();
     });
@@ -321,7 +368,9 @@ describe("AuthProvider", () => {
     getCurrentProfile.mockResolvedValue(onboardedProfile);
 
     renderAuth(queryClient);
-    await waitFor(() => expect(screen.getByTestId("onboarded").textContent).toBe("true"));
+    await waitFor(() =>
+      expect(screen.getByTestId("onboarded").textContent).toBe("true"),
+    );
     await act(async () => {
       screen.getByText("logout").click();
     });
@@ -335,7 +384,9 @@ describe("AuthProvider", () => {
     getCurrentProfile.mockResolvedValue(onboardedProfile);
 
     renderAuth();
-    await waitFor(() => expect(screen.getByTestId("authenticated").textContent).toBe("true"));
+    await waitFor(() =>
+      expect(screen.getByTestId("authenticated").textContent).toBe("true"),
+    );
 
     await act(async () => {
       authListener?.("SIGNED_OUT", null);
@@ -350,7 +401,9 @@ describe("AuthProvider", () => {
     getCurrentProfile.mockResolvedValue(onboardedProfile);
 
     renderAuth();
-    await waitFor(() => expect(screen.getByTestId("first-name").textContent).toBe("Ada"));
+    await waitFor(() =>
+      expect(screen.getByTestId("first-name").textContent).toBe("Ada"),
+    );
     const calls = getCurrentProfile.mock.calls.length;
 
     await act(async () => {
@@ -374,7 +427,9 @@ describe("AuthProvider", () => {
     getSession.mockResolvedValue({ data: { session: null } });
 
     const { queryClient } = renderAuth();
-    await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("false"));
+    await waitFor(() =>
+      expect(screen.getByTestId("loading").textContent).toBe("false"),
+    );
 
     const examDatesKey = ["/api/exam-dates"] as const;
     queryClient.setQueryData(examDatesKey, [
@@ -432,7 +487,9 @@ describe("AuthProvider", () => {
     });
 
     renderAuth();
-    await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("false"));
+    await waitFor(() =>
+      expect(screen.getByTestId("loading").textContent).toBe("false"),
+    );
 
     await act(async () => {
       authListener?.("SIGNED_IN", sessionFor("user-a", "a@example.com"));

@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useNotificationPrefs } from "@/hooks/use-notification-prefs";
 import { toast } from "@/hooks/use-toast";
+import { userScopedStorageKey } from "@/lib/user-scoped-storage";
 
 const MORNING_KEY = "lockdin_morning_ping";
 const DEADLINE_KEY = "lockdin_deadline_ping";
@@ -53,13 +54,17 @@ async function maybeNotify(title: string, body: string) {
  * surfaces morning / deadline / exam nudges via browser Notification or toast.
  */
 export function ReminderRunner() {
-  const { isAuthenticated, isOnboarded } = useAuth();
+  const { isAuthenticated, isOnboarded, user } = useAuth();
   const { prefs } = useNotificationPrefs();
   const queryClient = useQueryClient();
-  const ranRef = useRef(false);
+  const ranForUserRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated || !isOnboarded) return;
+    if (!isAuthenticated || !isOnboarded || !user) return;
+
+    const morningKey = userScopedStorageKey(MORNING_KEY, user.id);
+    const deadlineKey = userScopedStorageKey(DEADLINE_KEY, user.id);
+    const examKey = userScopedStorageKey(EXAM_KEY, user.id);
 
     let cancelled = false;
 
@@ -67,7 +72,7 @@ export function ReminderRunner() {
       if (cancelled) return;
 
       try {
-        if (prefs.morningSummary && !alreadyPinged(MORNING_KEY)) {
+        if (prefs.morningSummary && !alreadyPinged(morningKey)) {
           const hour = new Date().getHours();
           if (hour >= 6 && hour < 12) {
             const tasks = await listTasks({ filter: "today" });
@@ -78,42 +83,50 @@ export function ReminderRunner() {
                 ? `You have ${remaining} task${remaining === 1 ? "" : "s"} due today. Open your mission to stay on streak.`
                 : "No tasks due yet — add one to keep your streak alive.",
             );
-            markPinged(MORNING_KEY);
-            queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+            markPinged(morningKey);
+            queryClient.invalidateQueries({
+              queryKey: getGetDashboardSummaryQueryKey(),
+            });
           }
         }
 
-        if (prefs.deadlineReminders && !alreadyPinged(DEADLINE_KEY)) {
+        if (prefs.deadlineReminders && !alreadyPinged(deadlineKey)) {
           const tasks = await listTasks({ filter: "upcoming" });
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);
           const tomorrowKey = tomorrow.toISOString().split("T")[0];
-          const dueSoon = tasks.filter((t) => !t.completed && t.deadline === tomorrowKey);
+          const dueSoon = tasks.filter(
+            (t) => !t.completed && t.deadline === tomorrowKey,
+          );
           if (dueSoon.length > 0) {
             await maybeNotify(
               "Deadline tomorrow",
               `${dueSoon.length} task${dueSoon.length === 1 ? "" : "s"} due tomorrow — plan a focused block today.`,
             );
-            markPinged(DEADLINE_KEY);
+            markPinged(deadlineKey);
           }
         }
 
-        if (prefs.examAlerts && !alreadyPinged(EXAM_KEY)) {
+        if (prefs.examAlerts && !alreadyPinged(examKey)) {
           const exams = await listExamDates();
           const within30 = exams.filter((e) => {
-            const days = Math.ceil((new Date(e.date).getTime() - Date.now()) / 86400000);
+            const days = Math.ceil(
+              (new Date(e.date).getTime() - Date.now()) / 86400000,
+            );
             return days >= 0 && days <= 30;
           });
           if (within30.length > 0) {
             const nearest = within30.sort(
               (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
             )[0]!;
-            const days = Math.ceil((new Date(nearest.date).getTime() - Date.now()) / 86400000);
+            const days = Math.ceil(
+              (new Date(nearest.date).getTime() - Date.now()) / 86400000,
+            );
             await maybeNotify(
               "Exam approaching",
               `${nearest.subjectName} (${nearest.paperCode}) in ${days} day${days === 1 ? "" : "s"}.`,
             );
-            markPinged(EXAM_KEY);
+            markPinged(examKey);
           }
         }
       } catch {
@@ -123,8 +136,8 @@ export function ReminderRunner() {
 
     // Run once shortly after mount, then every 15 minutes while the tab is open
     const kickoff = window.setTimeout(() => {
-      if (!ranRef.current) {
-        ranRef.current = true;
+      if (ranForUserRef.current !== user.id) {
+        ranForUserRef.current = user.id;
         void runChecks();
       }
     }, 2500);
@@ -135,7 +148,7 @@ export function ReminderRunner() {
       window.clearTimeout(kickoff);
       window.clearInterval(interval);
     };
-  }, [isAuthenticated, isOnboarded, prefs, queryClient]);
+  }, [isAuthenticated, isOnboarded, prefs, queryClient, user?.id]);
 
   return null;
 }
