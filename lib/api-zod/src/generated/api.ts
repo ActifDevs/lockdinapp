@@ -416,9 +416,10 @@ export const DeletePastPaperAttemptResponse = zod.void()
 
 
 /**
- * Requires Bearer auth. Returns [] without querying exam_dates.
- * Does not expose global exam-date rows.
- * @summary Authenticated empty list — exam-date ownership not implemented
+ * Returns only caller-owned exam dates in chronological order
+ * (date ASC, id ASC), with subject display fields enriched from the
+ * shared catalogue.
+ * @summary List the authenticated user's exam dates
  */
 export const ListExamDatesResponseItem = zod.object({
   "id": zod.number(),
@@ -433,9 +434,10 @@ export const ListExamDatesResponse = zod.array(ListExamDatesResponseItem)
 
 
 /**
- * No insert is performed. Requires Bearer auth.
- * @deprecated
- * @summary Temporarily unavailable — exam-date ownership not implemented
+ * Ownership is derived from the verified Bearer token. Ownership fields
+ * in the request body (userId, user_id, ownerId, owner_id) are rejected.
+ * PATCH/UPDATE is out of scope.
+ * @summary Create a caller-owned exam date
  */
 export const CreateExamDateBody = zod.object({
   "subjectId": zod.number(),
@@ -444,13 +446,20 @@ export const CreateExamDateBody = zod.object({
   "notes": zod.string().optional()
 })
 
-export const CreateExamDateResponse = zod.void()
+export const CreateExamDateResponse = zod.object({
+  "id": zod.number(),
+  "subjectId": zod.number(),
+  "subjectName": zod.string(),
+  "subjectColor": zod.string(),
+  "paperCode": zod.string(),
+  "date": zod.string(),
+  "notes": zod.string().nullable()
+})
 
 
 /**
- * No delete is performed. Requires Bearer auth.
- * @deprecated
- * @summary Temporarily unavailable — exam-date ownership not implemented
+ * Foreign-owned and missing IDs both return 404.
+ * @summary Delete a caller-owned exam date
  */
 export const DeleteExamDateParams = zod.object({
   "examDateId": zod.coerce.number()
@@ -622,7 +631,8 @@ export const CompleteCurrentUserOnboardingResponse = zod.object({
 /**
  * Task metrics are Auth-scoped. subjectProgressSummary.syllabusProgress is
  * always 0 (neutral placeholder). recentPerformance is calculated from the
- * caller's past-paper attempts; upcomingExams remains empty until exam ownership.
+ * caller's past-paper attempts; upcomingExams lists the caller's exam dates
+ * with date >= today (no upper date window; Dashboard UI caps display at 4).
  * @summary Get dashboard overview for the authenticated user
  */
 export const GetDashboardSummaryResponse = zod.object({

@@ -12,7 +12,6 @@ import { createClient } from "@supabase/supabase-js";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { FEATURE_TEMPORARILY_UNAVAILABLE } from "../lib/feature-quarantine";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../../..");
@@ -477,7 +476,7 @@ describe("two-user local Supabase task isolation (exact)", () => {
     }
   });
 
-  it("keeps the remaining unowned exam-date feature quarantined", async () => {
+  it("keeps topic progress owned while exam-date ownership is covered separately", async () => {
     const anonPast = await request(app).get("/api/past-paper-attempts");
     expect(anonPast.status).toBe(401);
 
@@ -485,19 +484,7 @@ describe("two-user local Supabase task isolation (exact)", () => {
       .get("/api/exam-dates")
       .set("Authorization", `Bearer ${tokenA}`);
     expect(examGet.status).toBe(200);
-    expect(examGet.body).toEqual([]);
-
-    const examPost = await request(app)
-      .post("/api/exam-dates")
-      .set("Authorization", `Bearer ${tokenA}`)
-      .send({ subjectId, paperCode: "P1", date: today });
-    expect(examPost.status).toBe(503);
-    expect(examPost.body.error).toBe(FEATURE_TEMPORARILY_UNAVAILABLE);
-
-    const examDel = await request(app)
-      .delete("/api/exam-dates/1")
-      .set("Authorization", `Bearer ${tokenA}`);
-    expect(examDel.status).toBe(503);
+    expect(Array.isArray(examGet.body)).toBe(true);
 
     const patchTopicId = topicId ?? 1;
     const topicPatch = await request(app)

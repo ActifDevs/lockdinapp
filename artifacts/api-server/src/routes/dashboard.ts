@@ -10,12 +10,18 @@ import {
   enrichPastPaperRows,
   listUserPastPaperRows,
 } from "../lib/past-paper-attempts";
+import {
+  enrichExamDateRows,
+  filterUpcomingExamRows,
+  listUserExamDateRows,
+} from "../lib/exam-dates";
 
 const router: IRouter = Router();
 
 /**
  * Dashboard: Auth-scoped task metrics only.
- * Past-paper performance is caller-owned; exam sections remain empty.
+ * Past-paper performance and upcoming exams are caller-owned
+ * (upcoming exams: date >= today; UI caps display at 4).
  * subjectProgressSummary uses neutral syllabusProgress = 0 placeholders —
  * enrolled topic_progress aggregates are not yet wired on this endpoint.
  *
@@ -55,6 +61,18 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
     return;
   }
   const attempts = await enrichPastPaperRows(pastPaperRows);
+
+  const { data: examRows, error: examError } = await listUserExamDateRows(
+    client,
+    userId,
+  );
+  if (examError) {
+    sendSupabaseError(res, examError, "dashboard_exam_dates");
+    return;
+  }
+  const upcomingExams = await enrichExamDateRows(
+    filterUpcomingExamRows(examRows, today),
+  );
   const attemptsBySubject = new Map<number, typeof attempts>();
   for (const attempt of attempts) {
     const list = attemptsBySubject.get(attempt.subjectId) ?? [];
@@ -119,7 +137,7 @@ router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> =>
       upcomingDeadlines,
       subjectProgressSummary,
       recentPerformance,
-      upcomingExams: [],
+      upcomingExams,
     }),
   );
 });
