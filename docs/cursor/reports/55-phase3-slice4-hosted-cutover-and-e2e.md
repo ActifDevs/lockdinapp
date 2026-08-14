@@ -1,10 +1,10 @@
 # Phase 3 Slice 4 — Hosted Cutover & E2E
 
-**Date:** 2026-08-12  
-**Branch:** `phase3-s4-exam-date-ownership`  
-**Pre-cutover HEAD:** `dd2e8a782ee3117b2f01d0bda1cd2eaffcbaf27f`  
-**Implementation:** `682d06da46999e953a524be3b118a28ee60b3cc9`  
-**Base:** `d640128a6b0006b779c041b529cab38cc599df44`  
+**Date:** 2026-08-12
+**Branch:** `phase3-s4-exam-date-ownership`
+**Pre-cutover HEAD:** `dd2e8a782ee3117b2f01d0bda1cd2eaffcbaf27f`
+**Implementation:** `682d06da46999e953a524be3b118a28ee60b3cc9`
+**Base:** `d640128a6b0006b779c041b529cab38cc599df44`
 **Hosted Supabase project:** `hazvcdrcvsxmuwdfiucx`
 
 ---
