@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
-import {
-  filterUpcomingExamRows,
-  type ExamDateRow,
-} from "../lib/exam-dates";
+import { describe, expect, it, vi } from "vitest";
+import { filterUpcomingExamRows, type ExamDateRow } from "../lib/exam-dates";
+
+vi.mock("@workspace/db", () => ({
+  db: {},
+  subjectsTable: {},
+}));
 
 function row(
   partial: Partial<ExamDateRow> & Pick<ExamDateRow, "id" | "date">,

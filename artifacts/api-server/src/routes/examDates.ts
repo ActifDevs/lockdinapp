@@ -51,7 +51,7 @@ router.get("/exam-dates", requireAuth, async (req, res): Promise<void> => {
   const client = createUserScopedSupabaseClient(req.accessToken!);
   const { data, error } = await listUserExamDateRows(client, userId);
   if (error) {
-    sendSupabaseError(res, error, "list_exam_dates");
+    sendSupabaseError(res, error, "list_exam_dates", "Exam date");
     return;
   }
 
@@ -116,7 +116,12 @@ router.post("/exam-dates", requireAuth, async (req, res): Promise<void> => {
     .single();
 
   if (error || !data) {
-    sendSupabaseError(res, error ?? { code: "PGRST116" }, "create_exam_date");
+    sendSupabaseError(
+      res,
+      error ?? { code: "PGRST116" },
+      "create_exam_date",
+      "Exam date",
+    );
     return;
   }
 
@@ -151,7 +156,7 @@ router.delete(
       .maybeSingle();
 
     if (error) {
-      sendSupabaseError(res, error, "delete_exam_date");
+      sendSupabaseError(res, error, "delete_exam_date", "Exam date");
       return;
     }
     if (!data) {

@@ -83,6 +83,45 @@ export interface UserSubjectSelectionInput {
 }
 
 /**
+ * Shared metadata for a subject selected by the authenticated caller.
+ */
+export interface SubjectReference {
+  id: number;
+  name: string;
+  code: string;
+  color: string;
+  /** Count of shared syllabus topics for this subject */
+  topicsTotal: number;
+}
+
+export interface UserSubjectSyllabusVersion {
+  id: number;
+  label: string;
+  examBoard: string;
+  qualification: string;
+}
+
+export interface UserSubjectMembership {
+  subject: SubjectReference;
+  syllabusVersion: UserSubjectSyllabusVersion;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HealthStatus {
+  status: string;
+}
+
+export interface SubjectInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  code: string;
+  /** @minLength 1 */
+  color: string;
+}
+
+/**
  * Shared catalogue subject. User-specific progress, task-count, and past-paper
  * fields remain neutral placeholders on this public catalogue response.
  */
@@ -111,33 +150,6 @@ export interface Subject {
      * @nullable
      */
   recentPaperLabel: string | null;
-}
-
-export interface UserSubjectSyllabusVersion {
-  id: number;
-  label: string;
-  examBoard: string;
-  qualification: string;
-}
-
-export interface UserSubjectMembership {
-  subject: Subject;
-  syllabusVersion: UserSubjectSyllabusVersion;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface HealthStatus {
-  status: string;
-}
-
-export interface SubjectInput {
-  /** @minLength 1 */
-  name: string;
-  /** @minLength 1 */
-  code: string;
-  /** @minLength 1 */
-  color: string;
 }
 
 /**

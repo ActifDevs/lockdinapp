@@ -76,7 +76,12 @@ router.get(
       subjectId,
     );
     if (error) {
-      sendSupabaseError(res, error, "list_past_paper_attempts");
+      sendSupabaseError(
+        res,
+        error,
+        "list_past_paper_attempts",
+        "Past-paper attempt",
+      );
       return;
     }
 
@@ -90,11 +95,9 @@ router.post(
   requireAuth,
   async (req, res): Promise<void> => {
     if (hasOwnershipField(req.body)) {
-      res
-        .status(400)
-        .json({
-          error: "Ownership fields are not allowed in the request body",
-        });
+      res.status(400).json({
+        error: "Ownership fields are not allowed in the request body",
+      });
       return;
     }
 
@@ -213,6 +216,7 @@ router.post(
         res,
         error ?? { code: "PGRST116" },
         "create_past_paper_attempt",
+        "Past-paper attempt",
       );
       return;
     }
@@ -254,7 +258,12 @@ router.delete(
       .maybeSingle();
 
     if (error) {
-      sendSupabaseError(res, error, "delete_past_paper_attempt");
+      sendSupabaseError(
+        res,
+        error,
+        "delete_past_paper_attempt",
+        "Past-paper attempt",
+      );
       return;
     }
     if (!data) {

@@ -18,9 +18,9 @@ export const HealthCheckResponse = zod.object({
 
 /**
  * Returns importer/admin-managed reference subjects. Not user-scoped.
- * Progress, task-count, and past-paper fields are neutral placeholders
+ * Personal-looking fields on this legacy shared response are intentionally neutral
  * (syllabusProgress/topicsCompleted/topicsInProgress = 0; upcomingTasksCount = 0;
- * recent paper fields null) until per-user ownership exists for those features.
+ * recent paper fields null). Caller-owned data is exposed by authenticated endpoints.
  * @summary List the shared public subject catalogue
  */
 export const ListSubjectsResponseItem = zod.object({
@@ -233,17 +233,19 @@ export const ListTasksResponseItem = zod.object({
   "subjectColor": zod.string(),
   "topicId": zod.number().nullable(),
   "topicTitle": zod.string().nullable(),
-  "deadline": zod.string().nullable(),
+  "deadline": zod.string().date().nullable(),
   "priority": zod.enum(['low', 'medium', 'high']),
   "estimatedMinutes": zod.number().nullable(),
   "completed": zod.boolean(),
-  "completedAt": zod.string().nullable(),
-  "createdAt": zod.string()
+  "completedAt": zod.string().datetime({"offset":true}).nullable(),
+  "createdAt": zod.string().datetime({"offset":true})
 })
 export const ListTasksResponse = zod.array(ListTasksResponseItem)
 
 
 /**
+ * Ownership is derived from the verified Bearer token. Request fields
+ * userId, user_id, ownerId, and owner_id are rejected.
  * @summary Create a new revision task owned by the authenticated user
  */
 
@@ -253,7 +255,7 @@ export const CreateTaskBody = zod.object({
   "title": zod.string().min(1),
   "subjectId": zod.number(),
   "topicId": zod.number().optional(),
-  "deadline": zod.string().optional(),
+  "deadline": zod.string().date().optional(),
   "priority": zod.enum(['low', 'medium', 'high']),
   "estimatedMinutes": zod.number().optional()
 })
@@ -266,16 +268,18 @@ export const CreateTaskResponse = zod.object({
   "subjectColor": zod.string(),
   "topicId": zod.number().nullable(),
   "topicTitle": zod.string().nullable(),
-  "deadline": zod.string().nullable(),
+  "deadline": zod.string().date().nullable(),
   "priority": zod.enum(['low', 'medium', 'high']),
   "estimatedMinutes": zod.number().nullable(),
   "completed": zod.boolean(),
-  "completedAt": zod.string().nullable(),
-  "createdAt": zod.string()
+  "completedAt": zod.string().datetime({"offset":true}).nullable(),
+  "createdAt": zod.string().datetime({"offset":true})
 })
 
 
 /**
+ * Ownership is derived from the verified Bearer token. Request fields
+ * userId, user_id, ownerId, and owner_id are rejected.
  * @summary Update a task owned by the authenticated user
  */
 export const UpdateTaskParams = zod.object({
@@ -285,7 +289,7 @@ export const UpdateTaskParams = zod.object({
 export const UpdateTaskBody = zod.object({
   "title": zod.string().optional(),
   "completed": zod.boolean().optional(),
-  "deadline": zod.string().optional(),
+  "deadline": zod.string().date().optional(),
   "priority": zod.enum(['low', 'medium', 'high']).optional(),
   "estimatedMinutes": zod.number().optional()
 })
@@ -298,12 +302,12 @@ export const UpdateTaskResponse = zod.object({
   "subjectColor": zod.string(),
   "topicId": zod.number().nullable(),
   "topicTitle": zod.string().nullable(),
-  "deadline": zod.string().nullable(),
+  "deadline": zod.string().date().nullable(),
   "priority": zod.enum(['low', 'medium', 'high']),
   "estimatedMinutes": zod.number().nullable(),
   "completed": zod.boolean(),
-  "completedAt": zod.string().nullable(),
-  "createdAt": zod.string()
+  "completedAt": zod.string().datetime({"offset":true}).nullable(),
+  "createdAt": zod.string().datetime({"offset":true})
 })
 
 
@@ -345,17 +349,18 @@ export const ListPastPaperAttemptsResponseItem = zod.object({
   "score": zod.number(),
   "totalMarks": zod.number(),
   "percentage": zod.number(),
-  "dateAttempted": zod.string(),
+  "dateAttempted": zod.string().date(),
   "timeTakenMinutes": zod.number().nullable(),
   "notes": zod.string().nullable(),
-  "createdAt": zod.string()
+  "createdAt": zod.string().datetime({"offset":true})
 })
 export const ListPastPaperAttemptsResponse = zod.array(ListPastPaperAttemptsResponseItem)
 
 
 /**
  * Ownership is derived from the verified Bearer token. The client cannot
- * choose user_id, and percentage is calculated from score / totalMarks.
+ * choose userId, user_id, ownerId, or owner_id, and percentage is
+ * calculated from score / totalMarks.
  * @summary Log a caller-owned past-paper attempt
  */
 export const createPastPaperAttemptBodyVariantMax = 5;
@@ -373,7 +378,7 @@ export const CreatePastPaperAttemptBody = zod.object({
   "year": zod.number().min(createPastPaperAttemptBodyYearMin).max(createPastPaperAttemptBodyYearMax),
   "score": zod.number(),
   "totalMarks": zod.number(),
-  "dateAttempted": zod.string(),
+  "dateAttempted": zod.string().date(),
   "timeTakenMinutes": zod.number().optional(),
   "notes": zod.string().optional()
 })
@@ -397,10 +402,10 @@ export const CreatePastPaperAttemptResponse = zod.object({
   "score": zod.number(),
   "totalMarks": zod.number(),
   "percentage": zod.number(),
-  "dateAttempted": zod.string(),
+  "dateAttempted": zod.string().date(),
   "timeTakenMinutes": zod.number().nullable(),
   "notes": zod.string().nullable(),
-  "createdAt": zod.string()
+  "createdAt": zod.string().datetime({"offset":true})
 })
 
 
@@ -427,7 +432,7 @@ export const ListExamDatesResponseItem = zod.object({
   "subjectName": zod.string(),
   "subjectColor": zod.string(),
   "paperCode": zod.string(),
-  "date": zod.string(),
+  "date": zod.string().date(),
   "notes": zod.string().nullable()
 })
 export const ListExamDatesResponse = zod.array(ListExamDatesResponseItem)
@@ -442,7 +447,7 @@ export const ListExamDatesResponse = zod.array(ListExamDatesResponseItem)
 export const CreateExamDateBody = zod.object({
   "subjectId": zod.number(),
   "paperCode": zod.string(),
-  "date": zod.string(),
+  "date": zod.string().date(),
   "notes": zod.string().optional()
 })
 
@@ -452,7 +457,7 @@ export const CreateExamDateResponse = zod.object({
   "subjectName": zod.string(),
   "subjectColor": zod.string(),
   "paperCode": zod.string(),
-  "date": zod.string(),
+  "date": zod.string().date(),
   "notes": zod.string().nullable()
 })
 
@@ -469,7 +474,7 @@ export const DeleteExamDateResponse = zod.void()
 
 
 /**
- * Returns only the caller's durable memberships with shared display data.
+ * Returns only the caller's durable memberships with shared metadata-only subject references.
  * @summary List the authenticated user's selected subjects
  */
 export const ListCurrentUserSubjectsResponseItem = zod.object({
@@ -478,22 +483,16 @@ export const ListCurrentUserSubjectsResponseItem = zod.object({
   "name": zod.string(),
   "code": zod.string(),
   "color": zod.string(),
-  "syllabusProgress": zod.number().describe('Neutral placeholder; always 0 (not derived from shared topic status)'),
-  "topicsTotal": zod.number().describe('Count of syllabus topics in the shared catalogue for this subject'),
-  "topicsCompleted": zod.number().describe('Neutral placeholder; always 0'),
-  "topicsInProgress": zod.number().describe('Neutral placeholder; always 0'),
-  "upcomingTasksCount": zod.number().describe('Neutral placeholder; always 0 (not user-task derived)'),
-  "recentPaperScore": zod.number().nullable().describe('Neutral placeholder; always null on shared catalogue responses'),
-  "recentPaperLabel": zod.string().nullable().describe('Neutral placeholder; always null on shared catalogue responses')
-}).describe('Shared catalogue subject. User-specific progress, task-count, and past-paper\nfields remain neutral placeholders on this public catalogue response.\n'),
+  "topicsTotal": zod.number().describe('Count of shared syllabus topics for this subject')
+}).describe('Shared metadata for a subject selected by the authenticated caller.'),
   "syllabusVersion": zod.object({
   "id": zod.number(),
   "label": zod.string(),
   "examBoard": zod.string(),
   "qualification": zod.string()
 }),
-  "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "createdAt": zod.string().datetime({"offset":true}),
+  "updatedAt": zod.string().datetime({"offset":true})
 })
 export const ListCurrentUserSubjectsResponse = zod.array(ListCurrentUserSubjectsResponseItem)
 
@@ -518,22 +517,16 @@ export const ReplaceCurrentUserSubjectsResponseItem = zod.object({
   "name": zod.string(),
   "code": zod.string(),
   "color": zod.string(),
-  "syllabusProgress": zod.number().describe('Neutral placeholder; always 0 (not derived from shared topic status)'),
-  "topicsTotal": zod.number().describe('Count of syllabus topics in the shared catalogue for this subject'),
-  "topicsCompleted": zod.number().describe('Neutral placeholder; always 0'),
-  "topicsInProgress": zod.number().describe('Neutral placeholder; always 0'),
-  "upcomingTasksCount": zod.number().describe('Neutral placeholder; always 0 (not user-task derived)'),
-  "recentPaperScore": zod.number().nullable().describe('Neutral placeholder; always null on shared catalogue responses'),
-  "recentPaperLabel": zod.string().nullable().describe('Neutral placeholder; always null on shared catalogue responses')
-}).describe('Shared catalogue subject. User-specific progress, task-count, and past-paper\nfields remain neutral placeholders on this public catalogue response.\n'),
+  "topicsTotal": zod.number().describe('Count of shared syllabus topics for this subject')
+}).describe('Shared metadata for a subject selected by the authenticated caller.'),
   "syllabusVersion": zod.object({
   "id": zod.number(),
   "label": zod.string(),
   "examBoard": zod.string(),
   "qualification": zod.string()
 }),
-  "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "createdAt": zod.string().datetime({"offset":true}),
+  "updatedAt": zod.string().datetime({"offset":true})
 })
 export const ReplaceCurrentUserSubjectsResponse = zod.array(ReplaceCurrentUserSubjectsResponseItem)
 
@@ -547,9 +540,9 @@ export const GetCurrentProfileResponse = zod.object({
   "username": zod.string().nullable(),
   "level": zod.string().nullable(),
   "examSession": zod.string().nullable(),
-  "onboardedAt": zod.string().nullable(),
-  "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "onboardedAt": zod.string().datetime({"offset":true}).nullable(),
+  "createdAt": zod.string().datetime({"offset":true}),
+  "updatedAt": zod.string().datetime({"offset":true})
 })
 
 
@@ -579,9 +572,9 @@ export const UpdateCurrentProfileResponse = zod.object({
   "username": zod.string().nullable(),
   "level": zod.string().nullable(),
   "examSession": zod.string().nullable(),
-  "onboardedAt": zod.string().nullable(),
-  "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "onboardedAt": zod.string().datetime({"offset":true}).nullable(),
+  "createdAt": zod.string().datetime({"offset":true}),
+  "updatedAt": zod.string().datetime({"offset":true})
 })
 
 
@@ -622,17 +615,18 @@ export const CompleteCurrentUserOnboardingResponse = zod.object({
   "username": zod.string().nullable(),
   "level": zod.string().nullable(),
   "examSession": zod.string().nullable(),
-  "onboardedAt": zod.string().nullable(),
-  "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "onboardedAt": zod.string().datetime({"offset":true}).nullable(),
+  "createdAt": zod.string().datetime({"offset":true}),
+  "updatedAt": zod.string().datetime({"offset":true})
 })
 
 
 /**
- * Task metrics are Auth-scoped. subjectProgressSummary.syllabusProgress is
- * always 0 (neutral placeholder). recentPerformance is calculated from the
- * caller's past-paper attempts; upcomingExams lists the caller's exam dates
- * with date >= today (no upper date window; Dashboard UI caps display at 4).
+ * The profile name, tasks, memberships, topic progress, paper performance,
+ * and exam dates are scoped to the authenticated caller. subjectProgressSummary
+ * contains only current memberships and uses the same topic-completion formula
+ * as progress overview. upcomingExams includes dates >= today in chronological
+ * order with no API upper window; the Dashboard UI caps display at 4.
  * @summary Get dashboard overview for the authenticated user
  */
 export const GetDashboardSummaryResponse = zod.object({
@@ -648,12 +642,12 @@ export const GetDashboardSummaryResponse = zod.object({
   "subjectColor": zod.string(),
   "topicId": zod.number().nullable(),
   "topicTitle": zod.string().nullable(),
-  "deadline": zod.string().nullable(),
+  "deadline": zod.string().date().nullable(),
   "priority": zod.enum(['low', 'medium', 'high']),
   "estimatedMinutes": zod.number().nullable(),
   "completed": zod.boolean(),
-  "completedAt": zod.string().nullable(),
-  "createdAt": zod.string()
+  "completedAt": zod.string().datetime({"offset":true}).nullable(),
+  "createdAt": zod.string().datetime({"offset":true})
 })),
   "upcomingDeadlines": zod.array(zod.object({
   "id": zod.number(),
@@ -663,12 +657,12 @@ export const GetDashboardSummaryResponse = zod.object({
   "subjectColor": zod.string(),
   "topicId": zod.number().nullable(),
   "topicTitle": zod.string().nullable(),
-  "deadline": zod.string().nullable(),
+  "deadline": zod.string().date().nullable(),
   "priority": zod.enum(['low', 'medium', 'high']),
   "estimatedMinutes": zod.number().nullable(),
   "completed": zod.boolean(),
-  "completedAt": zod.string().nullable(),
-  "createdAt": zod.string()
+  "completedAt": zod.string().datetime({"offset":true}).nullable(),
+  "createdAt": zod.string().datetime({"offset":true})
 })),
   "subjectProgressSummary": zod.array(zod.object({
   "subjectId": zod.number(),
@@ -691,7 +685,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "subjectName": zod.string(),
   "subjectColor": zod.string(),
   "paperCode": zod.string(),
-  "date": zod.string(),
+  "date": zod.string().date(),
   "notes": zod.string().nullable()
 }))
 })
@@ -711,7 +705,7 @@ export const GetProgressOverviewResponse = zod.object({
   "syllabusProgress": zod.number()
 })),
   "weeklyTasksCompleted": zod.array(zod.object({
-  "date": zod.string(),
+  "date": zod.string().date(),
   "tasksCompleted": zod.number()
 })),
   "subjectAttentionNeeded": zod.array(zod.object({
