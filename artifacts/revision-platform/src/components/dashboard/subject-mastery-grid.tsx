@@ -2,7 +2,11 @@ import type { CSSProperties } from "react";
 import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight, ChevronRight } from "lucide-react";
-import type { AttentionItem, RecentPerformanceItem, Subject } from "@workspace/api-client-react";
+import type {
+  AttentionItem,
+  RecentPerformanceItem,
+  SubjectReference,
+} from "@workspace/api-client-react";
 import { entranceProps } from "@/hooks/use-entrance";
 import { gradeTone } from "@/lib/cambridge-grades";
 import { predictedGradeFromSubject } from "@/lib/dashboard-gamification";
@@ -20,13 +24,16 @@ function MasteryMeter({ value, label }: { value: number; label: string }) {
       aria-valuenow={value}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-label={`${label} syllabus mastery`}
+      aria-label={`${label} syllabus progress`}
     >
       <motion.div
         className="dash-meter-fill dash-meter-fill-subject"
         initial={reduceMotion ? false : { transform: "scaleX(0)" }}
         animate={{ transform: `scaleX(${Math.max(value, 1) / 100})` }}
-        transition={{ duration: reduceMotion ? 0 : 0.75, ease: [0.23, 1, 0.32, 1] }}
+        transition={{
+          duration: reduceMotion ? 0 : 0.75,
+          ease: [0.23, 1, 0.32, 1],
+        }}
         style={{ transformOrigin: "left center", width: "100%" }}
       />
     </div>
@@ -53,7 +60,12 @@ function TrendSpark({ change }: { change: number }) {
 }
 
 type SubjectMasteryGridProps = {
-  subjects: Subject[];
+  subjects: Array<
+    SubjectReference & {
+      syllabusProgress: number;
+      recentPaperScore: number | null;
+    }
+  >;
   attention: AttentionItem[];
   recentPerformance?: RecentPerformanceItem[];
 };
@@ -73,26 +85,24 @@ export function SubjectMasteryGrid({
     <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
       {subjects.map((subject, index) => {
         const attentionItem = attention.find((a) => a.subjectId === subject.id);
-        const performance = recentPerformance.find((p) => p.subjectId === subject.id);
+        const performance = recentPerformance.find(
+          (p) => p.subjectId === subject.id,
+        );
         const grade = predictedGradeFromSubject(
           subject.syllabusProgress,
           subject.recentPaperScore,
         );
         const tone = gradeTone(grade);
-        const weakLabel =
-          attentionItem?.reason?.split(/\s*[—–-]\s*/)[0]?.trim() ??
-          (subject.syllabusProgress < 50
-            ? "Core syllabus units"
-            : subject.topicsInProgress > 0
-              ? "In-progress topics"
-              : "Maintain momentum");
+        const focusLabel =
+          attentionItem?.reason?.trim() || "Open subject workspace";
         const accent = resolveSubjectAccent({
           code: subject.code,
           name: subject.name,
           color: subject.color,
         });
         const Mark = subjectMark(subject.name);
-        const change = performance?.change ?? attentionItem?.recentScoreTrend ?? null;
+        const change =
+          performance?.change ?? attentionItem?.recentScoreTrend ?? null;
         const momentum =
           change === null
             ? "Steady"
@@ -135,7 +145,10 @@ export function SubjectMasteryGrid({
                 </div>
                 <div className="shrink-0 text-right">
                   <span
-                    className={cn("dash-grade-badge tabular", `dash-grade-${tone}`)}
+                    className={cn(
+                      "dash-grade-badge tabular",
+                      `dash-grade-${tone}`,
+                    )}
                     title="Estimated from syllabus coverage and recent papers"
                   >
                     {grade}
@@ -148,26 +161,30 @@ export function SubjectMasteryGrid({
 
               <div className="dash-mastery-progress">
                 <div className="mb-2.5 flex items-baseline justify-between gap-3">
-                  <span className="card-label">Mastery</span>
-                  <span className="dash-mastery-pct tabular">{subject.syllabusProgress}%</span>
+                  <span className="card-label">Syllabus progress</span>
+                  <span className="dash-mastery-pct tabular">
+                    {subject.syllabusProgress}%
+                  </span>
                 </div>
-                <MasteryMeter value={subject.syllabusProgress} label={subject.name} />
+                <MasteryMeter
+                  value={subject.syllabusProgress}
+                  label={subject.name}
+                />
               </div>
 
               <div className="dash-mastery-stats">
                 <div>
-                  <p className="card-label">Topics</p>
+                  <p className="card-label">Syllabus topics</p>
                   <p className="mt-1.5 text-[0.9375rem] font-bold tabular leading-none">
-                    {subject.topicsCompleted}
-                    <span className="font-medium text-muted-foreground">
-                      /{subject.topicsTotal}
-                    </span>
+                    {subject.topicsTotal}
                   </p>
                 </div>
                 <div>
                   <p className="card-label">Latest paper</p>
                   <p className="mt-1.5 text-[0.9375rem] font-bold tabular leading-none">
-                    {subject.recentPaperScore !== null ? `${subject.recentPaperScore}%` : "—"}
+                    {subject.recentPaperScore !== null
+                      ? `${subject.recentPaperScore}%`
+                      : "—"}
                   </p>
                 </div>
                 <div>
@@ -175,16 +192,26 @@ export function SubjectMasteryGrid({
                   <p
                     className={cn(
                       "mt-1.5 inline-flex items-center gap-1 text-[0.8125rem] font-bold leading-none",
-                      change !== null && change > 0 && "text-emerald-600 dark:text-emerald-400",
+                      change !== null &&
+                        change > 0 &&
+                        "text-emerald-600 dark:text-emerald-400",
                       change !== null && change < 0 && "text-destructive",
                     )}
                   >
                     {change !== null && change !== 0 ? (
                       <>
                         {change > 0 ? (
-                          <ArrowUpRight className="h-3.5 w-3.5" aria-hidden strokeWidth={2.5} />
+                          <ArrowUpRight
+                            className="h-3.5 w-3.5"
+                            aria-hidden
+                            strokeWidth={2.5}
+                          />
                         ) : (
-                          <ArrowDownRight className="h-3.5 w-3.5" aria-hidden strokeWidth={2.5} />
+                          <ArrowDownRight
+                            className="h-3.5 w-3.5"
+                            aria-hidden
+                            strokeWidth={2.5}
+                          />
                         )}
                         {Math.abs(change)}%
                       </>
@@ -200,9 +227,11 @@ export function SubjectMasteryGrid({
 
               <div className="dash-mastery-focus">
                 <div className="min-w-0 flex-1">
-                  <p className="card-label">Weak topics</p>
+                  <p className="card-label">
+                    {attentionItem ? "Focus" : "Next step"}
+                  </p>
                   <p className="mt-1 line-clamp-2 text-sm font-semibold leading-snug tracking-[-0.01em]">
-                    {weakLabel}
+                    {focusLabel}
                   </p>
                 </div>
                 <span className="dash-mastery-go" aria-hidden>

@@ -161,9 +161,9 @@ export const getListSubjectsUrl = () => {
 
 /**
  * Returns importer/admin-managed reference subjects. Not user-scoped.
- * Progress, task-count, and past-paper fields are neutral placeholders
+ * Personal-looking fields on this legacy shared response are intentionally neutral
  * (syllabusProgress/topicsCompleted/topicsInProgress = 0; upcomingTasksCount = 0;
- * recent paper fields null) until per-user ownership exists for those features.
+ * recent paper fields null). Caller-owned data is exposed by authenticated endpoints.
  * @summary List the shared public subject catalogue
  */
 export const listSubjects = async ( options?: RequestInit): Promise<Subject[]> => {
@@ -940,6 +940,8 @@ export const getCreateTaskUrl = () => {
 }
 
 /**
+ * Ownership is derived from the verified Bearer token. Request fields
+ * userId, user_id, ownerId, and owner_id are rejected.
  * @summary Create a new revision task owned by the authenticated user
  */
 export const createTask = async (taskInput: TaskInput, options?: RequestInit): Promise<Task> => {
@@ -1011,6 +1013,8 @@ export const getUpdateTaskUrl = (taskId: number,) => {
 }
 
 /**
+ * Ownership is derived from the verified Bearer token. Request fields
+ * userId, user_id, ownerId, and owner_id are rejected.
  * @summary Update a task owned by the authenticated user
  */
 export const updateTask = async (taskId: number,
@@ -1241,7 +1245,8 @@ export const getCreatePastPaperAttemptUrl = () => {
 
 /**
  * Ownership is derived from the verified Bearer token. The client cannot
- * choose user_id, and percentage is calculated from score / totalMarks.
+ * choose userId, user_id, ownerId, or owner_id, and percentage is
+ * calculated from score / totalMarks.
  * @summary Log a caller-owned past-paper attempt
  */
 export const createPastPaperAttempt = async (pastPaperAttemptInput: PastPaperAttemptInput, options?: RequestInit): Promise<PastPaperAttempt> => {
@@ -1611,7 +1616,7 @@ export const getListCurrentUserSubjectsUrl = () => {
 }
 
 /**
- * Returns only the caller's durable memberships with shared display data.
+ * Returns only the caller's durable memberships with shared metadata-only subject references.
  * @summary List the authenticated user's selected subjects
  */
 export const listCurrentUserSubjects = async ( options?: RequestInit): Promise<UserSubjectMembership[]> => {
@@ -1986,10 +1991,11 @@ export const getGetDashboardSummaryUrl = () => {
 }
 
 /**
- * Task metrics are Auth-scoped. subjectProgressSummary.syllabusProgress is
- * always 0 (neutral placeholder). recentPerformance is calculated from the
- * caller's past-paper attempts; upcomingExams lists the caller's exam dates
- * with date >= today (no upper date window; Dashboard UI caps display at 4).
+ * The profile name, tasks, memberships, topic progress, paper performance,
+ * and exam dates are scoped to the authenticated caller. subjectProgressSummary
+ * contains only current memberships and uses the same topic-completion formula
+ * as progress overview. upcomingExams includes dates >= today in chronological
+ * order with no API upper window; the Dashboard UI caps display at 4.
  * @summary Get dashboard overview for the authenticated user
  */
 export const getDashboardSummary = async ( options?: RequestInit): Promise<DashboardSummary> => {

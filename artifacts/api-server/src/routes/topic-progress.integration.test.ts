@@ -22,12 +22,7 @@ const supabaseCliScript = path.join(
   "supabase.js",
 );
 
-const LOOPBACK_HOSTNAMES = new Set([
-  "localhost",
-  "127.0.0.1",
-  "::1",
-  "[::1]",
-]);
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
 function isLoopbackUrl(value: string | undefined): boolean {
   if (!value?.trim()) return false;
@@ -47,11 +42,15 @@ function loadLocalSupabaseEnv(): {
 } {
   let raw: string;
   try {
-    raw = execFileSync(process.execPath, [supabaseCliScript, "status", "-o", "json"], {
-      cwd: repoRoot,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    raw = execFileSync(
+      process.execPath,
+      [supabaseCliScript, "status", "-o", "json"],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
   } catch {
     throw new Error(
       "Local Supabase unavailable. Use `pnpm test:integration` only with a " +
@@ -128,15 +127,22 @@ describe("two-user local Supabase topic progress isolation", () => {
     const anon = createClient(env.url, env.publishableKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const signedA = await anon.auth.signInWithPassword({ email: emailA, password });
-    const signedB = await anon.auth.signInWithPassword({ email: emailB, password });
+    const signedA = await anon.auth.signInWithPassword({
+      email: emailA,
+      password,
+    });
+    const signedB = await anon.auth.signInWithPassword({
+      email: emailB,
+      password,
+    });
     tokenA = signedA.data.session?.access_token ?? "";
     tokenB = signedB.data.session?.access_token ?? "";
     if (!tokenA || !tokenB) {
       throw new Error("Failed to obtain disposable Auth tokens");
     }
 
-    const { db, subjectsTable, syllabusTopicsTable } = await import("@workspace/db");
+    const { db, subjectsTable, syllabusTopicsTable } =
+      await import("@workspace/db");
     const [topic] = await db
       .select({
         id: syllabusTopicsTable.id,
@@ -222,10 +228,18 @@ describe("two-user local Supabase topic progress isolation", () => {
     expect(syllabusB.status).toBe(200);
 
     const topicA = syllabusA.body
-      .flatMap((unit: { topics: { id: number; status: string; notes: string | null }[] }) => unit.topics)
+      .flatMap(
+        (unit: {
+          topics: { id: number; status: string; notes: string | null }[];
+        }) => unit.topics,
+      )
       .find((topic: { id: number }) => topic.id === topicId);
     const topicB = syllabusB.body
-      .flatMap((unit: { topics: { id: number; status: string; notes: string | null }[] }) => unit.topics)
+      .flatMap(
+        (unit: {
+          topics: { id: number; status: string; notes: string | null }[];
+        }) => unit.topics,
+      )
       .find((topic: { id: number }) => topic.id === topicId);
 
     expect(topicA).toMatchObject({ status: "in_progress", notes: "A notes" });
@@ -245,7 +259,11 @@ describe("two-user local Supabase topic progress isolation", () => {
       .get(`/api/subjects/${subjectId}/syllabus`)
       .set("Authorization", `Bearer ${tokenA}`);
     const untouched = syllabusA.body
-      .flatMap((unit: { topics: { id: number; status: string; notes: string | null }[] }) => unit.topics)
+      .flatMap(
+        (unit: {
+          topics: { id: number; status: string; notes: string | null }[];
+        }) => unit.topics,
+      )
       .find((topic: { id: number }) => topic.id === otherTopic!.id);
     expect(untouched).toMatchObject({ status: "not_started", notes: null });
 
@@ -267,12 +285,30 @@ describe("two-user local Supabase topic progress isolation", () => {
     expect(overviewA.status).toBe(200);
     expect(overviewB.status).toBe(200);
     expect(overviewA.body.syllabusCompletion).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ subjectId }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ subjectId })]),
     );
     expect(overviewB.body.overallSyllabusProgress).toBeGreaterThan(
       overviewA.body.overallSyllabusProgress,
+    );
+
+    const dashboardA = await request(app)
+      .get("/api/dashboard/summary")
+      .set("Authorization", `Bearer ${tokenA}`);
+    const dashboardB = await request(app)
+      .get("/api/dashboard/summary")
+      .set("Authorization", `Bearer ${tokenB}`);
+    expect(dashboardA.status).toBe(200);
+    expect(dashboardB.status).toBe(200);
+    const summaryA = dashboardA.body.subjectProgressSummary.find(
+      (item: { subjectId: number }) => item.subjectId === subjectId,
+    );
+    const summaryB = dashboardB.body.subjectProgressSummary.find(
+      (item: { subjectId: number }) => item.subjectId === subjectId,
+    );
+    expect(summaryA).toBeTruthy();
+    expect(summaryB).toBeTruthy();
+    expect(summaryB.syllabusProgress).toBeGreaterThan(
+      summaryA.syllabusProgress,
     );
   });
 
@@ -290,10 +326,18 @@ describe("two-user local Supabase topic progress isolation", () => {
       .set("Authorization", `Bearer ${tokenB}`);
 
     const topicA = syllabusA.body
-      .flatMap((unit: { topics: { id: number; status: string; notes: string | null }[] }) => unit.topics)
+      .flatMap(
+        (unit: {
+          topics: { id: number; status: string; notes: string | null }[];
+        }) => unit.topics,
+      )
       .find((topic: { id: number }) => topic.id === topicId);
     const topicB = syllabusB.body
-      .flatMap((unit: { topics: { id: number; status: string; notes: string | null }[] }) => unit.topics)
+      .flatMap(
+        (unit: {
+          topics: { id: number; status: string; notes: string | null }[];
+        }) => unit.topics,
+      )
       .find((topic: { id: number }) => topic.id === topicId);
 
     expect(topicA).toMatchObject({ status: "not_started", notes: null });

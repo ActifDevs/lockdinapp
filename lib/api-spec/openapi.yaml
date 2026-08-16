@@ -13,7 +13,7 @@ tags:
   - name: subjects
     description: Public read-only shared subject catalogue (importer/admin-managed reference data)
   - name: syllabus
-    description: Syllabus reference reads; per-user progress updates are temporarily unavailable
+    description: Shared syllabus reference reads with authenticated caller-owned topic progress
   - name: tasks
     description: Authenticated revision task operations (user-owned)
   - name: pastPaperAttempts
@@ -21,9 +21,9 @@ tags:
   - name: examDates
     description: Authenticated user-owned exam-date operations (SELECT/INSERT/DELETE; no UPDATE)
   - name: dashboard
-    description: Authenticated dashboard summary (user-owned tasks; neutral syllabus placeholders)
+    description: Authenticated dashboard summary with caller-owned activity and membership progress
   - name: progress
-    description: Authenticated progress overview (user-owned tasks; neutral syllabus placeholders)
+    description: Authenticated progress overview with caller-owned tasks and syllabus progress
   - name: profile
     description: Authenticated profile and atomic onboarding operations
   - name: userSubjects
@@ -50,9 +50,9 @@ paths:
       summary: List the shared public subject catalogue
       description: |
         Returns importer/admin-managed reference subjects. Not user-scoped.
-        Progress, task-count, and past-paper fields are neutral placeholders
+        Personal-looking fields on this legacy shared response are intentionally neutral
         (syllabusProgress/topicsCompleted/topicsInProgress = 0; upcomingTasksCount = 0;
-        recent paper fields null) until per-user ownership exists for those features.
+        recent paper fields null). Caller-owned data is exposed by authenticated endpoints.
       responses:
         "200":
           description: Shared catalogue subjects with neutral placeholder enrichment
@@ -325,6 +325,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Task"
+        "400":
+          description: Invalid task filter or subject ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
         "401":
           description: Missing or invalid Bearer token
           content:
@@ -335,6 +341,9 @@ paths:
       operationId: createTask
       tags: [tasks]
       summary: Create a new revision task owned by the authenticated user
+      description: |
+        Ownership is derived from the verified Bearer token. Request fields
+        userId, user_id, ownerId, and owner_id are rejected.
       security:
         - bearerAuth: []
       requestBody:
@@ -350,6 +359,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Task"
+        "400":
+          description: Invalid task payload or client-supplied ownership field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
         "401":
           description: Missing or invalid Bearer token
           content:
@@ -362,6 +377,9 @@ paths:
       operationId: updateTask
       tags: [tasks]
       summary: Update a task owned by the authenticated user
+      description: |
+        Ownership is derived from the verified Bearer token. Request fields
+        userId, user_id, ownerId, and owner_id are rejected.
       security:
         - bearerAuth: []
       parameters:
@@ -383,6 +401,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Task"
+        "400":
+          description: Invalid task ID, payload, or client-supplied ownership field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
         "401":
           description: Missing or invalid Bearer token
           content:
@@ -410,6 +434,12 @@ paths:
       responses:
         "204":
           description: Deleted
+        "400":
+          description: Invalid task ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
         "401":
           description: Missing or invalid Bearer token
           content:
@@ -448,6 +478,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/PastPaperAttempt"
+        "400":
+          description: Invalid subject filter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
         "401":
           description: Missing or invalid Bearer token
           content:
@@ -460,7 +496,8 @@ paths:
       summary: Log a caller-owned past-paper attempt
       description: |
         Ownership is derived from the verified Bearer token. The client cannot
-        choose user_id, and percentage is calculated from score / totalMarks.
+        choose userId, user_id, ownerId, or owner_id, and percentage is
+        calculated from score / totalMarks.
       security:
         - bearerAuth: []
       requestBody:
@@ -506,6 +543,12 @@ paths:
       responses:
         "204":
           description: Attempt deleted
+        "400":
+          description: Invalid past-paper attempt ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
         "404":
           description: Attempt not found or not owned by the caller
           content:
@@ -598,6 +641,12 @@ paths:
       responses:
         "204":
           description: Exam date deleted
+        "400":
+          description: Invalid exam date ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
         "404":
           description: Exam date not found or not owned by the caller
           content:
@@ -616,7 +665,7 @@ paths:
       operationId: listCurrentUserSubjects
       tags: [userSubjects]
       summary: List the authenticated user's selected subjects
-      description: Returns only the caller's durable memberships with shared display data.
+      description: Returns only the caller's durable memberships with shared metadata-only subject references.
       security:
         - bearerAuth: []
       responses:
@@ -787,10 +836,11 @@ paths:
       tags: [dashboard]
       summary: Get dashboard overview for the authenticated user
       description: |
-        Task metrics are Auth-scoped. subjectProgressSummary.syllabusProgress is
-        always 0 (neutral placeholder). recentPerformance is calculated from the
-        caller's past-paper attempts; upcomingExams lists the caller's exam dates
-        with date >= today (no upper date window; Dashboard UI caps display at 4).
+        The profile name, tasks, memberships, topic progress, paper performance,
+        and exam dates are scoped to the authenticated caller. subjectProgressSummary
+        contains only current memberships and uses the same topic-completion formula
+        as progress overview. upcomingExams includes dates >= today in chronological
+        order with no API upper window; the Dashboard UI caps display at 4.
       security:
         - bearerAuth: []
       responses:
@@ -838,7 +888,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Supabase Auth access token (Authorization Bearer). Required for task-owned routes.
+      description: Supabase Auth access token (Authorization Bearer) for authenticated caller-owned routes.
 
   schemas:
     ErrorMessage:
@@ -864,10 +914,13 @@ components:
           type: ["string", "null"]
         onboardedAt:
           type: ["string", "null"]
+          format: date-time
         createdAt:
           type: string
+          format: date-time
         updatedAt:
           type: string
+          format: date-time
       required:
         - id
         - fullName
@@ -950,18 +1003,42 @@ components:
       type: object
       properties:
         subject:
-          $ref: "#/components/schemas/Subject"
+          $ref: "#/components/schemas/SubjectReference"
         syllabusVersion:
           $ref: "#/components/schemas/UserSubjectSyllabusVersion"
         createdAt:
           type: string
+          format: date-time
         updatedAt:
           type: string
+          format: date-time
       required:
         - subject
         - syllabusVersion
         - createdAt
         - updatedAt
+
+    SubjectReference:
+      type: object
+      description: Shared metadata for a subject selected by the authenticated caller.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        code:
+          type: string
+        color:
+          type: string
+        topicsTotal:
+          type: integer
+          description: Count of shared syllabus topics for this subject
+      required:
+        - id
+        - name
+        - code
+        - color
+        - topicsTotal
 
     UserSubjectSyllabusVersion:
       type: object
@@ -1160,6 +1237,7 @@ components:
           type: ["string", "null"]
         deadline:
           type: ["string", "null"]
+          format: date
         priority:
           type: string
           enum: [low, medium, high]
@@ -1169,8 +1247,10 @@ components:
           type: boolean
         completedAt:
           type: ["string", "null"]
+          format: date-time
         createdAt:
           type: string
+          format: date-time
       required:
         - id
         - title
@@ -1198,6 +1278,7 @@ components:
           type: integer
         deadline:
           type: string
+          format: date
         priority:
           type: string
           enum: [low, medium, high]
@@ -1217,6 +1298,7 @@ components:
           type: boolean
         deadline:
           type: string
+          format: date
         priority:
           type: string
           enum: [low, medium, high]
@@ -1259,12 +1341,14 @@ components:
           type: number
         dateAttempted:
           type: string
+          format: date
         timeTakenMinutes:
           type: ["integer", "null"]
         notes:
           type: ["string", "null"]
         createdAt:
           type: string
+          format: date-time
       required:
         - id
         - subjectId
@@ -1308,6 +1392,7 @@ components:
           type: integer
         dateAttempted:
           type: string
+          format: date
         timeTakenMinutes:
           type: integer
         notes:
@@ -1368,6 +1453,7 @@ components:
           type: string
         date:
           type: string
+          format: date
         notes:
           type: ["string", "null"]
       required:
@@ -1388,6 +1474,7 @@ components:
           type: string
         date:
           type: string
+          format: date
         notes:
           type: string
       required:
@@ -1581,6 +1668,7 @@ components:
       properties:
         date:
           type: string
+          format: date
         tasksCompleted:
           type: integer
       required:

@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { 
-  useListTasks, 
-  getListTasksQueryKey, 
-  useCreateTask, 
+import {
+  useListTasks,
+  getListTasksQueryKey,
+  useCreateTask,
   useUpdateTask,
   useDeleteTask,
   useListCurrentUserSubjects,
   getListCurrentUserSubjectsQueryKey,
+  getGetDashboardSummaryQueryKey,
+  getGetProgressOverviewQueryKey,
   Task,
-  TaskPriority
+  TaskPriority,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,8 +19,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DialogFooter } from "@/components/ui/dialog";
 import { ResponsiveFormPanel } from "@/components/responsive-form-panel";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -34,7 +49,11 @@ const taskSchema = z.object({
   subjectId: z.coerce.number().min(1, "Subject is required"),
   deadline: z.string().optional().or(z.literal("")),
   priority: z.enum(["low", "medium", "high"]),
-  estimatedMinutes: z.coerce.number().min(1, "Must be at least 1 min").optional().or(z.literal(""))
+  estimatedMinutes: z.coerce
+    .number()
+    .min(1, "Must be at least 1 min")
+    .optional()
+    .or(z.literal("")),
 });
 
 type TaskFormValues = z.infer<typeof taskSchema>;
@@ -52,19 +71,29 @@ export default function StudyPlan() {
 
   const { data: tasks, isLoading: tasksLoading } = useListTasks(
     { filter: activeTab as any },
-    { query: { queryKey: getListTasksQueryKey({ filter: activeTab as any }) } }
+    { query: { queryKey: getListTasksQueryKey({ filter: activeTab as any }) } },
   );
 
   const { data: memberships } = useListCurrentUserSubjects({
-    query: { queryKey: getListCurrentUserSubjectsQueryKey() }
+    query: { queryKey: getListCurrentUserSubjectsQueryKey() },
   });
   const subjects = memberships?.map((membership) => membership.subject);
+
+  const invalidateTaskAggregates = () => {
+    queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
+    queryClient.invalidateQueries({
+      queryKey: getGetDashboardSummaryQueryKey(),
+    });
+    queryClient.invalidateQueries({
+      queryKey: getGetProgressOverviewQueryKey(),
+    });
+  };
 
   const createTask = useCreateTask({
     mutation: {
       onSuccess: () => {
         setActionError(null);
-        queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
+        invalidateTaskAggregates();
         setIsAddDialogOpen(false);
         form.reset();
       },
@@ -76,8 +105,7 @@ export default function StudyPlan() {
     mutation: {
       onSuccess: () => {
         setActionError(null);
-        queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
-        queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+        invalidateTaskAggregates();
       },
       onError: (error) => setActionError(mutationMessage(error)),
     },
@@ -87,7 +115,7 @@ export default function StudyPlan() {
     mutation: {
       onSuccess: () => {
         setActionError(null);
-        queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
+        invalidateTaskAggregates();
       },
       onError: (error) => setActionError(mutationMessage(error)),
     },
@@ -99,8 +127,8 @@ export default function StudyPlan() {
       title: "",
       priority: "medium",
       estimatedMinutes: "",
-      deadline: ""
-    }
+      deadline: "",
+    },
   });
 
   const onSubmit = (data: TaskFormValues) => {
@@ -110,15 +138,17 @@ export default function StudyPlan() {
         subjectId: data.subjectId,
         priority: data.priority as any,
         deadline: data.deadline || undefined,
-        estimatedMinutes: data.estimatedMinutes ? Number(data.estimatedMinutes) : undefined,
-      }
+        estimatedMinutes: data.estimatedMinutes
+          ? Number(data.estimatedMinutes)
+          : undefined,
+      },
     });
   };
 
   const toggleTaskComplete = (task: Task) => {
     updateTask.mutate({
       taskId: task.id,
-      data: { completed: !task.completed }
+      data: { completed: !task.completed },
     });
   };
 
@@ -143,10 +173,13 @@ export default function StudyPlan() {
               <span
                 className={cn(
                   "hidden items-center gap-1 text-xs sm:flex",
-                  deadlineStr === "Today" ? "font-medium text-destructive" : "text-muted-foreground",
+                  deadlineStr === "Today"
+                    ? "font-medium text-destructive"
+                    : "text-muted-foreground",
                 )}
               >
-                <CalendarIcon className="h-3 w-3" strokeWidth={2} /> {deadlineStr}
+                <CalendarIcon className="h-3 w-3" strokeWidth={2} />{" "}
+                {deadlineStr}
               </span>
             )}
             <Button
@@ -239,14 +272,20 @@ export default function StudyPlan() {
                       ? "Finish a mission task and it will show up here as proof of momentum."
                       : "Break revision into small, finishable blocks and schedule the next session."
                 }
-                actionLabel={activeTab !== "completed" ? "Create today's mission" : undefined}
-                onAction={activeTab !== "completed" ? () => setIsAddDialogOpen(true) : undefined}
+                actionLabel={
+                  activeTab !== "completed"
+                    ? "Create today's mission"
+                    : undefined
+                }
+                onAction={
+                  activeTab !== "completed"
+                    ? () => setIsAddDialogOpen(true)
+                    : undefined
+                }
                 variant="mint"
               />
             ) : (
-              <div className="list-divider group">
-                {tasks.map(renderTask)}
-              </div>
+              <div className="list-divider group">{tasks.map(renderTask)}</div>
             )}
           </CardContent>
         </Tabs>
@@ -258,111 +297,131 @@ export default function StudyPlan() {
         title="Add new task"
         className="sm:max-w-[425px]"
       >
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-              {createTask.isError && (
-                <p role="alert" className="text-sm text-destructive">
-                  {mutationMessage(createTask.error)}
-                </p>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4 py-4"
+          >
+            {createTask.isError && (
+              <p role="alert" className="text-sm text-destructive">
+                {mutationMessage(createTask.error)}
+              </p>
+            )}
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Task Title</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g. Read chapter 4, Integration practice..."
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
+            />
+
+            <FormField
+              control={form.control}
+              name="subjectId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Subject</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value?.toString()}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a subject" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {subjects?.map((s) => (
+                        <SelectItem key={s.id} value={s.id.toString()}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid form-grid-2">
               <FormField
                 control={form.control}
-                name="title"
+                name="deadline"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Task Title</FormLabel>
+                    <FormLabel>Deadline (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Read chapter 4, Integration practice..." {...field} />
+                      <Input type="date" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
-                name="subjectId"
+                name="estimatedMinutes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Subject</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value?.toString()}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a subject" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {subjects?.map(s => (
-                          <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Est. Minutes</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="45" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+            </div>
 
-              <div className="grid form-grid-2">
-                <FormField
-                  control={form.control}
-                  name="deadline"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Deadline (Optional)</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="estimatedMinutes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Est. Minutes</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="45" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+            <FormField
+              control={form.control}
+              name="priority"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Priority</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Priority</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter className="pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={createTask.isPending}>
-                  {createTask.isPending ? "Adding…" : "Add task"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+            <DialogFooter className="pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createTask.isPending}>
+                {createTask.isPending ? "Adding…" : "Add task"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </ResponsiveFormPanel>
     </div>
   );

@@ -10,35 +10,34 @@ export type MappedSupabaseError = {
  * Map PostgREST / Supabase client errors into the existing API error shape
  * without leaking database, JWT, RLS, or Supabase internals.
  */
-export function mapSupabaseError(error: {
-  code?: string;
-  message?: string;
-  details?: string;
-  hint?: string;
-  status?: number;
-}): MappedSupabaseError {
+export function mapSupabaseError(
+  error: {
+    code?: string;
+    message?: string;
+    details?: string;
+    hint?: string;
+    status?: number;
+  },
+  resource?: string,
+): MappedSupabaseError {
   const code = error.code ?? "";
   const status = error.status;
+  const notFound = resource ? `${resource} not found` : "Resource not found";
 
-  if (status === 401 || code === "PGRST301" || code === "42501") {
-    // 42501 can be RLS or privilege denial — for authenticated task routes
-    // treat inaccessible rows as 404 to avoid disclosing existence/ownership.
-    if (code === "42501") {
-      return { status: 404, error: "Task not found" };
-    }
+  if (code === "42501") {
+    return { status: 404, error: notFound };
+  }
+
+  if (status === 401 || code === "PGRST301") {
     return { status: 401, error: "Unauthorized" };
   }
 
-  // PostgREST / Postgres: no rows for .single(), FK / check violations, etc.
-  if (
-    code === "PGRST116" ||
-    code === "22P02" ||
-    status === 404
-  ) {
-    return { status: 404, error: "Task not found" };
+  if (code === "PGRST116" || status === 404) {
+    return { status: 404, error: notFound };
   }
 
   if (
+    code === "22P02" ||
     code === "23503" ||
     code === "23514" ||
     code === "23502" ||
@@ -61,8 +60,9 @@ export function sendSupabaseError(
     status?: number;
   },
   context: string,
+  resource?: string,
 ): void {
-  const mapped = mapSupabaseError(error);
+  const mapped = mapSupabaseError(error, resource);
   logger.error(
     {
       context,

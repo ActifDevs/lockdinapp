@@ -23,6 +23,7 @@ import {
 } from "@workspace/api-client-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { getAppUrl } from "@/lib/app-url";
+import { LEGACY_PERSONAL_STORAGE_KEYS } from "@/lib/user-scoped-storage";
 
 export type AuthUser = {
   id: string;
@@ -77,6 +78,7 @@ const OBSOLETE_KEYS = [
   "lockdin_user",
   "onboarded",
   "lockdin_subject_codes",
+  ...LEGACY_PERSONAL_STORAGE_KEYS,
 ] as const;
 
 /** Deterministic retry schedule for initial profile resolution. */
@@ -133,9 +135,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loggingOut = useRef(false);
   const sessionUserIdRef = useRef<string | null>(null);
 
-  const applyProfile = useCallback((sessionUser: SupabaseUser, profile: Profile) => {
-    setUser(buildAuthUser(sessionUser, profile));
-  }, []);
+  const applyProfile = useCallback(
+    (sessionUser: SupabaseUser, profile: Profile) => {
+      setUser(buildAuthUser(sessionUser, profile));
+    },
+    [],
+  );
 
   const clearProtectedState = useCallback(() => {
     profileRequestId.current += 1;
@@ -311,23 +316,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   }, []);
 
-  const signUp = useCallback(async (input: SignUpInput): Promise<SignUpResult> => {
-    const supabase = getSupabaseBrowserClient();
-    const { data, error } = await supabase.auth.signUp({
-      email: input.email.trim(),
-      password: input.password,
-      options: {
-        data: { full_name: input.fullName.trim() },
-        emailRedirectTo: getAppUrl("/auth/callback"),
-      },
-    });
-    if (error) throw error;
-    const sessionAvailable = Boolean(data.session);
-    return {
-      sessionAvailable,
-      emailConfirmationRequired: !sessionAvailable,
-    };
-  }, []);
+  const signUp = useCallback(
+    async (input: SignUpInput): Promise<SignUpResult> => {
+      const supabase = getSupabaseBrowserClient();
+      const { data, error } = await supabase.auth.signUp({
+        email: input.email.trim(),
+        password: input.password,
+        options: {
+          data: { full_name: input.fullName.trim() },
+          emailRedirectTo: getAppUrl("/auth/callback"),
+        },
+      });
+      if (error) throw error;
+      const sessionAvailable = Boolean(data.session);
+      return {
+        sessionAvailable,
+        emailConfirmationRequired: !sessionAvailable,
+      };
+    },
+    [],
+  );
 
   const signInWithGoogle = useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
@@ -439,12 +447,16 @@ export function useAuth(): AuthContextValue {
 }
 
 export function getSafeNextPath(search: string): string | null {
-  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  const params = new URLSearchParams(
+    search.startsWith("?") ? search.slice(1) : search,
+  );
   const next = params.get("next");
   return isSafeNextPath(next) ? next : null;
 }
 
 export function getLoginReason(search: string): string | null {
-  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  const params = new URLSearchParams(
+    search.startsWith("?") ? search.slice(1) : search,
+  );
   return params.get("reason");
 }

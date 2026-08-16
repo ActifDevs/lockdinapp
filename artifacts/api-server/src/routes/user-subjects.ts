@@ -13,7 +13,6 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/require-auth";
 import { createUserScopedSupabaseClient } from "../lib/supabase-user-client";
-import { catalogueEnrichment } from "../lib/catalogue-subject";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -25,6 +24,44 @@ type MembershipRow = {
   created_at: string;
   updated_at: string;
 };
+
+type MembershipSubject = typeof subjectsTable.$inferSelect;
+type MembershipVersion = typeof syllabusVersionsTable.$inferSelect;
+
+export function buildMembershipResponse(
+  memberships: MembershipRow[],
+  subjects: MembershipSubject[],
+  versions: MembershipVersion[],
+  topicsBySubject: Map<number, number>,
+) {
+  const subjectById = new Map(subjects.map((subject) => [subject.id, subject]));
+  const versionById = new Map(versions.map((version) => [version.id, version]));
+
+  return memberships.map((membership) => {
+    const subject = subjectById.get(membership.subject_id);
+    const version = versionById.get(membership.syllabus_version_id);
+    if (!subject || !version || version.subjectId !== membership.subject_id) {
+      throw new Error("Membership reference data is inconsistent");
+    }
+    return {
+      subject: {
+        id: subject.id,
+        name: subject.name,
+        code: subject.code,
+        color: subject.color,
+        topicsTotal: topicsBySubject.get(subject.id) ?? 0,
+      },
+      syllabusVersion: {
+        id: version.id,
+        label: version.label,
+        examBoard: version.examBoard,
+        qualification: version.qualification,
+      },
+      createdAt: membership.created_at,
+      updatedAt: membership.updated_at,
+    };
+  });
+}
 
 const MEMBERSHIP_SELECT =
   "user_id, subject_id, syllabus_version_id, created_at, updated_at";
@@ -53,7 +90,10 @@ async function listMemberships(
   const subjectIds = memberships.map((row) => row.subject_id);
   const versionIds = memberships.map((row) => row.syllabus_version_id);
   const [subjects, versions, topics] = await Promise.all([
-    db.select().from(subjectsTable).where(inArray(subjectsTable.id, subjectIds)),
+    db
+      .select()
+      .from(subjectsTable)
+      .where(inArray(subjectsTable.id, subjectIds)),
     db
       .select()
       .from(syllabusVersionsTable)
@@ -64,31 +104,20 @@ async function listMemberships(
       .where(inArray(syllabusTopicsTable.subjectId, subjectIds)),
   ]);
 
-  const subjectById = new Map(subjects.map((subject) => [subject.id, subject]));
-  const versionById = new Map(versions.map((version) => [version.id, version]));
   const topicsBySubject = new Map<number, number>();
   for (const topic of topics) {
-    topicsBySubject.set(topic.subjectId, (topicsBySubject.get(topic.subjectId) ?? 0) + 1);
+    topicsBySubject.set(
+      topic.subjectId,
+      (topicsBySubject.get(topic.subjectId) ?? 0) + 1,
+    );
   }
 
-  return memberships.map((membership) => {
-    const subject = subjectById.get(membership.subject_id);
-    const version = versionById.get(membership.syllabus_version_id);
-    if (!subject || !version || version.subjectId !== membership.subject_id) {
-      throw new Error("Membership reference data is inconsistent");
-    }
-    return {
-      subject: catalogueEnrichment(subject, topicsBySubject.get(subject.id) ?? 0),
-      syllabusVersion: {
-        id: version.id,
-        label: version.label,
-        examBoard: version.examBoard,
-        qualification: version.qualification,
-      },
-      createdAt: membership.created_at,
-      updatedAt: membership.updated_at,
-    };
-  });
+  return buildMembershipResponse(
+    memberships,
+    subjects,
+    versions,
+    topicsBySubject,
+  );
 }
 
 router.get("/user-subjects", requireAuth, async (req, res): Promise<void> => {
@@ -133,7 +162,10 @@ router.put("/user-subjects", requireAuth, async (req, res): Promise<void> => {
 
   if (error) {
     const message = error.message ?? "";
-    if (error.code === "22023" || message.includes("invalid_subject_selection")) {
+    if (
+      error.code === "22023" ||
+      message.includes("invalid_subject_selection")
+    ) {
       res.status(400).json({ error: "Invalid subject selection" });
       return;
     }
@@ -153,7 +185,10 @@ router.put("/user-subjects", requireAuth, async (req, res): Promise<void> => {
     const memberships = await listMemberships(client, req.userId!);
     res.json(ReplaceCurrentUserSubjectsResponse.parse(memberships));
   } catch {
-    logger.error({ context: "replace_user_subjects_readback" }, "membership readback failed");
+    logger.error(
+      { context: "replace_user_subjects_readback" },
+      "membership readback failed",
+    );
     res.status(500).json({ error: "Internal server error" });
   }
 });

@@ -21,12 +21,7 @@ const supabaseCliScript = path.join(
   "supabase.js",
 );
 
-const LOOPBACK_HOSTNAMES = new Set([
-  "localhost",
-  "127.0.0.1",
-  "::1",
-  "[::1]",
-]);
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
 function isLoopbackUrl(value: string | undefined): boolean {
   if (!value?.trim()) return false;
@@ -40,13 +35,19 @@ function isLoopbackUrl(value: string | undefined): boolean {
 function loadLocalSupabaseEnv() {
   let raw: string;
   try {
-    raw = execFileSync(process.execPath, [supabaseCliScript, "status", "-o", "json"], {
-      cwd: repoRoot,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    raw = execFileSync(
+      process.execPath,
+      [supabaseCliScript, "status", "-o", "json"],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
   } catch {
-    throw new Error("Local Supabase unavailable for profile integration tests.");
+    throw new Error(
+      "Local Supabase unavailable for profile integration tests.",
+    );
   }
   const status = JSON.parse(raw) as Record<string, string>;
   const apiUrl = status.API_URL ?? "";
@@ -88,9 +89,16 @@ describe("profile and atomic onboarding (local)", () => {
     });
     if (error || !data.user) throw error ?? new Error("createUser failed");
     const pub = createClient(env.url, env.publishableKey, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
     });
-    const { data: sess, error: se } = await pub.auth.signInWithPassword({ email, password });
+    const { data: sess, error: se } = await pub.auth.signInWithPassword({
+      email,
+      password,
+    });
     if (se || !sess.session) throw se ?? new Error("signIn failed");
     return { id: data.user.id, token: sess.session.access_token };
   };
@@ -101,7 +109,11 @@ describe("profile and atomic onboarding (local)", () => {
     process.env.DATABASE_URL = env.dbUrl;
 
     admin = createClient(env.url, env.serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
     });
     ({ db } = await import("@workspace/db"));
 
@@ -123,7 +135,9 @@ describe("profile and atomic onboarding (local)", () => {
       limit 6
     `);
     if (subjects.rows.length < 6) {
-      throw new Error("Local integration tests require at least six imported subjects");
+      throw new Error(
+        "Local integration tests require at least six imported subjects",
+      );
     }
     subjectIds = subjects.rows.map((subject) => Number(subject.id));
 
@@ -260,7 +274,9 @@ describe("profile and atomic onboarding (local)", () => {
     const membershipsAfter = await db.execute(sql`
       select count(*)::int as n from public.user_subjects where user_id = ${userAId}
     `);
-    expect(Number((membershipsAfter.rows[0] as { n: number }).n)).toBe(pick.length);
+    expect(Number((membershipsAfter.rows[0] as { n: number }).n)).toBe(
+      pick.length,
+    );
 
     // B cannot take A's username
     const clash = await request(app)
@@ -304,9 +320,16 @@ describe("profile and atomic onboarding (local)", () => {
     });
     if (error || !data.user) throw error ?? new Error("createUser failed");
     const pub = createClient(env.url, env.publishableKey, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
     });
-    const { data: sess } = await pub.auth.signInWithPassword({ email, password });
+    const { data: sess } = await pub.auth.signInWithPassword({
+      email,
+      password,
+    });
     const token = sess!.session!.access_token;
     const uid = data.user.id;
 
@@ -318,7 +341,8 @@ describe("profile and atomic onboarding (local)", () => {
         { username: "valid_user_x", subjectIds: [] },
         {
           username: "valid_user_y",
-          subjectIds: subjectIds.length >= 1 ? [subjectIds[0], subjectIds[0]] : [1, 1],
+          subjectIds:
+            subjectIds.length >= 1 ? [subjectIds[0], subjectIds[0]] : [1, 1],
         },
         { username: "valid_user_z", subjectIds: [999999] },
         {
@@ -360,38 +384,45 @@ describe("profile and atomic onboarding (local)", () => {
     }
   });
 
-  it.each([1, 2, 3, 4, 5])("onboards with %i selected subject(s)", async (count) => {
-    const user = await mkUser(`boundary-${count}`, `Boundary ${count}`);
-    try {
-      const response = await request(app)
-        .post("/api/profile/complete-onboarding")
-        .set("Authorization", `Bearer ${user.token}`)
-        .send({
-          fullName: `Boundary ${count}`,
-          username: `boundary_${count}_${crypto.randomUUID().replace(/-/g, "").slice(0, 6)}`,
-          level: "AS Level (Year 12)",
-          examSession: "May/June 2027",
-          subjectIds: subjectIds.slice(0, count),
-        });
-      expect(response.status).toBe(200);
+  it.each([1, 2, 3, 4, 5])(
+    "onboards with %i selected subject(s)",
+    async (count) => {
+      const user = await mkUser(`boundary-${count}`, `Boundary ${count}`);
+      try {
+        const response = await request(app)
+          .post("/api/profile/complete-onboarding")
+          .set("Authorization", `Bearer ${user.token}`)
+          .send({
+            fullName: `Boundary ${count}`,
+            username: `boundary_${count}_${crypto.randomUUID().replace(/-/g, "").slice(0, 6)}`,
+            level: "AS Level (Year 12)",
+            examSession: "May/June 2027",
+            subjectIds: subjectIds.slice(0, count),
+          });
+        expect(response.status).toBe(200);
 
-      const state = await db.execute(sql`
+        const state = await db.execute(sql`
         select
           (select count(*)::int from public.user_subjects where user_id = ${user.id}) memberships,
           (select count(*)::int from public.tasks where user_id = ${user.id}) tasks
       `);
-      expect(Number(state.rows[0].memberships)).toBe(count);
-      expect(Number(state.rows[0].tasks)).toBe(count);
-    } finally {
-      await admin.auth.admin.deleteUser(user.id);
-    }
-  });
+        expect(Number(state.rows[0].memberships)).toBe(count);
+        expect(Number(state.rows[0].tasks)).toBe(count);
+      } finally {
+        await admin.auth.admin.deleteUser(user.id);
+      }
+    },
+  );
 
   it("rejects invalid selections inside the onboarding RPC without partial state", async () => {
     const user = await mkUser("rpc-boundaries", "RPC Boundaries");
     const scoped = createClient(env.url, env.publishableKey, {
       global: { headers: { Authorization: `Bearer ${user.token}` } },
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
     });
     const invoke = (ids: number[]) =>
       scoped.rpc("lockdin_complete_onboarding", {
@@ -403,7 +434,12 @@ describe("profile and atomic onboarding (local)", () => {
       });
 
     try {
-      for (const ids of [[], subjectIds.slice(0, 6), [subjectIds[0], subjectIds[0]], [999999]]) {
+      for (const ids of [
+        [],
+        subjectIds.slice(0, 6),
+        [subjectIds[0], subjectIds[0]],
+        [999999],
+      ]) {
         const { error } = await invoke(ids);
         expect(error).toBeTruthy();
       }
@@ -434,6 +470,19 @@ describe("profile and atomic onboarding (local)", () => {
     ).toEqual(subjectIds.slice(0, 2).sort((a, b) => a - b));
     expect(listB.status).toBe(200);
     expect(listB.body).toHaveLength(1);
+    for (const membership of [...listA.body, ...listB.body]) {
+      expect(membership.subject).toEqual({
+        id: expect.any(Number),
+        name: expect.any(String),
+        code: expect.any(String),
+        color: expect.any(String),
+        topicsTotal: expect.any(Number),
+      });
+      expect(membership.subject).not.toHaveProperty("syllabusProgress");
+      expect(membership.subject).not.toHaveProperty("topicsCompleted");
+      expect(membership.subject).not.toHaveProperty("upcomingTasksCount");
+      expect(membership.subject).not.toHaveProperty("recentPaperScore");
+    }
 
     const replaceFor = async (token: string, selected: number[]) => {
       const response = await request(app)
@@ -657,12 +706,17 @@ describe("profile and atomic onboarding (local)", () => {
     const versions = await db.execute(sql`
       select subject_id, id from public.syllabus_versions
       where is_current = true and subject_id in (
-        ${sql.join(subjectIds.slice(0, 2).map((id) => sql`${id}`), sql`, `)}
+        ${sql.join(
+          subjectIds.slice(0, 2).map((id) => sql`${id}`),
+          sql`, `,
+        )}
       )
       order by subject_id
     `);
     const first = versions.rows[0];
-    const second = versions.rows.find((row) => row.subject_id !== first.subject_id)!;
+    const second = versions.rows.find(
+      (row) => row.subject_id !== first.subject_id,
+    )!;
 
     await expect(
       db.execute(sql`
@@ -771,7 +825,9 @@ describe("profile and atomic onboarding (local)", () => {
       where n.nspname = 'public' and p.proname = 'lockdin_replace_user_subjects'
     `);
     expect(replaceDef.rows[0]).toMatchObject({ prosecdef: true, pronargs: 1 });
-    expect((replaceDef.rows[0] as { proconfig: string[] }).proconfig).toContain('search_path=""');
+    expect((replaceDef.rows[0] as { proconfig: string[] }).proconfig).toContain(
+      'search_path=""',
+    );
 
     const replaceGrants = await db.execute(sql`
       select grantee

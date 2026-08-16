@@ -5,11 +5,11 @@
  * A-Level Revision Platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { Subject } from './subject';
+import type { SubjectReference } from './subjectReference';
 import type { UserSubjectSyllabusVersion } from './userSubjectSyllabusVersion';
 
 export interface UserSubjectMembership {
-  subject: Subject;
+  subject: SubjectReference;
   syllabusVersion: UserSubjectSyllabusVersion;
   createdAt: string;
   updatedAt: string;

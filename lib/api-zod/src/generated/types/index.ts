@@ -31,6 +31,7 @@ export * from './subject';
 export * from './subjectInput';
 export * from './subjectPerformance';
 export * from './subjectProgressItem';
+export * from './subjectReference';
 export * from './syllabusTopic';
 export * from './syllabusTopicProgress';
 export * from './syllabusTopicProgressStatus';

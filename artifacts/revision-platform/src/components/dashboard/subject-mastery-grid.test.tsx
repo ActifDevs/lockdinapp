@@ -1,12 +1,16 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Subject, UserSubjectMembership } from "@workspace/api-client-react";
-import { selectMembershipSubjects } from "@/lib/selected-subjects";
 import { SubjectMasteryGrid } from "./subject-mastery-grid";
 
 vi.mock("framer-motion", () => ({
   motion: {
-    div: ({ children, initial: _initial, animate: _animate, transition: _transition, ...props }: React.HTMLAttributes<HTMLDivElement> & {
+    div: ({
+      children,
+      initial: _initial,
+      animate: _animate,
+      transition: _transition,
+      ...props
+    }: React.HTMLAttributes<HTMLDivElement> & {
       initial?: unknown;
       animate?: unknown;
       transition?: unknown;
@@ -15,65 +19,61 @@ vi.mock("framer-motion", () => ({
   useReducedMotion: () => true,
 }));
 
-function subject(id: number): Subject {
+function subject(
+  id: number,
+  syllabusProgress: number,
+  recentPaperScore: number | null,
+) {
   return {
     id,
     name: `Subject ${id}`,
     code: `S${id}`,
     color: "#0f766e",
-    syllabusProgress: id * 10,
     topicsTotal: 10,
-    topicsCompleted: id,
-    topicsInProgress: 0,
-    upcomingTasksCount: 0,
-    recentPaperScore: null,
-    recentPaperLabel: null,
-  };
-}
-
-function membership(selectedSubject: Subject): UserSubjectMembership {
-  return {
-    subject: selectedSubject,
-    syllabusVersion: {
-      id: selectedSubject.id,
-      label: "Current syllabus",
-      examBoard: "Cambridge",
-      qualification: "A Level",
-    },
-    createdAt: "2026-08-11T00:00:00.000Z",
-    updatedAt: "2026-08-11T00:00:00.000Z",
+    syllabusProgress,
+    recentPaperScore,
   };
 }
 
 afterEach(cleanup);
 
-describe("SubjectMasteryGrid membership scoping", () => {
-  it("renders only the current user's selected subjects and updates on user switch", () => {
-    const subjects = [subject(1), subject(2), subject(3), subject(4)];
-    const userA = [membership(subjects[0]!), membership(subjects[2]!)];
-    const userB = [membership(subjects[1]!)];
-
-    const { rerender } = render(
+describe("SubjectMasteryGrid personal progress", () => {
+  it("renders distinct membership progress and paper results without shared placeholders", () => {
+    render(
       <SubjectMasteryGrid
-        subjects={selectMembershipSubjects(subjects, userA)}
+        subjects={[subject(1, 25, 61), subject(3, 80, 92)]}
         attention={[]}
+        recentPerformance={[
+          {
+            subjectId: 1,
+            subjectName: "Subject 1",
+            subjectColor: "#0f766e",
+            paperLabel: "Paper 1",
+            previousPercentage: 55,
+            latestPercentage: 61,
+            change: 6,
+          },
+          {
+            subjectId: 3,
+            subjectName: "Subject 3",
+            subjectColor: "#0f766e",
+            paperLabel: "Paper 3",
+            previousPercentage: 90,
+            latestPercentage: 92,
+            change: 2,
+          },
+        ]}
       />,
     );
 
     expect(screen.getByText("Subject 1")).toBeVisible();
     expect(screen.getByText("Subject 3")).toBeVisible();
-    expect(screen.queryByText("Subject 2")).not.toBeInTheDocument();
-    expect(screen.queryByText("Subject 4")).not.toBeInTheDocument();
-
-    rerender(
-      <SubjectMasteryGrid
-        subjects={selectMembershipSubjects(subjects, userB)}
-        attention={[]}
-      />,
-    );
-
-    expect(screen.getByText("Subject 2")).toBeVisible();
-    expect(screen.queryByText("Subject 1")).not.toBeInTheDocument();
-    expect(screen.queryByText("Subject 3")).not.toBeInTheDocument();
-  });
+    expect(screen.getByText("25%")).toBeVisible();
+    expect(screen.getByText("80%")).toBeVisible();
+    expect(screen.getByText("61%")).toBeVisible();
+    expect(screen.getByText("92%")).toBeVisible();
+    expect(screen.getAllByText("Syllabus progress")).toHaveLength(2);
+    expect(screen.queryByText("Weak topics")).not.toBeInTheDocument();
+    expect(screen.queryByText(/\/10/)).not.toBeInTheDocument();
+  }, 15_000);
 });
