@@ -15,8 +15,6 @@
  *   1. title === "${subject.name} foundations"
  *   2. it has exactly 3 topics
  *   3. those 3 topics' titles are exactly the known placeholder set (any order)
- *   4. none of those topics has non-null `notes` (a real note would mean a human
- *      actually wrote something there, which is a stronger signal of intentional use)
  * Anything that doesn't match exactly is left untouched and reported separately.
  *
  * Run with: pnpm --filter @workspace/scripts syllabus:cleanup-placeholders
@@ -32,7 +30,7 @@ async function main() {
 
   const subjects = (await client.query("select id, name, code from subjects")).rows as { id: number; name: string; code: string }[];
 
-  const toDelete: { unitId: number; unitTitle: string; subjectCode: string; topics: { id: number; title: string; status: string }[] }[] = [];
+  const toDelete: { unitId: number; unitTitle: string; subjectCode: string; topics: { id: number; title: string }[] }[] = [];
   const skipped: { unitId: number; unitTitle: string; subjectCode: string; reason: string }[] = [];
 
   for (const subject of subjects) {
@@ -44,28 +42,25 @@ async function main() {
       if (unit.title !== `${subject.name} foundations`) continue;
 
       const topics = (
-        await client.query("select id, title, status, notes from syllabus_topics where unit_id = $1", [unit.id])
-      ).rows as { id: number; title: string; status: string; notes: string | null }[];
+        await client.query("select id, title from syllabus_topics where unit_id = $1", [unit.id])
+      ).rows as { id: number; title: string }[];
 
       const titles = new Set(topics.map((t) => t.title));
       const exactTopicMatch = topics.length === 3 && titles.size === 3 && [...titles].every((t) => PLACEHOLDER_TOPIC_TITLES.has(t));
-      const anyNotes = topics.some((t) => t.notes !== null);
 
-      if (exactTopicMatch && !anyNotes) {
+      if (exactTopicMatch) {
         toDelete.push({
           unitId: unit.id,
           unitTitle: unit.title,
           subjectCode: subject.code,
-          topics: topics.map((t) => ({ id: t.id, title: t.title, status: t.status })),
+          topics: topics.map((t) => ({ id: t.id, title: t.title })),
         });
       } else {
         skipped.push({
           unitId: unit.id,
           unitTitle: unit.title,
           subjectCode: subject.code,
-          reason: !exactTopicMatch
-            ? `topics don't exactly match the known placeholder set (found: ${[...titles].join(", ")})`
-            : "at least one topic has notes set",
+          reason: `topics don't exactly match the known placeholder set (found: ${[...titles].join(", ")})`,
         });
       }
     }
@@ -75,7 +70,7 @@ async function main() {
   for (const d of toDelete) {
     console.log(`  subject=${d.subjectCode} unit_id=${d.unitId} "${d.unitTitle}"`);
     for (const t of d.topics) {
-      console.log(`    topic_id=${t.id} "${t.title}" status=${t.status}`);
+      console.log(`    topic_id=${t.id} "${t.title}"`);
     }
   }
   if (skipped.length > 0) {

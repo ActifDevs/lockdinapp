@@ -67,10 +67,45 @@ export interface CompleteOnboardingInput {
   examSession: string;
   /**
      * @minItems 1
-     * @maxItems 3
+     * @maxItems 5
      * @items.minimum 1
      */
   subjectIds: number[];
+}
+
+export interface UserSubjectSelectionInput {
+  /**
+     * @minItems 1
+     * @maxItems 5
+     * @items.minimum 1
+     */
+  subjectIds: number[];
+}
+
+/**
+ * Shared metadata for a subject selected by the authenticated caller.
+ */
+export interface SubjectReference {
+  id: number;
+  name: string;
+  code: string;
+  color: string;
+  /** Count of shared syllabus topics for this subject */
+  topicsTotal: number;
+}
+
+export interface UserSubjectSyllabusVersion {
+  id: number;
+  label: string;
+  examBoard: string;
+  qualification: string;
+}
+
+export interface UserSubjectMembership {
+  subject: SubjectReference;
+  syllabusVersion: UserSubjectSyllabusVersion;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface HealthStatus {
@@ -87,8 +122,8 @@ export interface SubjectInput {
 }
 
 /**
- * Shared catalogue subject. Progress, task-count, and past-paper fields are
- * neutral placeholders until per-user ownership exists for those features.
+ * Shared catalogue subject. User-specific progress, task-count, and past-paper
+ * fields remain neutral placeholders on this public catalogue response.
  */
 export interface Subject {
   id: number;
@@ -106,19 +141,19 @@ export interface Subject {
   /** Neutral placeholder; always 0 (not user-task derived) */
   upcomingTasksCount: number;
   /**
-     * Neutral placeholder; always null until past-paper ownership
+     * Neutral placeholder; always null on shared catalogue responses
      * @nullable
      */
   recentPaperScore: number | null;
   /**
-     * Neutral placeholder; always null until past-paper ownership
+     * Neutral placeholder; always null on shared catalogue responses
      * @nullable
      */
   recentPaperLabel: string | null;
 }
 
 /**
- * Neutral placeholder; always not_started in catalogue responses
+ * Caller-owned progress status; defaults to not_started
  */
 export type SyllabusTopicStatus = typeof SyllabusTopicStatus[keyof typeof SyllabusTopicStatus];
 
@@ -130,18 +165,19 @@ export const SyllabusTopicStatus = {
 } as const;
 
 /**
- * Shared syllabus topic reference. status is always presented as not_started
- * and notes as null — stored shared progress fields are not exposed as user data.
+ * Shared syllabus topic reference with caller-owned progress fields merged
+ * when authenticated. Missing topic_progress rows default to not_started
+ * and null notes. Progress fields come from topic_progress only.
  */
 export interface SyllabusTopic {
   id: number;
   unitId: number;
   subjectId: number;
   title: string;
-  /** Neutral placeholder; always not_started in catalogue responses */
+  /** Caller-owned progress status; defaults to not_started */
   status: SyllabusTopicStatus;
   /**
-     * Neutral placeholder; always null in catalogue responses
+     * Caller-owned notes; defaults to null
      * @nullable
      */
   notes: string | null;
@@ -167,8 +203,31 @@ export const SyllabusTopicUpdateStatus = {
 } as const;
 
 export interface SyllabusTopicUpdate {
-  status?: SyllabusTopicUpdateStatus;
-  notes?: string;
+  status: SyllabusTopicUpdateStatus;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+}
+
+export type SyllabusTopicProgressStatus = typeof SyllabusTopicProgressStatus[keyof typeof SyllabusTopicProgressStatus];
+
+
+export const SyllabusTopicProgressStatus = {
+  not_started: 'not_started',
+  in_progress: 'in_progress',
+  completed: 'completed',
+} as const;
+
+/**
+ * Authenticated caller's progress for one shared syllabus topic
+ */
+export interface SyllabusTopicProgress {
+  topicId: number;
+  status: SyllabusTopicProgressStatus;
+  /** @nullable */
+  notes: string | null;
 }
 
 export type TaskPriority = typeof TaskPriority[keyof typeof TaskPriority];
@@ -259,6 +318,11 @@ export interface PastPaperAttempt {
   /** @nullable */
   variant: number | null;
   session: PastPaperAttemptSession;
+  /**
+     * @minimum 1000
+     * @maximum 9999
+     */
+  year: number;
   paperLabel: string;
   score: number;
   totalMarks: number;
@@ -290,6 +354,11 @@ export interface PastPaperAttemptInput {
      */
   variant?: number;
   session: PastPaperAttemptInputSession;
+  /**
+     * @minimum 1000
+     * @maximum 9999
+     */
+  year: number;
   score: number;
   totalMarks: number;
   dateAttempted: string;

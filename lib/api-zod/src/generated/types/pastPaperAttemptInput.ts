@@ -16,6 +16,11 @@ export interface PastPaperAttemptInput {
      */
   variant?: number;
   session: PastPaperAttemptInputSession;
+  /**
+     * @minimum 1000
+     * @maximum 9999
+     */
+  year: number;
   score: number;
   totalMarks: number;
   dateAttempted: string;

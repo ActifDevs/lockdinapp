@@ -5,6 +5,7 @@ import type {
   Task,
 } from "@workspace/api-client-react";
 import { percentageToGrade } from "./cambridge-grades";
+import { userScopedStorageKey } from "./user-scoped-storage";
 
 const LONGEST_STREAK_KEY = "lockdin_longest_streak";
 
@@ -28,20 +29,24 @@ export type Achievement = {
   unlocked: boolean;
 };
 
-export function syncLongestStreak(current: number): number {
+export function syncLongestStreak(userId: string, current: number): number {
+  const storageKey = userScopedStorageKey(LONGEST_STREAK_KEY, userId);
   try {
-    const stored = Number(localStorage.getItem(LONGEST_STREAK_KEY) ?? 0);
+    const stored = Number(localStorage.getItem(storageKey) ?? 0);
     const next = Math.max(stored, current);
-    localStorage.setItem(LONGEST_STREAK_KEY, String(next));
+    localStorage.setItem(storageKey, String(next));
     return next;
   } catch {
     return current;
   }
 }
 
-export function readLongestStreak(): number {
+export function readLongestStreak(userId: string): number {
   try {
-    return Number(localStorage.getItem(LONGEST_STREAK_KEY) ?? 0);
+    return Number(
+      localStorage.getItem(userScopedStorageKey(LONGEST_STREAK_KEY, userId)) ??
+        0,
+    );
   } catch {
     return 0;
   }
@@ -53,8 +58,10 @@ export function computeTotalXp(
 ): number {
   const syllabusAvg =
     summary.subjectProgressSummary.length > 0
-      ? summary.subjectProgressSummary.reduce((s, x) => s + x.syllabusProgress, 0) /
-        summary.subjectProgressSummary.length
+      ? summary.subjectProgressSummary.reduce(
+          (s, x) => s + x.syllabusProgress,
+          0,
+        ) / summary.subjectProgressSummary.length
       : 0;
 
   return (
@@ -80,7 +87,10 @@ export function computeLevel(totalXp: number) {
 
 export function computeMissionXp(tasks: Task[]): number {
   const incomplete = tasks.filter((t) => !t.completed);
-  const minutes = incomplete.reduce((s, t) => s + (t.estimatedMinutes ?? 45), 0);
+  const minutes = incomplete.reduce(
+    (s, t) => s + (t.estimatedMinutes ?? 45),
+    0,
+  );
   return incomplete.length * 75 + Math.round(minutes * 1.5);
 }
 
@@ -90,7 +100,10 @@ export function computeTodayXpEarned(completed: number, total: number): number {
   return base + bonus;
 }
 
-export function pickMissionFocus(tasks: Task[], attentionReason?: string | null): string {
+export function pickMissionFocus(
+  tasks: Task[],
+  attentionReason?: string | null,
+): string {
   const next = tasks.find((t) => !t.completed);
   if (next?.topicTitle) return next.topicTitle;
   if (next?.title) return next.title;
@@ -104,10 +117,14 @@ export function motivationalLine(
   daysToExam: number | null,
   todayPct: number,
 ): string {
-  if (todayPct === 100) return "Mission complete. You're building exam-day confidence.";
-  if (streak >= 14) return "Elite consistency. Top grades are built exactly like this.";
-  if (daysToExam !== null && daysToExam <= 14) return "Final stretch. Every session counts now.";
-  if (daysToExam !== null && daysToExam <= 45) return "Exam season is close. Stay sharp and structured.";
+  if (todayPct === 100)
+    return "Mission complete. You're building exam-day confidence.";
+  if (streak >= 14)
+    return "Elite consistency. Top grades are built exactly like this.";
+  if (daysToExam !== null && daysToExam <= 14)
+    return "Final stretch. Every session counts now.";
+  if (daysToExam !== null && daysToExam <= 45)
+    return "Exam season is close. Stay sharp and structured.";
   if (streak >= 7) return "Strong rhythm this week. Keep the momentum.";
   return "Small focused sessions compound into A-grade performance.";
 }
@@ -120,8 +137,10 @@ export function buildAchievements(
   const hasA = recentPerformance.some((p) => p.latestPercentage >= 80);
   const avgSyllabus =
     summary.subjectProgressSummary.length > 0
-      ? summary.subjectProgressSummary.reduce((s, x) => s + x.syllabusProgress, 0) /
-        summary.subjectProgressSummary.length
+      ? summary.subjectProgressSummary.reduce(
+          (s, x) => s + x.syllabusProgress,
+          0,
+        ) / summary.subjectProgressSummary.length
       : 0;
 
   return [
@@ -175,9 +194,11 @@ export function buildAchievements(
 const UNLOCKED_KEY = "lockdin_unlocked_achievements";
 const SEEDED_KEY = "lockdin_achievements_seeded";
 
-function readSeenUnlocks(): Set<string> {
+function readSeenUnlocks(userId: string): Set<string> {
   try {
-    const raw = localStorage.getItem(UNLOCKED_KEY);
+    const raw = localStorage.getItem(
+      userScopedStorageKey(UNLOCKED_KEY, userId),
+    );
     if (!raw) return new Set();
     const parsed = JSON.parse(raw) as string[];
     return new Set(Array.isArray(parsed) ? parsed : []);
@@ -186,22 +207,29 @@ function readSeenUnlocks(): Set<string> {
   }
 }
 
-function writeSeenUnlocks(ids: Set<string>) {
-  localStorage.setItem(UNLOCKED_KEY, JSON.stringify([...ids]));
+function writeSeenUnlocks(userId: string, ids: Set<string>) {
+  localStorage.setItem(
+    userScopedStorageKey(UNLOCKED_KEY, userId),
+    JSON.stringify([...ids]),
+  );
 }
 
 /**
  * Returns achievements unlocked since the last visit.
  * First run seeds current unlocks silently (no toast spam for existing progress).
  */
-export function consumeNewAchievements(achievements: Achievement[]): Achievement[] {
-  const seen = readSeenUnlocks();
+export function consumeNewAchievements(
+  userId: string,
+  achievements: Achievement[],
+): Achievement[] {
+  const seen = readSeenUnlocks(userId);
   const unlocked = achievements.filter((a) => a.unlocked);
+  const seededKey = userScopedStorageKey(SEEDED_KEY, userId);
 
-  if (localStorage.getItem(SEEDED_KEY) !== "true") {
+  if (localStorage.getItem(seededKey) !== "true") {
     for (const a of unlocked) seen.add(a.id);
-    writeSeenUnlocks(seen);
-    localStorage.setItem(SEEDED_KEY, "true");
+    writeSeenUnlocks(userId, seen);
+    localStorage.setItem(seededKey, "true");
     return [];
   }
 
@@ -209,7 +237,7 @@ export function consumeNewAchievements(achievements: Achievement[]): Achievement
   if (newlyUnlocked.length === 0) return [];
 
   for (const a of newlyUnlocked) seen.add(a.id);
-  writeSeenUnlocks(seen);
+  writeSeenUnlocks(userId, seen);
   return newlyUnlocked;
 }
 

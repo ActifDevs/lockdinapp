@@ -37,11 +37,14 @@ import type {
   Subject,
   SubjectInput,
   SubjectPerformance,
+  SyllabusTopicProgress,
   SyllabusTopicUpdate,
   SyllabusUnit,
   Task,
   TaskInput,
-  TaskUpdate
+  TaskUpdate,
+  UserSubjectMembership,
+  UserSubjectSelectionInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -158,9 +161,9 @@ export const getListSubjectsUrl = () => {
 
 /**
  * Returns importer/admin-managed reference subjects. Not user-scoped.
- * Progress, task-count, and past-paper fields are neutral placeholders
+ * Personal-looking fields on this legacy shared response are intentionally neutral
  * (syllabusProgress/topicsCompleted/topicsInProgress = 0; upcomingTasksCount = 0;
- * recent paper fields null) until per-user ownership exists for those features.
+ * recent paper fields null). Caller-owned data is exposed by authenticated endpoints.
  * @summary List the shared public subject catalogue
  */
 export const listSubjects = async ( options?: RequestInit): Promise<Subject[]> => {
@@ -466,8 +469,10 @@ export const getGetSubjectSyllabusUrl = (subjectId: number,) => {
 
 /**
  * Returns units, topic titles, and learning outcomes from shared reference data.
- * Topic status is always presented as not_started and notes as null —
- * stored shared syllabus_topics.status/notes are not treated as per-user progress.
+ * When a valid Bearer token is provided, each topic's status and notes are merged
+ * from the caller's topic_progress rows. Missing progress rows default to
+ * not_started with null notes. Unauthenticated callers receive the same defaults.
+ * Progress fields come from topic_progress, not shared catalogue columns.
  * @summary Get syllabus reference structure for a subject
  */
 export const getSubjectSyllabus = async (subjectId: number, options?: RequestInit): Promise<SyllabusUnit[]> => {
@@ -492,7 +497,7 @@ export const getGetSubjectSyllabusQueryKey = (subjectId: number,) => {
     }
 
 
-export const getGetSubjectSyllabusQueryOptions = <TData = Awaited<ReturnType<typeof getSubjectSyllabus>>, TError = ErrorType<unknown>>(subjectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSubjectSyllabus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetSubjectSyllabusQueryOptions = <TData = Awaited<ReturnType<typeof getSubjectSyllabus>>, TError = ErrorType<ErrorMessage>>(subjectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSubjectSyllabus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -511,14 +516,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetSubjectSyllabusQueryResult = NonNullable<Awaited<ReturnType<typeof getSubjectSyllabus>>>
-export type GetSubjectSyllabusQueryError = ErrorType<unknown>
+export type GetSubjectSyllabusQueryError = ErrorType<ErrorMessage>
 
 
 /**
  * @summary Get syllabus reference structure for a subject
  */
 
-export function useGetSubjectSyllabus<TData = Awaited<ReturnType<typeof getSubjectSyllabus>>, TError = ErrorType<unknown>>(
+export function useGetSubjectSyllabus<TData = Awaited<ReturnType<typeof getSubjectSyllabus>>, TError = ErrorType<ErrorMessage>>(
  subjectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSubjectSyllabus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -545,9 +550,9 @@ export const getGetSubjectPerformanceUrl = (subjectId: number,) => {
 }
 
 /**
- * Returns a contract-safe empty performance payload. Does not query
- * past_paper_attempts (no per-user ownership yet).
- * @summary Past-paper performance placeholder (ownership not implemented)
+ * Requires Bearer auth. Latest, average, best, count, trend and component
+ * breakdown are calculated only from the caller's attempts.
+ * @summary Get caller-owned past-paper performance for one subject
  */
 export const getSubjectPerformance = async (subjectId: number, options?: RequestInit): Promise<SubjectPerformance> => {
 
@@ -594,7 +599,7 @@ export type GetSubjectPerformanceQueryError = ErrorType<ErrorMessage>
 
 
 /**
- * @summary Past-paper performance placeholder (ownership not implemented)
+ * @summary Get caller-owned past-paper performance for one subject
  */
 
 export function useGetSubjectPerformance<TData = Awaited<ReturnType<typeof getSubjectPerformance>>, TError = ErrorType<ErrorMessage>>(
@@ -701,16 +706,17 @@ export const getUpdateSyllabusTopicUrl = (topicId: number,) => {
 }
 
 /**
- * syllabus_topics.status and notes are shared student-progress fields and
- * must not be mutated until user-owned syllabus progress exists.
- * No database update is performed.
- * @deprecated
- * @summary Temporarily unavailable — per-user syllabus progress not implemented
+ * Upserts the caller's topic_progress row for the given shared topic.
+ * Ownership is derived from the verified Bearer token; client-supplied
+ * userId/user_id fields are rejected. Setting status to not_started with
+ * an empty/absent note deletes the caller's row (reset-to-default).
+ * Shared syllabus_topics rows are never mutated.
+ * @summary Upsert the authenticated user's progress for a syllabus topic
  */
 export const updateSyllabusTopic = async (topicId: number,
-    syllabusTopicUpdate: SyllabusTopicUpdate, options?: RequestInit): Promise<unknown> => {
+    syllabusTopicUpdate: SyllabusTopicUpdate, options?: RequestInit): Promise<SyllabusTopicProgress> => {
 
-  return customFetch<unknown>(getUpdateSyllabusTopicUrl(topicId),
+  return customFetch<SyllabusTopicProgress>(getUpdateSyllabusTopicUrl(topicId),
   {
     ...options,
     method: 'PATCH',
@@ -755,8 +761,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateSyllabusTopicMutationError = ErrorType<ErrorMessage>
 
     /**
- * @deprecated
- * @summary Temporarily unavailable — per-user syllabus progress not implemented
+ * @summary Upsert the authenticated user's progress for a syllabus topic
  */
 export const useUpdateSyllabusTopic = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSyllabusTopic>>, TError,{topicId: number;data: BodyType<SyllabusTopicUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -767,6 +772,79 @@ export const useUpdateSyllabusTopic = <TError = ErrorType<ErrorMessage>,
         TContext
       > => {
       return useMutation(getUpdateSyllabusTopicMutationOptions(options));
+    }
+
+export const getResetSyllabusTopicProgressUrl = (topicId: number,) => {
+
+
+
+
+  return `/api/syllabus-topics/${topicId}`
+}
+
+/**
+ * Deletes the caller's topic_progress row for the topic. Shared syllabus
+ * topics are never mutated. Absence of a row is already the default state.
+ * @summary Reset the authenticated user's progress for a syllabus topic
+ */
+export const resetSyllabusTopicProgress = async (topicId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getResetSyllabusTopicProgressUrl(topicId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getResetSyllabusTopicProgressMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetSyllabusTopicProgress>>, TError,{topicId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetSyllabusTopicProgress>>, TError,{topicId: number}, TContext> => {
+
+const mutationKey = ['resetSyllabusTopicProgress'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetSyllabusTopicProgress>>, {topicId: number}> = (props) => {
+          const {topicId} = props ?? {};
+
+          return  resetSyllabusTopicProgress(topicId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetSyllabusTopicProgressMutationResult = NonNullable<Awaited<ReturnType<typeof resetSyllabusTopicProgress>>>
+
+    export type ResetSyllabusTopicProgressMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary Reset the authenticated user's progress for a syllabus topic
+ */
+export const useResetSyllabusTopicProgress = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetSyllabusTopicProgress>>, TError,{topicId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetSyllabusTopicProgress>>,
+        TError,
+        {topicId: number},
+        TContext
+      > => {
+      return useMutation(getResetSyllabusTopicProgressMutationOptions(options));
     }
 
 export const getListTasksUrl = (params?: ListTasksParams,) => {
@@ -862,6 +940,8 @@ export const getCreateTaskUrl = () => {
 }
 
 /**
+ * Ownership is derived from the verified Bearer token. Request fields
+ * userId, user_id, ownerId, and owner_id are rejected.
  * @summary Create a new revision task owned by the authenticated user
  */
 export const createTask = async (taskInput: TaskInput, options?: RequestInit): Promise<Task> => {
@@ -933,6 +1013,8 @@ export const getUpdateTaskUrl = (taskId: number,) => {
 }
 
 /**
+ * Ownership is derived from the verified Bearer token. Request fields
+ * userId, user_id, ownerId, and owner_id are rejected.
  * @summary Update a task owned by the authenticated user
  */
 export const updateTask = async (taskId: number,
@@ -1083,10 +1165,9 @@ export const getListPastPaperAttemptsUrl = (params?: ListPastPaperAttemptsParams
 }
 
 /**
- * Requires Bearer auth. Returns [] without querying past_paper_attempts.
- * Does not expose global attempt rows. Feature is not implemented for
- * multi-tenant use until an ownership migration lands.
- * @summary Authenticated empty list — past-paper ownership not implemented
+ * Returns only caller-owned attempts, newest first. The optional subjectId
+ * filter remains inside the caller ownership boundary.
+ * @summary List the authenticated user's past-paper attempts
  */
 export const listPastPaperAttempts = async (params?: ListPastPaperAttemptsParams, options?: RequestInit): Promise<PastPaperAttempt[]> => {
 
@@ -1133,7 +1214,7 @@ export type ListPastPaperAttemptsQueryError = ErrorType<ErrorMessage>
 
 
 /**
- * @summary Authenticated empty list — past-paper ownership not implemented
+ * @summary List the authenticated user's past-paper attempts
  */
 
 export function useListPastPaperAttempts<TData = Awaited<ReturnType<typeof listPastPaperAttempts>>, TError = ErrorType<ErrorMessage>>(
@@ -1163,13 +1244,14 @@ export const getCreatePastPaperAttemptUrl = () => {
 }
 
 /**
- * No insert is performed. Requires Bearer auth.
- * @deprecated
- * @summary Temporarily unavailable — past-paper ownership not implemented
+ * Ownership is derived from the verified Bearer token. The client cannot
+ * choose userId, user_id, ownerId, or owner_id, and percentage is
+ * calculated from score / totalMarks.
+ * @summary Log a caller-owned past-paper attempt
  */
-export const createPastPaperAttempt = async (pastPaperAttemptInput: PastPaperAttemptInput, options?: RequestInit): Promise<unknown> => {
+export const createPastPaperAttempt = async (pastPaperAttemptInput: PastPaperAttemptInput, options?: RequestInit): Promise<PastPaperAttempt> => {
 
-  return customFetch<unknown>(getCreatePastPaperAttemptUrl(),
+  return customFetch<PastPaperAttempt>(getCreatePastPaperAttemptUrl(),
   {
     ...options,
     method: 'POST',
@@ -1214,8 +1296,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreatePastPaperAttemptMutationError = ErrorType<ErrorMessage>
 
     /**
- * @deprecated
- * @summary Temporarily unavailable — past-paper ownership not implemented
+ * @summary Log a caller-owned past-paper attempt
  */
 export const useCreatePastPaperAttempt = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPastPaperAttempt>>, TError,{data: BodyType<PastPaperAttemptInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1237,13 +1318,12 @@ export const getDeletePastPaperAttemptUrl = (pastPaperAttemptId: number,) => {
 }
 
 /**
- * No delete is performed. Requires Bearer auth.
- * @deprecated
- * @summary Temporarily unavailable — past-paper ownership not implemented
+ * Foreign-owned and missing IDs both return 404.
+ * @summary Delete a caller-owned past-paper attempt
  */
-export const deletePastPaperAttempt = async (pastPaperAttemptId: number, options?: RequestInit): Promise<unknown> => {
+export const deletePastPaperAttempt = async (pastPaperAttemptId: number, options?: RequestInit): Promise<void> => {
 
-  return customFetch<unknown>(getDeletePastPaperAttemptUrl(pastPaperAttemptId),
+  return customFetch<void>(getDeletePastPaperAttemptUrl(pastPaperAttemptId),
   {
     ...options,
     method: 'DELETE'
@@ -1288,8 +1368,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeletePastPaperAttemptMutationError = ErrorType<ErrorMessage>
 
     /**
- * @deprecated
- * @summary Temporarily unavailable — past-paper ownership not implemented
+ * @summary Delete a caller-owned past-paper attempt
  */
 export const useDeletePastPaperAttempt = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePastPaperAttempt>>, TError,{pastPaperAttemptId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1311,9 +1390,10 @@ export const getListExamDatesUrl = () => {
 }
 
 /**
- * Requires Bearer auth. Returns [] without querying exam_dates.
- * Does not expose global exam-date rows.
- * @summary Authenticated empty list — exam-date ownership not implemented
+ * Returns only caller-owned exam dates in chronological order
+ * (date ASC, id ASC), with subject display fields enriched from the
+ * shared catalogue.
+ * @summary List the authenticated user's exam dates
  */
 export const listExamDates = async ( options?: RequestInit): Promise<ExamDate[]> => {
 
@@ -1360,7 +1440,7 @@ export type ListExamDatesQueryError = ErrorType<ErrorMessage>
 
 
 /**
- * @summary Authenticated empty list — exam-date ownership not implemented
+ * @summary List the authenticated user's exam dates
  */
 
 export function useListExamDates<TData = Awaited<ReturnType<typeof listExamDates>>, TError = ErrorType<ErrorMessage>>(
@@ -1390,13 +1470,14 @@ export const getCreateExamDateUrl = () => {
 }
 
 /**
- * No insert is performed. Requires Bearer auth.
- * @deprecated
- * @summary Temporarily unavailable — exam-date ownership not implemented
+ * Ownership is derived from the verified Bearer token. Ownership fields
+ * in the request body (userId, user_id, ownerId, owner_id) are rejected.
+ * PATCH/UPDATE is out of scope.
+ * @summary Create a caller-owned exam date
  */
-export const createExamDate = async (examDateInput: ExamDateInput, options?: RequestInit): Promise<unknown> => {
+export const createExamDate = async (examDateInput: ExamDateInput, options?: RequestInit): Promise<ExamDate> => {
 
-  return customFetch<unknown>(getCreateExamDateUrl(),
+  return customFetch<ExamDate>(getCreateExamDateUrl(),
   {
     ...options,
     method: 'POST',
@@ -1441,8 +1522,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateExamDateMutationError = ErrorType<ErrorMessage>
 
     /**
- * @deprecated
- * @summary Temporarily unavailable — exam-date ownership not implemented
+ * @summary Create a caller-owned exam date
  */
 export const useCreateExamDate = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createExamDate>>, TError,{data: BodyType<ExamDateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1464,13 +1544,12 @@ export const getDeleteExamDateUrl = (examDateId: number,) => {
 }
 
 /**
- * No delete is performed. Requires Bearer auth.
- * @deprecated
- * @summary Temporarily unavailable — exam-date ownership not implemented
+ * Foreign-owned and missing IDs both return 404.
+ * @summary Delete a caller-owned exam date
  */
-export const deleteExamDate = async (examDateId: number, options?: RequestInit): Promise<unknown> => {
+export const deleteExamDate = async (examDateId: number, options?: RequestInit): Promise<void> => {
 
-  return customFetch<unknown>(getDeleteExamDateUrl(examDateId),
+  return customFetch<void>(getDeleteExamDateUrl(examDateId),
   {
     ...options,
     method: 'DELETE'
@@ -1515,8 +1594,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeleteExamDateMutationError = ErrorType<ErrorMessage>
 
     /**
- * @deprecated
- * @summary Temporarily unavailable — exam-date ownership not implemented
+ * @summary Delete a caller-owned exam date
  */
 export const useDeleteExamDate = <TError = ErrorType<ErrorMessage>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteExamDate>>, TError,{examDateId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1527,6 +1605,157 @@ export const useDeleteExamDate = <TError = ErrorType<ErrorMessage>,
         TContext
       > => {
       return useMutation(getDeleteExamDateMutationOptions(options));
+    }
+
+export const getListCurrentUserSubjectsUrl = () => {
+
+
+
+
+  return `/api/user-subjects`
+}
+
+/**
+ * Returns only the caller's durable memberships with shared metadata-only subject references.
+ * @summary List the authenticated user's selected subjects
+ */
+export const listCurrentUserSubjects = async ( options?: RequestInit): Promise<UserSubjectMembership[]> => {
+
+  return customFetch<UserSubjectMembership[]>(getListCurrentUserSubjectsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCurrentUserSubjectsQueryKey = () => {
+    return [
+    `/api/user-subjects`
+    ] as const;
+    }
+
+
+export const getListCurrentUserSubjectsQueryOptions = <TData = Awaited<ReturnType<typeof listCurrentUserSubjects>>, TError = ErrorType<ErrorMessage>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCurrentUserSubjects>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCurrentUserSubjectsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCurrentUserSubjects>>> = ({ signal }) => listCurrentUserSubjects({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCurrentUserSubjects>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCurrentUserSubjectsQueryResult = NonNullable<Awaited<ReturnType<typeof listCurrentUserSubjects>>>
+export type ListCurrentUserSubjectsQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary List the authenticated user's selected subjects
+ */
+
+export function useListCurrentUserSubjects<TData = Awaited<ReturnType<typeof listCurrentUserSubjects>>, TError = ErrorType<ErrorMessage>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCurrentUserSubjects>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCurrentUserSubjectsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReplaceCurrentUserSubjectsUrl = () => {
+
+
+
+
+  return `/api/user-subjects`
+}
+
+/**
+ * Replaces the caller's membership set with 1–5 distinct catalogue subjects.
+ * Existing tasks and other owned activity are not deleted.
+ * @summary Atomically replace the authenticated user's selected subjects
+ */
+export const replaceCurrentUserSubjects = async (userSubjectSelectionInput: UserSubjectSelectionInput, options?: RequestInit): Promise<UserSubjectMembership[]> => {
+
+  return customFetch<UserSubjectMembership[]>(getReplaceCurrentUserSubjectsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(userSubjectSelectionInput)
+  }
+);}
+
+
+
+
+
+export const getReplaceCurrentUserSubjectsMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceCurrentUserSubjects>>, TError,{data: BodyType<UserSubjectSelectionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof replaceCurrentUserSubjects>>, TError,{data: BodyType<UserSubjectSelectionInput>}, TContext> => {
+
+const mutationKey = ['replaceCurrentUserSubjects'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof replaceCurrentUserSubjects>>, {data: BodyType<UserSubjectSelectionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  replaceCurrentUserSubjects(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReplaceCurrentUserSubjectsMutationResult = NonNullable<Awaited<ReturnType<typeof replaceCurrentUserSubjects>>>
+    export type ReplaceCurrentUserSubjectsMutationBody = BodyType<UserSubjectSelectionInput>
+    export type ReplaceCurrentUserSubjectsMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary Atomically replace the authenticated user's selected subjects
+ */
+export const useReplaceCurrentUserSubjects = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceCurrentUserSubjects>>, TError,{data: BodyType<UserSubjectSelectionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof replaceCurrentUserSubjects>>,
+        TError,
+        {data: BodyType<UserSubjectSelectionInput>},
+        TContext
+      > => {
+      return useMutation(getReplaceCurrentUserSubjectsMutationOptions(options));
     }
 
 export const getGetCurrentProfileUrl = () => {
@@ -1688,9 +1917,9 @@ export const getCompleteCurrentUserOnboardingUrl = () => {
 }
 
 /**
- * Sets username and onboarded_at and creates one starter task per selected
- * subject (1–3) via lockdin_complete_onboarding. Idempotent when retried
- * with the same username after success.
+ * Sets username and onboarded_at, persists durable membership, and creates
+ * one starter task per selected subject (1–5) via lockdin_complete_onboarding.
+ * Idempotent when retried with the same username after success.
  * @summary Complete onboarding atomically for the authenticated user
  */
 export const completeCurrentUserOnboarding = async (completeOnboardingInput: CompleteOnboardingInput, options?: RequestInit): Promise<Profile> => {
@@ -1762,9 +1991,11 @@ export const getGetDashboardSummaryUrl = () => {
 }
 
 /**
- * Task metrics are Auth-scoped. subjectProgressSummary.syllabusProgress is
- * always 0 (neutral placeholder). recentPerformance and upcomingExams are
- * empty until past-paper/exam ownership exists.
+ * The profile name, tasks, memberships, topic progress, paper performance,
+ * and exam dates are scoped to the authenticated caller. subjectProgressSummary
+ * contains only current memberships and uses the same topic-completion formula
+ * as progress overview. upcomingExams includes dates >= today in chronological
+ * order with no API upper window; the Dashboard UI caps display at 4.
  * @summary Get dashboard overview for the authenticated user
  */
 export const getDashboardSummary = async ( options?: RequestInit): Promise<DashboardSummary> => {
@@ -1842,8 +2073,9 @@ export const getGetProgressOverviewUrl = () => {
 }
 
 /**
- * Task completion metrics are Auth-scoped. Syllabus completion fields are
- * neutral placeholders (0). Past-paper totals are 0 until ownership exists.
+ * Task completion metrics are Auth-scoped. Syllabus completion is computed
+ * from the caller's topic_progress against enrolled subjects' topic counts.
+ * Past-paper totals count only the caller's owned attempts.
  * @summary Get progress analytics for the authenticated user
  */
 export const getProgressOverview = async ( options?: RequestInit): Promise<ProgressOverview> => {

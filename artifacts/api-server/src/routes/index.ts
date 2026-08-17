@@ -8,6 +8,7 @@ import examDatesRouter from "./examDates";
 import dashboardRouter from "./dashboard";
 import progressRouter from "./progress";
 import profileRouter from "./profile";
+import userSubjectsRouter from "./user-subjects";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(examDatesRouter);
 router.use(dashboardRouter);
 router.use(progressRouter);
 router.use(profileRouter);
+router.use(userSubjectsRouter);
 
 export default router;

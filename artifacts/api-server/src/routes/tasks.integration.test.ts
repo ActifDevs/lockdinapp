@@ -12,10 +12,16 @@ import { createClient } from "@supabase/supabase-js";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { FEATURE_TEMPORARILY_UNAVAILABLE } from "../lib/feature-quarantine";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../../..");
+const supabaseCliScript = path.join(
+  repoRoot,
+  "node_modules",
+  "supabase",
+  "dist",
+  "supabase.js",
+);
 
 const LOOPBACK_HOSTNAMES = new Set([
   "localhost",
@@ -45,7 +51,7 @@ function loadLocalSupabaseEnv(): {
 } {
   let raw: string;
   try {
-    raw = execFileSync("pnpm", ["exec", "supabase", "status", "-o", "json"], {
+    raw = execFileSync(process.execPath, [supabaseCliScript, "status", "-o", "json"], {
       cwd: repoRoot,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
@@ -448,7 +454,12 @@ describe("two-user local Supabase task isolation (exact)", () => {
     const del = await request(app).delete(`/api/subjects/${subjectId}`);
     expect(del.status).toBe(403);
 
-    const perf = await request(app).get(`/api/subjects/${subjectId}/performance`);
+    const anonymousPerf = await request(app).get(`/api/subjects/${subjectId}/performance`);
+    expect(anonymousPerf.status).toBe(401);
+
+    const perf = await request(app)
+      .get(`/api/subjects/${subjectId}/performance`)
+      .set("Authorization", `Bearer ${tokenA}`);
     expect(perf.status).toBe(200);
     expect(perf.body.papersCompleted).toBe(0);
     expect(perf.body.latestScore).toBeNull();
@@ -465,59 +476,32 @@ describe("two-user local Supabase task isolation (exact)", () => {
     }
   });
 
-  it("unowned features are quarantined with safe placeholders", async () => {
+  it("keeps topic progress owned while exam-date ownership is covered separately", async () => {
     const anonPast = await request(app).get("/api/past-paper-attempts");
     expect(anonPast.status).toBe(401);
-
-    const pastGet = await request(app)
-      .get("/api/past-paper-attempts")
-      .set("Authorization", `Bearer ${tokenA}`);
-    expect(pastGet.status).toBe(200);
-    expect(pastGet.body).toEqual([]);
-
-    const pastPost = await request(app)
-      .post("/api/past-paper-attempts")
-      .set("Authorization", `Bearer ${tokenA}`)
-      .send({
-        subjectId,
-        componentId: 1,
-        session: "May/June",
-        score: 50,
-        totalMarks: 100,
-        dateAttempted: today,
-      });
-    expect(pastPost.status).toBe(503);
-    expect(pastPost.body.error).toBe(FEATURE_TEMPORARILY_UNAVAILABLE);
-
-    const pastDel = await request(app)
-      .delete("/api/past-paper-attempts/1")
-      .set("Authorization", `Bearer ${tokenA}`);
-    expect(pastDel.status).toBe(503);
 
     const examGet = await request(app)
       .get("/api/exam-dates")
       .set("Authorization", `Bearer ${tokenA}`);
     expect(examGet.status).toBe(200);
-    expect(examGet.body).toEqual([]);
-
-    const examPost = await request(app)
-      .post("/api/exam-dates")
-      .set("Authorization", `Bearer ${tokenA}`)
-      .send({ subjectId, paperCode: "P1", date: today });
-    expect(examPost.status).toBe(503);
-    expect(examPost.body.error).toBe(FEATURE_TEMPORARILY_UNAVAILABLE);
-
-    const examDel = await request(app)
-      .delete("/api/exam-dates/1")
-      .set("Authorization", `Bearer ${tokenA}`);
-    expect(examDel.status).toBe(503);
+    expect(Array.isArray(examGet.body)).toBe(true);
 
     const patchTopicId = topicId ?? 1;
     const topicPatch = await request(app)
       .patch(`/api/syllabus-topics/${patchTopicId}`)
-      .send({ status: "completed", notes: "should not persist" });
-    expect(topicPatch.status).toBe(503);
-    expect(topicPatch.body.error).toBe(FEATURE_TEMPORARILY_UNAVAILABLE);
+      .set("Authorization", `Bearer ${tokenA}`)
+      .send({ status: "completed", notes: "owned progress" });
+    expect(topicPatch.status).toBe(200);
+    expect(topicPatch.body).toEqual({
+      topicId: patchTopicId,
+      status: "completed",
+      notes: "owned progress",
+    });
+
+    const topicReset = await request(app)
+      .delete(`/api/syllabus-topics/${patchTopicId}`)
+      .set("Authorization", `Bearer ${tokenA}`);
+    expect(topicReset.status).toBe(204);
   });
 
   it("concurrent A/B requests do not exchange bearer context", async () => {

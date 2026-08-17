@@ -20,31 +20,21 @@ import {
   ListAssessmentComponentsParams,
   ListAssessmentComponentsResponse,
 } from "@workspace/api-zod";
-import { temporarilyUnavailableBody } from "../lib/feature-quarantine";
+import { catalogueEnrichment } from "../lib/catalogue-subject";
+import { optionalAuth } from "../middlewares/optional-auth";
+import { requireAuth } from "../middlewares/require-auth";
+import { createUserScopedSupabaseClient } from "../lib/supabase-user-client";
+import {
+  listCallerTopicProgress,
+  progressMapFromRows,
+} from "../lib/topic-progress";
+import { sendSupabaseError } from "../lib/supabase-errors";
+import {
+  enrichPastPaperRows,
+  listUserPastPaperRows,
+} from "../lib/past-paper-attempts";
 
 const router: IRouter = Router();
-
-/**
- * Shared subject catalogue — public and read-only.
- *
- * Subjects are importer/admin-managed reference data. Ordinary users must not
- * create or delete catalogue rows. Syllabus topic status/notes are shared
- * student-progress fields and are NOT treated as per-user data: catalogue
- * responses use neutral placeholders (progress 0, status not_started, notes null).
- */
-function catalogueEnrichment(subject: typeof subjectsTable.$inferSelect, topicsTotal: number) {
-  return {
-    ...subject,
-    // Neutral placeholders — do not derive from shared syllabus_topics.status.
-    syllabusProgress: 0,
-    topicsTotal,
-    topicsCompleted: 0,
-    topicsInProgress: 0,
-    upcomingTasksCount: 0,
-    recentPaperScore: null,
-    recentPaperLabel: null,
-  };
-}
 
 /**
  * Reference columns only. Hosted DB no longer has syllabus_topics.status/notes;
@@ -58,9 +48,19 @@ const syllabusTopicReferenceColumns = {
   orderIndex: syllabusTopicsTable.orderIndex,
 } as const;
 
+/**
+ * Shared subject catalogue — public and read-only.
+ *
+ * Subjects are importer/admin-managed reference data. Ordinary users must not
+ * create or delete catalogue rows. List/detail catalogue enrichment remains
+ * neutral for syllabusProgress until a dedicated owned-progress merge is added
+ * on those endpoints; caller topic progress is merged only on the syllabus GET.
+ */
 router.get("/subjects", async (_req, res): Promise<void> => {
   const subjects = await db.select().from(subjectsTable).orderBy(subjectsTable.id);
 
+  // Count-only projection: catalogue list needs topicsTotal, not topic rows.
+  // Avoid selecting legacy/shared progress columns that pre-Slice-2B code assumed.
   const topicCounts = await db
     .select({ subjectId: syllabusTopicsTable.subjectId })
     .from(syllabusTopicsTable);
@@ -124,63 +124,86 @@ router.delete("/subjects/:subjectId", async (_req, res): Promise<void> => {
   });
 });
 
-router.get("/subjects/:subjectId/syllabus", async (req, res): Promise<void> => {
-  const params = GetSubjectSyllabusParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+router.get(
+  "/subjects/:subjectId/syllabus",
+  optionalAuth,
+  async (req, res): Promise<void> => {
+    const params = GetSubjectSyllabusParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
 
-  const units = await db
-    .select()
-    .from(syllabusUnitsTable)
-    .where(eq(syllabusUnitsTable.subjectId, params.data.subjectId))
-    .orderBy(syllabusUnitsTable.orderIndex);
+    const units = await db
+      .select()
+      .from(syllabusUnitsTable)
+      .where(eq(syllabusUnitsTable.subjectId, params.data.subjectId))
+      .orderBy(syllabusUnitsTable.orderIndex);
 
-  const unitIds = units.map((u) => u.id);
-  const topics = unitIds.length
-    ? await db
-        .select(syllabusTopicReferenceColumns)
-        .from(syllabusTopicsTable)
-        .where(inArray(syllabusTopicsTable.unitId, unitIds))
-        .orderBy(syllabusTopicsTable.orderIndex)
-    : [];
+    const unitIds = units.map((u) => u.id);
+    const topics = unitIds.length
+      ? await db
+          .select(syllabusTopicReferenceColumns)
+          .from(syllabusTopicsTable)
+          .where(inArray(syllabusTopicsTable.unitId, unitIds))
+          .orderBy(syllabusTopicsTable.orderIndex)
+      : [];
 
-  const topicIds = topics.map((t) => t.id);
-  const outcomes = topicIds.length
-    ? await db
-        .select()
-        .from(syllabusLearningOutcomesTable)
-        .where(inArray(syllabusLearningOutcomesTable.topicId, topicIds))
-        .orderBy(syllabusLearningOutcomesTable.orderIndex)
-    : [];
+    const topicIds = topics.map((t) => t.id);
+    const outcomes = topicIds.length
+      ? await db
+          .select()
+          .from(syllabusLearningOutcomesTable)
+          .where(inArray(syllabusLearningOutcomesTable.topicId, topicIds))
+          .orderBy(syllabusLearningOutcomesTable.orderIndex)
+      : [];
 
-  const outcomesByTopicId = new Map<number, string[]>();
-  for (const outcome of outcomes) {
-    const list = outcomesByTopicId.get(outcome.topicId) ?? [];
-    list.push(outcome.outcome);
-    outcomesByTopicId.set(outcome.topicId, list);
-  }
+    const outcomesByTopicId = new Map<number, string[]>();
+    for (const outcome of outcomes) {
+      const list = outcomesByTopicId.get(outcome.topicId) ?? [];
+      list.push(outcome.outcome);
+      outcomesByTopicId.set(outcome.topicId, list);
+    }
 
-  // Neutral placeholders — do not read status/notes from the DB row.
-  const result = units.map((unit) => ({
-    ...unit,
-    topics: topics
-      .filter((t) => t.unitId === unit.id)
-      .map((topic) => ({
-        id: topic.id,
-        unitId: topic.unitId,
-        subjectId: topic.subjectId,
-        title: topic.title,
-        orderIndex: topic.orderIndex,
-        status: "not_started" as const,
-        notes: null,
-        learningOutcomes: outcomesByTopicId.get(topic.id) ?? [],
-      })),
-  }));
+    let progressByTopicId = new Map<
+      number,
+      { status: "not_started" | "in_progress" | "completed"; notes: string | null }
+    >();
 
-  res.json(GetSubjectSyllabusResponse.parse(result));
-});
+    if (req.accessToken && topicIds.length > 0) {
+      const client = createUserScopedSupabaseClient(req.accessToken);
+      const { data, error } = await listCallerTopicProgress(client, topicIds);
+      if (error) {
+        sendSupabaseError(res, error, "subject_syllabus_topic_progress");
+        return;
+      }
+      progressByTopicId = progressMapFromRows(data);
+    }
+
+    // Reconstruct field-by-field (never spread the DB row). Merge caller
+    // topic_progress when authenticated; missing rows default to not_started / null.
+    const result = units.map((unit) => ({
+      ...unit,
+      topics: topics
+        .filter((t) => t.unitId === unit.id)
+        .map((topic) => {
+          const progress = progressByTopicId.get(topic.id);
+          return {
+            id: topic.id,
+            unitId: topic.unitId,
+            subjectId: topic.subjectId,
+            title: topic.title,
+            orderIndex: topic.orderIndex,
+            status: progress?.status ?? ("not_started" as const),
+            notes: progress?.notes ?? null,
+            learningOutcomes: outcomesByTopicId.get(topic.id) ?? [],
+          };
+        }),
+    }));
+
+    res.json(GetSubjectSyllabusResponse.parse(result));
+  },
+);
 
 router.get("/subjects/:subjectId/assessment-components", async (req, res): Promise<void> => {
   const params = ListAssessmentComponentsParams.safeParse(req.params);
@@ -217,11 +240,7 @@ router.get("/subjects/:subjectId/assessment-components", async (req, res): Promi
   );
 });
 
-/**
- * Quarantined: past_paper_attempts are not multi-tenant yet.
- * No query of pastPaperAttemptsTable. Contract-safe empty performance payload.
- */
-router.get("/subjects/:subjectId/performance", async (req, res): Promise<void> => {
+router.get("/subjects/:subjectId/performance", requireAuth, async (req, res): Promise<void> => {
   const params = GetSubjectPerformanceParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -238,17 +257,65 @@ router.get("/subjects/:subjectId/performance", async (req, res): Promise<void> =
     return;
   }
 
-  // Intentionally empty — do not leak global past-paper attempts.
+  const client = createUserScopedSupabaseClient(req.accessToken!);
+  const { data, error } = await listUserPastPaperRows(
+    client,
+    req.userId!,
+    subject.id,
+  );
+  if (error) {
+    sendSupabaseError(res, error, "subject_past_paper_performance");
+    return;
+  }
+
+  const attempts = await enrichPastPaperRows(data);
+  const percentages = attempts.map((attempt) => attempt.percentage);
+  const round = (value: number) => Math.round(value * 10) / 10;
+
+  const componentGroups = new Map<
+    string,
+    {
+      componentId: number | null;
+      componentName: string;
+      latestPercentage: number;
+      attempts: number;
+    }
+  >();
+  for (const attempt of attempts) {
+    const key = attempt.componentId === null ? "removed" : String(attempt.componentId);
+    const existing = componentGroups.get(key);
+    if (existing) {
+      existing.attempts += 1;
+    } else {
+      componentGroups.set(key, {
+        componentId: attempt.componentId,
+        componentName: attempt.componentName ?? "Component removed",
+        latestPercentage: round(attempt.percentage),
+        attempts: 1,
+      });
+    }
+  }
+
   res.json(
     GetSubjectPerformanceResponse.parse({
       subjectId: subject.id,
       subjectName: subject.name,
-      latestScore: null,
-      averageScore: null,
-      bestScore: null,
-      papersCompleted: 0,
-      trend: [],
-      componentBreakdown: [],
+      latestScore: attempts[0] ? round(attempts[0].percentage) : null,
+      averageScore:
+        percentages.length > 0
+          ? round(percentages.reduce((sum, value) => sum + value, 0) / percentages.length)
+          : null,
+      bestScore: percentages.length > 0 ? round(Math.max(...percentages)) : null,
+      papersCompleted: attempts.length,
+      trend: attempts
+        .slice()
+        .reverse()
+        .map((attempt) => ({
+          label: `${attempt.session} ${attempt.year}`,
+          percentage: round(attempt.percentage),
+          session: attempt.session,
+        })),
+      componentBreakdown: [...componentGroups.values()],
       insight: null,
     }),
   );

@@ -217,7 +217,7 @@ router.post("/profile/complete-onboarding", requireAuth, async (req, res): Promi
   if (
     !Array.isArray(subjectIds) ||
     subjectIds.length < 1 ||
-    subjectIds.length > 3 ||
+    subjectIds.length > 5 ||
     new Set(subjectIds).size !== subjectIds.length ||
     subjectIds.some((id) => !Number.isInteger(id) || id < 1)
   ) {

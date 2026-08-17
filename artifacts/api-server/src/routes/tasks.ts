@@ -15,6 +15,7 @@ import { mapTaskRow, type TaskRow } from "../lib/task-row";
 import { enrichTask, enrichTasks } from "../lib/enrich-task";
 import { listUserTaskRows, mappedUserTasks } from "../lib/user-tasks";
 import { sendSupabaseError } from "../lib/supabase-errors";
+import { hasOwnershipField } from "../lib/topic-progress";
 
 const router: IRouter = Router();
 
@@ -31,7 +32,7 @@ router.get("/tasks", requireAuth, async (req, res): Promise<void> => {
 
   const { data: rows, error } = await listUserTaskRows(client, userId);
   if (error) {
-    sendSupabaseError(res, error, "list_tasks");
+    sendSupabaseError(res, error, "list_tasks", "Task");
     return;
   }
 
@@ -56,11 +57,10 @@ router.get("/tasks", requireAuth, async (req, res): Promise<void> => {
 
 router.post("/tasks", requireAuth, async (req, res): Promise<void> => {
   // Reject client-supplied ownership even if Zod would strip unknown keys.
-  if (
-    Object.prototype.hasOwnProperty.call(req.body ?? {}, "userId") ||
-    Object.prototype.hasOwnProperty.call(req.body ?? {}, "user_id")
-  ) {
-    res.status(400).json({ error: "userId is not allowed in the request body" });
+  if (hasOwnershipField(req.body)) {
+    res
+      .status(400)
+      .json({ error: "Ownership fields are not allowed in the request body" });
     return;
   }
 
@@ -94,7 +94,12 @@ router.post("/tasks", requireAuth, async (req, res): Promise<void> => {
     .single();
 
   if (error || !data) {
-    sendSupabaseError(res, error ?? { code: "PGRST116" }, "create_task");
+    sendSupabaseError(
+      res,
+      error ?? { code: "PGRST116" },
+      "create_task",
+      "Task",
+    );
     return;
   }
 
@@ -114,11 +119,10 @@ router.patch("/tasks/:taskId", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  if (
-    Object.prototype.hasOwnProperty.call(req.body ?? {}, "userId") ||
-    Object.prototype.hasOwnProperty.call(req.body ?? {}, "user_id")
-  ) {
-    res.status(400).json({ error: "userId is not allowed in the request body" });
+  if (hasOwnershipField(req.body)) {
+    res
+      .status(400)
+      .json({ error: "Ownership fields are not allowed in the request body" });
     return;
   }
 
@@ -134,14 +138,18 @@ router.patch("/tasks/:taskId", requireAuth, async (req, res): Promise<void> => {
 
   const updateData: Record<string, unknown> = {};
   if (body.data.title !== undefined) updateData.title = body.data.title;
-  if (body.data.deadline !== undefined) updateData.deadline = body.data.deadline;
-  if (body.data.priority !== undefined) updateData.priority = body.data.priority;
+  if (body.data.deadline !== undefined)
+    updateData.deadline = body.data.deadline;
+  if (body.data.priority !== undefined)
+    updateData.priority = body.data.priority;
   if (body.data.estimatedMinutes !== undefined) {
     updateData.estimated_minutes = body.data.estimatedMinutes;
   }
   if (body.data.completed !== undefined) {
     updateData.completed = body.data.completed;
-    updateData.completed_at = body.data.completed ? new Date().toISOString() : null;
+    updateData.completed_at = body.data.completed
+      ? new Date().toISOString()
+      : null;
   }
 
   const { data, error } = await client
@@ -155,7 +163,7 @@ router.patch("/tasks/:taskId", requireAuth, async (req, res): Promise<void> => {
     .maybeSingle();
 
   if (error) {
-    sendSupabaseError(res, error, "update_task");
+    sendSupabaseError(res, error, "update_task", "Task");
     return;
   }
 
@@ -168,36 +176,40 @@ router.patch("/tasks/:taskId", requireAuth, async (req, res): Promise<void> => {
   res.json(UpdateTaskResponse.parse(enriched));
 });
 
-router.delete("/tasks/:taskId", requireAuth, async (req, res): Promise<void> => {
-  const params = DeleteTaskParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+router.delete(
+  "/tasks/:taskId",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = DeleteTaskParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
 
-  const userId = req.userId!;
-  const accessToken = req.accessToken!;
-  const client = createUserScopedSupabaseClient(accessToken);
+    const userId = req.userId!;
+    const accessToken = req.accessToken!;
+    const client = createUserScopedSupabaseClient(accessToken);
 
-  const { data, error } = await client
-    .from("tasks")
-    .delete()
-    .eq("id", params.data.taskId)
-    .eq("user_id", userId)
-    .select("id")
-    .maybeSingle();
+    const { data, error } = await client
+      .from("tasks")
+      .delete()
+      .eq("id", params.data.taskId)
+      .eq("user_id", userId)
+      .select("id")
+      .maybeSingle();
 
-  if (error) {
-    sendSupabaseError(res, error, "delete_task");
-    return;
-  }
+    if (error) {
+      sendSupabaseError(res, error, "delete_task", "Task");
+      return;
+    }
 
-  if (!data) {
-    res.status(404).json({ error: "Task not found" });
-    return;
-  }
+    if (!data) {
+      res.status(404).json({ error: "Task not found" });
+      return;
+    }
 
-  res.sendStatus(204);
-});
+    res.sendStatus(204);
+  },
+);
 
 export default router;

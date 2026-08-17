@@ -8,6 +8,7 @@ Timestamped technical snapshots documenting the project state at specific points
 
 | Checkpoint | Date & Time | Commit | Summary |
 |------------|-------------|--------|---------|
+| [2026-08-17_0832](./checkpoints/2026-08-17_0832/2026-08-17_0832_CURRENT_STATE.md) | 17 Aug 2026 08:32 | `0f34c77` | Phase 3 multi-tenancy final closeout — implementation and hosted E2E complete on integration branch; main merge pending |
 | [2026-08-07_1118](./checkpoints/2026-08-07_1118/2026-08-07_1118_CURRENT_STATE.md) | 07 Aug 2026 11:18 | `7d7cedb` | Phase 2 Technical Closeout — Supabase Auth, User Tasks & RLS verified, merged into main |
 | [2026-07-30_2314](./checkpoints/2026-07-30_2314/2026-07-30_2314_CURRENT_STATE.md) | 30 Jul 2026 23:14 | `bc3f90f` | Phase 1 reference-data verification checkpoint |
 | [2026-07-29_0156](./checkpoints/2026-07-29_0156/2026-07-29_0156_CURRENT_STATE.md) | 29 Jul 2026 01:56 | `3af194a` | Phase 0 verified — live Supabase schema (hand-bootstrap = migrate succeeded), syllabus import idempotent, `/api/subjects` DB-backed |

@@ -30,7 +30,7 @@ export interface CompleteOnboardingInput {
   examSession: string;
   /**
      * @minItems 1
-     * @maxItems 3
+     * @maxItems 5
      * @items.minimum 1
      */
   subjectIds: number[];

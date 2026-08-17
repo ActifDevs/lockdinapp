@@ -69,12 +69,23 @@ describe("auth pages wiring", () => {
     expect(src).not.toMatch(/createTask/);
     expect(src).not.toMatch(/SUBJECT_CATALOG/);
     expect(src).toMatch(/subjectIds:\s*selectedIds/);
+    expect(src).toMatch(/subjectsError/);
+    expect(src).toMatch(/refetchSubjects/);
+    expect(src).toMatch(/couldn’t load the subject catalogue/i);
   });
 
-  it("settings removes subject create/delete controls", () => {
+  it("settings manages durable membership without catalogue writes", () => {
     const src = readPage("settings.tsx");
     expect(src).not.toMatch(/useCreateSubject/);
     expect(src).not.toMatch(/useDeleteSubject/);
-    expect(src).toMatch(/shared Cambridge catalogue/);
+    expect(src).toMatch(/useListCurrentUserSubjects/);
+    expect(src).toMatch(/useReplaceCurrentUserSubjects/);
+    expect(src).toMatch(/Selected \{selectedSubjectIds\.length\} \/ 5/);
+  });
+
+  it("My Subjects uses durable membership rather than the full catalogue", () => {
+    const src = readPage("subjects.tsx");
+    expect(src).toMatch(/useListCurrentUserSubjects/);
+    expect(src).not.toMatch(/useListSubjects/);
   });
 });

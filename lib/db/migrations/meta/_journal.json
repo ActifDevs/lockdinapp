@@ -29,6 +29,48 @@
       "when": 1785690212772,
       "tag": "0003_stormy_mongu",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786108276313,
+      "tag": "0004_colossal_pixie",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786112424076,
+      "tag": "0005_restrict_user_subject_writes",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786296025143,
+      "tag": "0006_slippery_squirrel_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786302770787,
+      "tag": "0007_eager_squadron_supreme",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786394449630,
+      "tag": "0008_uneven_mojo",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786547274449,
+      "tag": "0009_dear_mathemanic",
+      "breakpoints": true
     }
   ]
 }

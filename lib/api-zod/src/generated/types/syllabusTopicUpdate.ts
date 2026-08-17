@@ -8,6 +8,10 @@
 import type { SyllabusTopicUpdateStatus } from './syllabusTopicUpdateStatus';
 
 export interface SyllabusTopicUpdate {
-  status?: SyllabusTopicUpdateStatus;
-  notes?: string;
+  status: SyllabusTopicUpdateStatus;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
 }

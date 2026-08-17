@@ -2,36 +2,9 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 
-/**
- * Empty thenable query chain that matches the subset of the Drizzle builder
- * used by dashboard.ts (select/from/where/orderBy).
- */
-function emptyQuery() {
-  const result: never[] = [];
-  const api: Record<string, unknown> = {
-    where: () => api,
-    orderBy: () => api,
-    limit: () => api,
-    then: (onFulfilled: (v: never[]) => unknown, onRejected?: (e: unknown) => unknown) =>
-      Promise.resolve(result).then(onFulfilled, onRejected),
-    catch: (onRejected: (e: unknown) => unknown) => Promise.resolve(result).catch(onRejected),
-    finally: (onFinally: () => void) => Promise.resolve(result).finally(onFinally),
-  };
-  return api;
-}
-
-vi.mock("@workspace/db", () => {
-  const db = {
-    select: () => ({
-      from: () => emptyQuery(),
-    }),
-  };
-  return {
-    db,
-    subjectsTable: {},
-    syllabusTopicsTable: {},
-  };
-});
+const profileName = vi.hoisted(() => ({
+  value: "Ada Student" as string | null,
+}));
 
 vi.mock("../middlewares/require-auth.js", () => ({
   requireAuth: (
@@ -46,7 +19,42 @@ vi.mock("../middlewares/require-auth.js", () => ({
 }));
 
 vi.mock("../lib/supabase-user-client.js", () => ({
-  createUserScopedSupabaseClient: () => ({}),
+  createUserScopedSupabaseClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => ({
+            data: { full_name: profileName.value },
+            error: null,
+          }),
+        }),
+      }),
+    }),
+  }),
+}));
+
+vi.mock("../lib/user-subject-progress.js", () => ({
+  getUserSubjectProgress: async () => ({
+    data: {
+      syllabusCompletion: [
+        {
+          subjectId: 2,
+          subjectName: "Chemistry",
+          subjectColor: "#222222",
+          syllabusProgress: 75,
+        },
+        {
+          subjectId: 1,
+          subjectName: "Physics",
+          subjectColor: "#111111",
+          syllabusProgress: 25,
+        },
+      ],
+      overallSyllabusProgress: 50,
+    },
+    error: null,
+    context: null,
+  }),
 }));
 
 vi.mock("../lib/user-tasks.js", () => ({
@@ -58,6 +66,17 @@ vi.mock("../lib/enrich-task.js", () => ({
   enrichTasks: async () => [],
 }));
 
+vi.mock("../lib/past-paper-attempts.js", () => ({
+  listUserPastPaperRows: async () => ({ data: [], error: null }),
+  enrichPastPaperRows: async () => [],
+}));
+
+vi.mock("../lib/exam-dates.js", () => ({
+  listUserExamDateRows: async () => ({ data: [], error: null }),
+  filterUpcomingExamRows: () => [],
+  enrichExamDateRows: async () => [],
+}));
+
 describe("GET /api/dashboard/summary — empty / new-user DB", () => {
   let app: express.Express;
 
@@ -67,20 +86,43 @@ describe("GET /api/dashboard/summary — empty / new-user DB", () => {
     app.use("/api", dashboardRouter);
   });
 
-  it("returns 200 with an empty dashboard payload (no subjects/tasks/exams/papers)", async () => {
+  it("falls back to Student only when the caller profile name is null", async () => {
+    profileName.value = null;
+    const response = await request(app)
+      .get("/api/dashboard/summary")
+      .set("Authorization", "Bearer test-token");
+    expect(response.status).toBe(200);
+    expect(response.body.studentName).toBe("Student");
+    profileName.value = "Ada Student";
+  });
+
+  it("returns the profile name and real membership-scoped progress", async () => {
     const res = await request(app)
       .get("/api/dashboard/summary")
       .set("Authorization", "Bearer test-token");
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
-      studentName: "Student",
+      studentName: "Ada Student",
       studyStreakDays: 0,
       todayTasksTotal: 0,
       todayTasksCompleted: 0,
       todayTasks: [],
       upcomingDeadlines: [],
-      subjectProgressSummary: [],
+      subjectProgressSummary: [
+        {
+          subjectId: 2,
+          subjectName: "Chemistry",
+          subjectColor: "#222222",
+          syllabusProgress: 75,
+        },
+        {
+          subjectId: 1,
+          subjectName: "Physics",
+          subjectColor: "#111111",
+          syllabusProgress: 25,
+        },
+      ],
       recentPerformance: [],
       upcomingExams: [],
     });

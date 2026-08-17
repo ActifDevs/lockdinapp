@@ -7,7 +7,7 @@
  */
 
 /**
- * Neutral placeholder; always not_started in catalogue responses
+ * Caller-owned progress status; defaults to not_started
  */
 export type SyllabusTopicStatus = typeof SyllabusTopicStatus[keyof typeof SyllabusTopicStatus];
 

@@ -7,8 +7,8 @@
  */
 
 /**
- * Shared catalogue subject. Progress, task-count, and past-paper fields are
- * neutral placeholders until per-user ownership exists for those features.
+ * Shared catalogue subject. User-specific progress, task-count, and past-paper
+ * fields remain neutral placeholders on this public catalogue response.
  */
 export interface Subject {
   id: number;
@@ -26,12 +26,12 @@ export interface Subject {
   /** Neutral placeholder; always 0 (not user-task derived) */
   upcomingTasksCount: number;
   /**
-     * Neutral placeholder; always null until past-paper ownership
+     * Neutral placeholder; always null on shared catalogue responses
      * @nullable
      */
   recentPaperScore: number | null;
   /**
-     * Neutral placeholder; always null until past-paper ownership
+     * Neutral placeholder; always null on shared catalogue responses
      * @nullable
      */
   recentPaperLabel: string | null;

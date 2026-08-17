@@ -8,18 +8,19 @@
 import type { SyllabusTopicStatus } from './syllabusTopicStatus';
 
 /**
- * Shared syllabus topic reference. status is always presented as not_started
- * and notes as null — stored shared progress fields are not exposed as user data.
+ * Shared syllabus topic reference with caller-owned progress fields merged
+ * when authenticated. Missing topic_progress rows default to not_started
+ * and null notes. Progress fields come from topic_progress only.
  */
 export interface SyllabusTopic {
   id: number;
   unitId: number;
   subjectId: number;
   title: string;
-  /** Neutral placeholder; always not_started in catalogue responses */
+  /** Caller-owned progress status; defaults to not_started */
   status: SyllabusTopicStatus;
   /**
-     * Neutral placeholder; always null in catalogue responses
+     * Caller-owned notes; defaults to null
      * @nullable
      */
   notes: string | null;

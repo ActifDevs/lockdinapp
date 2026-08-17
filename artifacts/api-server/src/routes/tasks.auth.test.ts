@@ -56,48 +56,53 @@ describe("tasks auth contract", () => {
     expect(res.body).toEqual({ error: "Unauthorized" });
   });
 
-  it("rejects body userId on create", async () => {
-    getClaims.mockResolvedValue({
-      data: {
-        claims: { sub: "02444f79-c2bb-4596-ae99-d5d6877f1001" },
-      },
-      error: null,
-    });
-
-    const res = await request(app)
-      .post("/api/tasks")
-      .set("Authorization", "Bearer good-token")
-      .send({
-        title: "Owned?",
-        subjectId: 1,
-        priority: "medium",
-        userId: "11111111-1111-1111-1111-111111111111",
+  it.each(["userId", "user_id", "ownerId", "owner_id"])(
+    "rejects body ownership alias %s on create",
+    async (ownershipKey) => {
+      getClaims.mockResolvedValue({
+        data: {
+          claims: { sub: "02444f79-c2bb-4596-ae99-d5d6877f1001" },
+        },
+        error: null,
       });
 
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/userId/i);
-    expect(from).not.toHaveBeenCalled();
-  });
+      const res = await request(app)
+        .post("/api/tasks")
+        .set("Authorization", "Bearer good-token")
+        .send({
+          title: "Owned?",
+          subjectId: 1,
+          priority: "medium",
+          [ownershipKey]: "11111111-1111-1111-1111-111111111111",
+        });
 
-  it("rejects body user_id on create", async () => {
-    getClaims.mockResolvedValue({
-      data: {
-        claims: { sub: "02444f79-c2bb-4596-ae99-d5d6877f1001" },
-      },
-      error: null,
-    });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/ownership/i);
+      expect(from).not.toHaveBeenCalled();
+    },
+  );
 
-    const res = await request(app)
-      .post("/api/tasks")
-      .set("Authorization", "Bearer good-token")
-      .send({
-        title: "Owned?",
-        subjectId: 1,
-        priority: "medium",
-        user_id: "11111111-1111-1111-1111-111111111111",
+  it.each(["userId", "user_id", "ownerId", "owner_id"])(
+    "rejects body ownership alias %s on update",
+    async (ownershipKey) => {
+      getClaims.mockResolvedValue({
+        data: {
+          claims: { sub: "02444f79-c2bb-4596-ae99-d5d6877f1001" },
+        },
+        error: null,
       });
 
-    expect(res.status).toBe(400);
-    expect(from).not.toHaveBeenCalled();
-  });
+      const res = await request(app)
+        .patch("/api/tasks/1")
+        .set("Authorization", "Bearer good-token")
+        .send({
+          completed: true,
+          [ownershipKey]: "11111111-1111-1111-1111-111111111111",
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/ownership/i);
+      expect(from).not.toHaveBeenCalled();
+    },
+  );
 });
