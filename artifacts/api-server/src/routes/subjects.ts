@@ -187,15 +187,18 @@ router.get(
       topics: topics
         .filter((t) => t.unitId === unit.id)
         .map((topic) => {
-          const progress = progressByTopicId.get(topic.id);
+          const progress = progressByTopicId.get(topic.id) ?? {
+            status: "not_started" as const,
+            notes: null,
+          };
           return {
             id: topic.id,
             unitId: topic.unitId,
             subjectId: topic.subjectId,
             title: topic.title,
             orderIndex: topic.orderIndex,
-            status: progress?.status ?? ("not_started" as const),
-            notes: progress?.notes ?? null,
+            status: progress.status,
+            notes: progress.notes,
             learningOutcomes: outcomesByTopicId.get(topic.id) ?? [],
           };
         }),
