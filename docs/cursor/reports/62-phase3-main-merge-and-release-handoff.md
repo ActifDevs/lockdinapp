@@ -55,10 +55,13 @@ PASS (all workspace projects)
 88 PASS (all unit tests)
 
 ### Integration Tests
-SKIPPED - Local Supabase unavailable due to Windows Docker configuration issues
-- `pnpm supabase start` failed with container health check errors
+BLOCKED - Local Supabase environment could not be repaired during this session
+- Attempted Docker volume cleanup and fresh Supabase start
+- Supabase Studio container consistently fails health checks on Windows
 - Integration tests require local Supabase only (per security requirement)
-- This is a validation environment limitation, not a code issue
+- Repository has robust local-only safety guard in `scripts/require-local-supabase.mjs`
+- This is a Windows Docker environment limitation, not a code issue
+- Integration test gate remains incomplete
 
 ### API Build
 PASS (dist/index.mjs 3.2mb, total 8 output files)
@@ -89,22 +92,38 @@ NO
 ## Deployment Automation
 
 ### Vercel Audit Status
-UNCERTAIN - Limited read-only audit completed:
+UNCERTAIN - Partial CLI audit completed but Git integration details unavailable:
 
-**Available evidence:**
-- `artifacts/revision-platform/vercel.json` present with standard Vercel build configuration
-- Historical documentation (Report 29) references previous Vercel project topology:
-  - `actif-devs/lockdinapp` = managed API-only Production
-  - `actif-devs/lockdinapp-web` = intended managed full-stack Production target
-  - Historical unmanaged full-stack: https://lockedin-study.vercel.app
+**Evidence from authenticated Vercel CLI:**
+
+**actif-devs/lockdinapp:**
+- ID: prj_mAJNDRGExffevfYDKc7oj3xowPV6
+- Framework: Express
+- Root Directory: artifacts/api-server
+- Build Command: None
+- Output Directory: None
+- Protection: gitForkProtection: true, ssoProtection enabled
+- Production URL: https://lockdinapp.vercel.app
+- Latest deployments: Multiple Preview deployments visible, one Production deployment from 7d ago
+
+**actif-devs/lockdinapp-web:**
+- ID: prj_yHc7KMBuw3tftu3VC1z5xVs7tr9S
+- Framework: Vite
+- Root Directory: artifacts/revision-platform
+- Build Command: pnpm run build:vercel
+- Output Directory: dist/public
+- Protection: gitForkProtection: true, ssoProtection enabled
+- No Production deployment (shows "--" in Latest Production URL)
+- Latest deployments: Multiple Preview deployments, no Production
 
 **Missing evidence:**
-- No MCP server access available to inspect current Vercel project configurations
-- Cannot verify current Git repo linkage, Production branch settings, or deployment automation rules
+- Git repository linkage configuration not accessible via standard CLI inspect
+- Production branch settings not available through CLI commands used
+- Automatic deployment rules for Git push events not visible in CLI output
 - Cannot confirm whether pushing `main` would trigger automatic Production deployment
 
 **Classification:**
-UNCERTAIN - Cannot definitively prove push safety without direct Vercel project inspection
+UNCERTAIN - Cannot definitively prove push safety without Git integration configuration details
 
 ## Phase 3 State
 
@@ -140,34 +159,71 @@ The next mandatory operation after a successful safe main push is:
 
 **PRIMARY BLOCKER: Vercel Deployment Automation Classification**
 
-- Vercel audit completed as UNCERTAIN due to lack of MCP server access
-- Cannot verify whether pushing `main` would trigger unauthorized Production deployment
+- Vercel CLI audit completed but Git integration details remain inaccessible
+- Cannot verify whether pushing `main` would trigger automatic Production deployment
 - Push cannot proceed until deployment automation is classified as SAFE_TO_PUSH
 
 **SECONDARY BLOCKER: Integration Test Environment**
 
-- Local Supabase start failed due to Windows Docker configuration
+- Local Supabase environment could not be repaired during this session
+- Windows Docker environment causes consistent Supabase Studio container health check failures
 - Integration tests require local Supabase (security requirement)
-- This is an environment limitation, not a code issue
-- Integration tests can be re-run once Docker environment is repaired
+- This is a Windows Docker environment limitation, not a code issue
+- Integration test gate remains incomplete
+
+**Historical Note:**
+The previous validation pass stopped because:
+1. Local Supabase was unavailable for integration testing
+2. Vercel automation could not initially be classified without MCP access
+
+This session attempted to resolve both blockers:
+1. Local Supabase repair attempts continued to fail due to Windows Docker limitations
+2. Vercel CLI inspection provided additional detail but Git integration automation rules remain inaccessible
 
 ## Verdict
 
-**C. PHASE 3 FINAL MAIN VALIDATION BLOCKED — DO NOT PUSH OR DEPLOY**
+**C. PHASE 3 MAIN PUSH STILL BLOCKED — INTEGRATION OR PUSH-SAFETY EVIDENCE INCOMPLETE**
 
 **Reasoning:**
 1. All code validation passed (typecheck, unit tests, builds, regression)
 2. Database state is correct (migrations 0000-0009, 0010 absent)
-3. Vercel deployment automation cannot be classified as SAFE_TO_PUSH without MCP access
-4. Integration tests skipped due to environment limitation (not a code blocker)
+3. Vercel deployment automation cannot be classified as SAFE_TO_PUSH - Git integration rules inaccessible
+4. Integration tests remain blocked due to Windows Docker environment limitations
 5. Push safety cannot be guaranteed
 
 **Required before push:**
-1. Establish MCP server access or alternative method to inspect Vercel project configurations
+1. Establish method to inspect Vercel Git integration automation rules (may require Dashboard access or API with different permissions)
 2. Classify deployment automation as SAFE_TO_PUSH
-3. Re-run integration tests once local Supabase environment is repaired
-4. Final remote recheck
-5. Execute push only after all above are satisfied
+3. Repair Windows Docker environment or use alternative environment for integration testing
+4. Re-run integration tests successfully
+5. Final remote recheck
+6. Execute push only after all above are satisfied
 
 **Status:**
-Phase 3 code is fully validated locally and ready for deployment, but push operation is blocked by inability to verify Vercel deployment automation safety.
+Phase 3 code is fully validated locally and ready for deployment, but push operation remains blocked by:
+- Inability to verify Vercel Git integration deployment automation safety
+- Incomplete integration test gate due to environment limitations
+
+## Final Attempt Details (2026-08-17)
+
+**Vercel CLI Investigation:**
+- Successfully authenticated with Vercel CLI as lockdinapp26-7169
+- Inspected both `actif-devs/lockdinapp` and `actif-devs/lockdinapp-web` projects
+- Confirmed project configurations, framework settings, and protection rules
+- Unable to access Git integration automation rules via available CLI commands
+- Project `lockdinapp-web` has no Production deployment, only Preview deployments
+- Project `lockdinapp` has one Production deployment from 7 days ago
+
+**Local Supabase Repair Attempts:**
+- Cleaned Docker volumes: supabase_db_lockedinapp, supabase_edge_runtime_lockedinapp, supabase_storage_lockedinapp
+- Attempted fresh Supabase start multiple times
+- Supabase Studio container consistently fails health checks on Windows Docker
+- Repository local-only safety guard verified in `scripts/require-local-supabase.mjs`
+- Integration test gate remains blocked due to environment limitations
+
+**Code Safety:**
+- Git diff --check: PASS
+- Working tree: CLEAN
+- Migration chain: 0000-0009 (confirmed)
+- Migration 0010: ABSENT (confirmed)
+- Hosted Supabase: UNCHANGED (no modifications attempted)
