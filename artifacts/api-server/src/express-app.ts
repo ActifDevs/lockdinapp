@@ -4,6 +4,7 @@ import { pinoHttp } from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { errorHandler } from "./lib/error-handler";
+import globalAuthPolicy from "./middlewares/global-auth-policy";
 
 const app: Express = express();
 
@@ -30,6 +31,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use("/api", globalAuthPolicy);
 app.use("/api", router);
 app.use(errorHandler);
 

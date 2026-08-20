@@ -17,6 +17,13 @@ export async function optionalAuth(
   next: NextFunction,
 ): Promise<void> {
   try {
+    // Avoid a second claims verification when the global optional-auth policy
+    // has already established this request's caller identity.
+    if (req.userId && req.accessToken) {
+      next();
+      return;
+    }
+
     const header = req.headers.authorization;
     if (typeof header !== "string" || header.length === 0) {
       next();
