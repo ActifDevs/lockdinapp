@@ -174,10 +174,61 @@ The disposable local Supabase stack is not available. The loopback-only safety g
 ## Remaining QA and release work
 
 - Owner-performed Gate 0 verification: **PASS**
+- Owner approval of anonymous unknown-route JSON 401: **APPROVED — FAIL-SECURE BEHAVIOUR**
 - Formal QA-owner ratification: **PENDING / NOT CLAIMED**
-- Branch push: pending at report creation
-- Preview deployment and Preview auth-boundary smoke: pending
+- Authenticated Preview QA: **PENDING**
 - Merge: **NOT MERGED TO MAIN**
 - Production deployment/smoke: not performed
 
-This slice must proceed through Preview and designated QA-owner sign-off before any later merge authorization.
+## Remote branch and Preview verification
+
+- Feature-branch push: **PASS**
+- Remote branch: `origin/phase4-slice1-global-auth`
+- Implementation source SHA: `cf35440d3b5cd17c5100fe5802b29185adcc0436`
+- Vercel project: `actif-devs/lockdinapp-web`
+- Deployment ID: `dpl_4tvo1ydYRFdf13x9bgKb7pi45jzt`
+- Immutable Preview URL: `https://lockdinapp-4z8v2rl2v-actif-devs.vercel.app`
+- Branch Preview alias: `https://lockdinapp-web-git-phase4-slice1-global-auth-actif-devs.vercel.app`
+- Deployment target/state: `preview` / `READY`
+- Vercel Git metadata branch/SHA: `phase4-slice1-global-auth` / `cf35440d3b5cd17c5100fe5802b29185adcc0436`
+
+The deployment built successfully, but Preview API runtime verification is blocked before Express dispatch. A traced request log for `GET /api/healthz` records:
+
+```text
+Error: DATABASE_URL must be set. Did you forget to provision a database?
+```
+
+This is a **Preview environment configuration blocker**, not a demonstrated Slice 1 code regression. No environment variable was added or changed. Production was not accessed or modified.
+
+### Preview smoke results
+
+| Boundary check                                         | Actual result                                                           |
+| ------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `GET /api/healthz`                                     | **FAIL — 500 `FUNCTION_INVOCATION_FAILED`**                             |
+| `GET /api/healthz/db`                                  | **FAIL — 500 `FUNCTION_INVOCATION_FAILED`**                             |
+| `GET /api/subjects`                                    | **FAIL — 500 `FUNCTION_INVOCATION_FAILED`**                             |
+| `GET /api/subjects/{subjectId}`                        | **NOT RUN — catalogue could not return a real subject ID**              |
+| `GET /api/subjects/{subjectId}/assessment-components`  | **NOT RUN — catalogue could not return a real subject ID**              |
+| Anonymous `GET /api/subjects/{subjectId}/syllabus`     | **NOT RUN — catalogue could not return a real subject ID**              |
+| Invalid-token `GET /api/subjects/{subjectId}/syllabus` | **NOT RUN — catalogue could not return a real subject ID**              |
+| Anonymous `POST /api/subjects`                         | **FAIL — 500 before the deliberate 403 handler**                        |
+| Anonymous `DELETE /api/subjects/{subjectId}`           | **NOT RUN — catalogue could not return a real subject ID**              |
+| Anonymous `GET /api/subjects/{subjectId}/performance`  | **NOT RUN — catalogue could not return a real subject ID**              |
+| Anonymous `GET /api/tasks`                             | **FAIL — 500 before authentication middleware**                         |
+| Anonymous `GET /api/user-subjects`                     | **FAIL — 500 before authentication middleware**                         |
+| Anonymous `GET /api/profile`                           | **FAIL — 500 before authentication middleware**                         |
+| Anonymous `GET /api/exam-dates`                        | **FAIL — 500 before authentication middleware**                         |
+| Anonymous `GET /api/dashboard/summary`                 | **FAIL — 500 before authentication middleware**                         |
+| CORS preflight `OPTIONS /api/tasks`                    | **FAIL — 500 before CORS/auth middleware; no application CORS headers** |
+| Anonymous `GET /api/definitely-not-a-real-route`       | **FAIL — 500 before the owner-approved 401 behavior**                   |
+
+All sampled requests failed at the same eager database-module initialization boundary. No user-owned or catalogue data could be created, changed, or deleted.
+
+### QA disposition
+
+- Automated/local validation: **PASS** (recorded above)
+- Anonymous Preview boundary QA: **FAIL — PREVIEW CONFIGURATION BLOCKED**
+- Authenticated Preview QA: **PENDING**
+- Formal QA-owner ratification: **PENDING / NOT CLAIMED**
+
+This slice requires a correctly configured Preview runtime followed by anonymous and authenticated Preview QA and designated QA-owner sign-off before any later merge authorization.
