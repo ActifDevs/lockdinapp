@@ -3,7 +3,7 @@
 - **Date:** 2026-08-20
 - **Baseline:** `14215f2d2e5e61f6dcec75512ffadfe7f3c87e82`
 - **Branch:** `phase4-slice1-global-auth`
-- **Status:** Implementation locally validated; Preview and formal QA-owner ratification pending
+- **Status:** **PHASE 4 SLICE 1 QA COMPLETE — PASS; MERGE CLEARANCE — GO**
 - **Merge status:** **NOT MERGED TO MAIN**
 
 ## Git preflight
@@ -171,12 +171,12 @@ The disposable local Supabase stack is not available. The loopback-only safety g
 - Secret material found in the diff: none
 - Phase 4 Slice 2/request-correlation work: not started
 
-## Remaining QA and release work
+## Remaining release work
 
 - Owner-performed Gate 0 verification: **PASS**
 - Owner approval of anonymous unknown-route JSON 401: **APPROVED — FAIL-SECURE BEHAVIOUR**
-- Formal QA-owner ratification: **PENDING / NOT CLAIMED**
-- Authenticated Preview QA: **PENDING**
+- Formal QA-owner ratification: **PASS**
+- Authenticated Preview QA: **PASS**
 - Merge: **NOT MERGED TO MAIN**
 - Production deployment/smoke: not performed
 
@@ -224,11 +224,47 @@ This is a **Preview environment configuration blocker**, not a demonstrated Slic
 
 All sampled requests failed at the same eager database-module initialization boundary. No user-owned or catalogue data could be created, changed, or deleted.
 
-### QA disposition
+### Historical QA disposition
 
 - Automated/local validation: **PASS** (recorded above)
 - Anonymous Preview boundary QA: **FAIL — PREVIEW CONFIGURATION BLOCKED**
 - Authenticated Preview QA: **PENDING**
 - Formal QA-owner ratification: **PENDING / NOT CLAIMED**
 
-This slice requires a correctly configured Preview runtime followed by anonymous and authenticated Preview QA and designated QA-owner sign-off before any later merge authorization.
+This was the disposition at the first implementation Preview. It is retained as historical environment evidence and is superseded by the final QA clearance below.
+
+## Final QA clearance (superseding disposition)
+
+Final QA was completed on the exact approved feature branch and source SHA:
+
+- Branch: `phase4-slice1-global-auth`
+- Source SHA: `7ac6e61be2b53fe4b744e35b31130bff9f051b63`
+- Automated/local validation: **PASS**
+- **ANONYMOUS PREVIEW BOUNDARY QA: PASS**
+- **QA-OWNER AUTHENTICATED QA: PASS**
+- **OWNER A/B ISOLATION QA: PASS**
+- **CROSS-USER LEAKAGE: NO**
+
+The approved authenticated QA covered login, authenticated navigation, user subjects, profile, tasks, performance, authenticated syllabus behavior, progress overlay, session persistence, and the global middleware boundary. No authentication loop was observed.
+
+The approved two-owner isolation QA verified both directions:
+
+- Owner User A could access only User A's tasks, profile, subjects, and progress.
+- Owner User B could access only User B's tasks, profile, subjects, and progress.
+- A-to-B isolation: **PASS**
+- B-to-A isolation: **PASS**
+
+The earlier Preview `DATABASE_URL` blocker above was specific to that historical deployment environment. It does not override the later approved QA evidence gathered on the exact final feature SHA.
+
+### Known non-blocking issues
+
+- Onboarding unsaved-state loss: **PRE-EXISTING UX ISSUE — NON-BLOCKING**. The same behavior exists on Production/main and is outside this slice.
+- Full task editing is not exposed: **EXISTING PRODUCT LIMITATION — NON-BLOCKING**. The same limitation exists on Production/main and is outside this slice.
+
+No fix for either item is included or authorized in Phase 4 Slice 1.
+
+### Final disposition
+
+- **PHASE 4 SLICE 1 QA COMPLETE — PASS**
+- **MERGE CLEARANCE — GO**
+- Merge status at this report update: **NOT MERGED TO MAIN**
