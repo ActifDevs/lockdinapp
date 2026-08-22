@@ -22,6 +22,13 @@ export async function requireAuth(
   next: NextFunction,
 ): Promise<void> {
   try {
+    // The global policy verifies first in the full app. Retained route-level
+    // guards remain useful for isolated routers without verifying twice.
+    if (req.userId && req.accessToken) {
+      next();
+      return;
+    }
+
     const header = req.headers.authorization;
     if (typeof header !== "string" || header.length === 0) {
       unauthorized(res);
@@ -42,10 +49,7 @@ export async function requireAuth(
 
     const { data, error } = await getSupabaseVerifier().auth.getClaims(token);
     if (error || !data?.claims) {
-      logger.info(
-        { reason: "claims_verification_failed" },
-        "Auth rejected",
-      );
+      logger.info({ reason: "claims_verification_failed" }, "Auth rejected");
       unauthorized(res);
       return;
     }
