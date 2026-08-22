@@ -1,10 +1,13 @@
 # Phase 4 Slice 1 Global Authentication Implementation and Validation
 
 - **Date:** 2026-08-20
+- **Closeout correction date:** 2026-08-22
 - **Baseline:** `14215f2d2e5e61f6dcec75512ffadfe7f3c87e82`
 - **Branch:** `phase4-slice1-global-auth`
-- **Status:** **PHASE 4 SLICE 1 QA COMPLETE — PASS; MERGE CLEARANCE — GO**
-- **Merge status:** **NOT MERGED TO MAIN**
+- **Status:** **PHASE 4 SLICE 1 — CLOSED**
+- **QA status:** **PHASE 4 SLICE 1 QA COMPLETE — PASS**
+- **Merge status:** **MERGED TO MAIN — YES**
+- **Production status:** **PRODUCTION RELEASE VERIFIED — YES**
 
 ## Git preflight
 
@@ -171,14 +174,19 @@ The disposable local Supabase stack is not available. The loopback-only safety g
 - Secret material found in the diff: none
 - Phase 4 Slice 2/request-correlation work: not started
 
-## Remaining release work
+## Release closeout status
 
 - Owner-performed Gate 0 verification: **PASS**
 - Owner approval of anonymous unknown-route JSON 401: **APPROVED — FAIL-SECURE BEHAVIOUR**
 - Formal QA-owner ratification: **PASS**
 - Authenticated Preview QA: **PASS**
-- Merge: **NOT MERGED TO MAIN**
-- Production deployment/smoke: not performed
+- Merge to `main`: **COMPLETE** — merge commit `d35af047f87b371f253b6431d32f828c3a4789cb`
+- Production deployment: **COMPLETE**
+- Production health recovery and verification: **PASS**
+- Production authentication-boundary smoke: **PASS**
+- Owner-performed authenticated Production sanity: **PASS**
+- Phase 4 Slice 1: **CLOSED**
+- Phase 4 Slice 2/request correlation: not implemented at the time of this closeout
 
 ## Remote branch and Preview verification
 
@@ -266,5 +274,8 @@ No fix for either item is included or authorized in Phase 4 Slice 1.
 ### Final disposition
 
 - **PHASE 4 SLICE 1 QA COMPLETE — PASS**
-- **MERGE CLEARANCE — GO**
-- Merge status at this report update: **NOT MERGED TO MAIN**
+- **MERGED TO MAIN — YES**
+- **PRODUCTION RELEASE VERIFIED — YES**
+- **PHASE 4 SLICE 1 — CLOSED**
+
+The historical Preview configuration failure above remains part of the implementation record and is superseded by the approved final Preview QA and recovered Production verification documented in Report 65.
