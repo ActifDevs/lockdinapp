@@ -3,7 +3,7 @@
 - **Date:** 2026-08-23
 - **Baseline:** `15721417b533a2d871a6d91dba7a465953505d40`
 - **Branch:** `phase4-slice2-request-id`
-- **Status:** Implementation locally validated; Preview verification and QA-owner sign-off pending
+- **Status:** Implementation and Preview verified; QA-owner sign-off pending
 - **Merge status:** **NOT MERGED TO MAIN**
 
 ## Git preflight
@@ -111,7 +111,7 @@ The successful frontend build emitted the existing non-fatal base/sourcemap warn
 - **REQUEST-ID UNIQUENESS CHECK: PASS**. Twenty independent requests produced 20 distinct UUIDv4-formatted values.
 - The regression test provides finite-sample protection; the underlying uniqueness mechanism is Node's `crypto.randomUUID()` rather than a statistical claim based on the sample.
 
-Preview response/log correlation remains pending until the exact feature deployment is available.
+Preview response/log correlation is recorded below.
 
 ## Integration status
 
@@ -145,9 +145,52 @@ The implementation is limited to the Express application wiring, one focused req
 
 ## Preview status
 
-- Deployment: pending feature-branch push
-- HTTP header smoke: pending
-- Runtime response/log correlation: pending
+- Vercel project: `actif-devs/lockdinapp-web`
+- Deployment ID: `dpl_5Uw6V1WhNPawt8F3T52v7GRk8MhP`
+- Immutable URL: `https://lockdinapp-8ouumxzft-actif-devs.vercel.app`
+- Branch alias: `https://lockdinapp-web-git-phase4-slice2-request-id-actif-devs.vercel.app`
+- Target/state: `preview` / `READY`
+- Source branch: `phase4-slice2-request-id`
+- Source SHA: `4caa6d19be4bd8e3f5f1d73e7031bcf67d37b770`
+- Git branch/SHA match: **PASS**
+
+## Preview request-ID smoke
+
+All checks targeted the immutable Preview URL. `X-Request-Id` values were valid server-generated UUIDv4 strings.
+
+| Request                                          | Status  | `X-Request-Id`       |
+| ------------------------------------------------ | ------- | -------------------- |
+| `GET /api/healthz`                               | **200** | present / valid UUID |
+| `GET /api/healthz/db`                            | **200** | present / valid UUID |
+| `GET /api/subjects`                              | **200** | present / valid UUID |
+| Anonymous `GET /api/subjects/1/syllabus`         | **200** | present / valid UUID |
+| Invalid-bearer `GET /api/subjects/1/syllabus`    | **401** | present / valid UUID |
+| Anonymous `POST /api/subjects`                   | **403** | present / valid UUID |
+| Anonymous `GET /api/tasks`                       | **401** | present / valid UUID |
+| Anonymous `GET /api/definitely-not-a-real-route` | **401** | present / valid UUID |
+| Genuine `OPTIONS /api/tasks` preflight           | **204** | present / valid UUID |
+
+The response statuses and existing bodies remained compatible with the approved Slice 1 boundary.
+
+### Preview uniqueness and spoofing resistance
+
+- Twelve additional independent `GET /api/healthz` requests returned 12 distinct UUIDs: **PASS**.
+- A request supplied `X-Request-Id: attacker-controlled-id`.
+- The response returned a different valid application UUID, `1a28cbd4-d408-4f65-9553-66ea14145dd4`: **CLIENT HEADER IGNORED — PASS**.
+
+### Preview response/log correlation
+
+For one Preview `GET /api/healthz` request:
+
+- Response `X-Request-Id`: `91a3573e-8fdd-4ec7-8a0d-dbf9e16f7304`
+- Pino structured-log `req.id`: `91a3573e-8fdd-4ec7-8a0d-dbf9e16f7304`
+- Vercel deployment in the log: `dpl_5Uw6V1WhNPawt8F3T52v7GRk8MhP`
+- Log method/path/status: `GET` / `/api/healthz` / `200`
+
+The application ID matched exactly. Vercel's platform request/log identifier was separate and was not used for this comparison.
+
+**REQUEST-ID RESPONSE/LOG CORRELATION: PASS**
+
 - QA-owner sign-off: pending
 
 **NOT MERGED TO MAIN**
