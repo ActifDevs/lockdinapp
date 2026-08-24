@@ -5,12 +5,14 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { errorHandler } from "./lib/error-handler";
 import globalAuthPolicy from "./middlewares/global-auth-policy";
+import { generateRequestId, requestIdHeader } from "./middlewares/request-id";
 
 const app: Express = express();
 
 app.use(
   pinoHttp({
     logger,
+    genReqId: generateRequestId,
     serializers: {
       req(req: Request) {
         return {
@@ -27,6 +29,7 @@ app.use(
     },
   }),
 );
+app.use(requestIdHeader);
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
