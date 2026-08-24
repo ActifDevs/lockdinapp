@@ -3,8 +3,8 @@
 - **Date:** 2026-08-23
 - **Baseline:** `15721417b533a2d871a6d91dba7a465953505d40`
 - **Branch:** `phase4-slice2-request-id`
-- **Status:** Combined technical QA passed; owner merge authorization **GO**
-- **Merge status:** **NOT MERGED TO MAIN**
+- **Status:** Implementation and combined QA passed; Production release verified and Slice 2 closed
+- **Merge status:** **MERGED TO MAIN** — `bc102ffc41f82d17b2f8a2a8fae371dec50db2ab`
 
 ## Git preflight
 
@@ -233,4 +233,4 @@ The designated QA owner completed part of the controlled Slice 2 QA. The project
 
 The application implementation remains commit `4caa6d19be4bd8e3f5f1d73e7031bcf67d37b770`. This final QA update is documentation-only.
 
-**NOT MERGED TO MAIN**
+**MERGED TO MAIN AND PRODUCTION VERIFIED.** Authoritative merge and Production closeout evidence is recorded in `docs/cursor/reports/67-phase4-slice2-merge-and-production-closeout.md`.
