@@ -119,6 +119,17 @@ Each of these is a small, boring migration once the `tasks` pattern is proven �
 
 ## 7. Phase 4 — API hardening
 
+**Current status (2026-08-24): COMPLETE.** Reports 64–67 preserve the two
+implementation slices and their Production verification; Report 68 contains
+the final requirement-by-requirement reconciliation. Existing caller-derived
+ownership, RLS, generated-Zod validation, structured errors, and Pino logging
+were verified; Slice 1 made reviewed auth classification global and
+fail-secure, and Slice 2 added server-authoritative request IDs with verified
+Production response/log correlation. The local integration rerun remained
+Docker-environment-blocked but is not an application blocker. No additional
+Phase 4 implementation slice is required. The separately delegated universal
+post-phase checkpoint has not been run, and Phase 5 has not started.
+
 - Auth middleware becomes global for all `/api/*` routes except `/healthz` and any explicitly public endpoints (subject catalog / syllabus structure can plausibly stay readable by any authenticated user without per-row ownership, per the audit's "shared reference data" model — decide whether *unauthenticated* reads should be allowed at all, or gated behind "must be logged in but see everything").
 - Remove any remaining "trust user_id from the request" code paths from Phase 2/3 migrations that were left in for convenience during testing.
 - Add request-level input validation consistently — `lib/api-zod` already has generated schemas from the OpenAPI spec; make sure every route actually validates against them rather than trusting Drizzle to fail loudly.

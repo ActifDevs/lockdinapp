@@ -3,6 +3,21 @@
 **Precedes:** Phase 5. **Depends on:** Phase 3 fully complete — every
 user-owned table has `user_id` + RLS + per-table middleware already proven.
 
+**Current status (2026-08-24): COMPLETE.** The final reconciliation is
+recorded in
+`docs/cursor/reports/68-phase4-final-reconciliation-and-closeout.md`.
+Phase 4 Slice 1 established the reviewed global auth policy; Slice 2 added
+server-authoritative request IDs and verified response/log correlation in
+Production. Existing ownership, RLS, request-validation, structured-error,
+and logging behavior was re-audited and required no additional Phase 4
+implementation.
+
+The global policy is now the sole default route-classification gate. The
+remaining router-level `requireAuth` / `optionalAuth` calls are intentional
+defense for isolated router mounts and tests; after global authentication
+they short-circuit without repeating token verification. They therefore do
+not reintroduce opt-in policy dependence or duplicate authentication work.
+
 ## What this phase actually is
 
 Phases 2-3 wired auth middleware onto specific routers one at a time,
@@ -130,14 +145,14 @@ before you change behavior on a live-ish system.
 
 ## Definition of done
 
-- [ ] Route classification (public / shared / owned) reviewed and signed
+- [x] Route classification (public / shared / owned) reviewed and signed
       off before implementation
-- [ ] Auth middleware applied globally with an explicit, reviewed allowlist
+- [x] Auth middleware applied globally with an explicit, reviewed allowlist
       — no per-router opt-in duplication left over
-- [ ] Zero routes reading `user_id`/`userId` from client-supplied
+- [x] Zero routes reading `user_id`/`userId` from client-supplied
       body/query — grep confirms this, not just spot-checking
-- [ ] Every route validates input via `lib/api-zod` schemas
-- [ ] Request IDs confirmed populated and (ideally) surfaced to the client
+- [x] Every route validates input via `lib/api-zod` schemas
+- [x] Request IDs confirmed populated and surfaced to the client
       for support/debugging
 
 ## Rollback
