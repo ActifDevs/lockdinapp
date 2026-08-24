@@ -3,7 +3,7 @@
 - **Date:** 2026-08-23
 - **Baseline:** `15721417b533a2d871a6d91dba7a465953505d40`
 - **Branch:** `phase4-slice2-request-id`
-- **Status:** Implementation and Preview verified; QA-owner sign-off pending
+- **Status:** Combined technical QA passed; owner merge authorization **GO**
 - **Merge status:** **NOT MERGED TO MAIN**
 
 ## Git preflight
@@ -191,6 +191,46 @@ The application ID matched exactly. Vercel's platform request/log identifier was
 
 **REQUEST-ID RESPONSE/LOG CORRELATION: PASS**
 
-- QA-owner sign-off: pending
+## Final combined QA clearance
+
+The designated QA owner completed part of the controlled Slice 2 QA. The project owner subsequently completed the remaining controlled checks against the exact same verified Preview source. The combined evidence passed. The release is proceeding under explicit owner merge authorization. Full QA-owner checklist completion is not being claimed.
+
+### Verified Preview source
+
+- Project: `actif-devs/lockdinapp-web`
+- Deployment ID: `dpl_EYLuPAkcS7CWpxKDewR6yP6iqvHv`
+- URL: `https://lockdinapp-3fl5mj6st-actif-devs.vercel.app`
+- Branch: `phase4-slice2-request-id`
+- Source SHA: `cfb5f5d4dabf2f1a1c52a96244802461cc0198e3`
+- Target/state: `preview` / `READY`
+- Preview source verification: **PASS**
+
+### Combined QA attribution and disposition
+
+- **QA-OWNER COMPLETED ITEMS: PASS**
+  - Basic application regression
+  - Public `/api/healthz` request-ID behavior
+  - Protected anonymous `/api/tasks` behavior
+  - Unknown fail-secure route behavior
+  - Authenticated session regression
+- **OWNER CONTINUATION QA: PASS**
+  - Optional-auth anonymous and invalid-bearer behavior
+  - Deliberate non-mutating 403 behavior
+  - CORS preflight behavior
+  - Human five-request UUID uniqueness
+  - Client-supplied request-ID spoofing resistance
+  - Preview response-to-Pino-log correlation
+- **COMBINED TECHNICAL QA: PASS**
+- **REQUEST-ID RESPONSE/LOG CORRELATION: PASS**
+- **REQUEST-ID UNIQUENESS: PASS** — five fresh human requests returned five present, UUID-formatted, distinct values.
+- **CLIENT X-REQUEST-ID TRUST: DISABLED — VERIFIED** — `attacker-controlled-id` was ignored and the server returned a different valid UUID.
+- **AUTHENTICATED REGRESSION: PASS**
+- **SLICE 1 AUTH REGRESSION: NONE DETECTED**
+- **CROSS-FEATURE REGRESSION DETECTED: NO**
+- **BLOCKING ISSUES: NONE**
+- **OWNER MERGE AUTHORIZATION: GO**
+- Full QA-owner checklist completion/sign-off: **not claimed**; later formal ratification is not a blocker for this owner-authorized release.
+
+The application implementation remains commit `4caa6d19be4bd8e3f5f1d73e7031bcf67d37b770`. This final QA update is documentation-only.
 
 **NOT MERGED TO MAIN**
