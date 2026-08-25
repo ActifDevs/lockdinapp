@@ -1,5 +1,8 @@
 # Phase 5 Slice 2 — Read-State Reconciliation Implementation and Validation
 
+Status: Implementation and Preview QA passed; merged to main and Production
+release verified — authoritative closeout in Report 74.
+
 ## Baseline
 
 - Repository baseline: `8d781b2bbfda6a69f56977cda82efebbafb10f8e`
@@ -231,4 +234,4 @@ ONE-OFF OBSERVATION — NOT REPRODUCED
 
 ## Merge status
 
-NOT MERGED TO MAIN
+MERGED TO MAIN — `94ff9562802966368d46b2bed64c2f1200b603c4`
