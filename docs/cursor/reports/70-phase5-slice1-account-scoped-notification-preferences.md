@@ -4,7 +4,7 @@
 - **Baseline:** `391a62c37e0ff92aaa882747fdfd044a7e8485d8`
 - **Implementation SHA:** `3c2cdcea033de33f71798d0fdc15be528013b3d2`
 - **Branch:** `phase5-slice1-account-scoped-notification-prefs`
-- **Status:** Implementation complete; automated validation complete; Preview and human QA as recorded below
+- **Status:** Implementation complete; automated validation complete; owner-performed Preview QA passed; merge authorized
 - **Merge status:** **NOT MERGED TO MAIN**
 
 ## Baseline
@@ -156,9 +156,70 @@ Implementation is limited to the notification preference hook, the shared user-s
 - Source SHA: `eb6c6c4dd849f28e08d2ba49de68a0c07933d1db` (feature branch HEAD after implementation + SHA note)
 - Implementation commit: `3c2cdcea033de33f71798d0fdc15be528013b3d2`
 
-## Human QA
+## Human Preview QA
 
-PENDING — two authorized accounts must complete the A → B → A checklist in the Slice 1 closeout response. This agent did not perform cross-account preference QA in a real browser session.
+- Exact Preview source: `072c0b10fc45a2992eb6ad0393743f6b6d3f4f46`
+- Verified Preview: `https://lockdinapp-7irm9t4uf-actif-devs.vercel.app`
+
+**OWNER-PERFORMED HUMAN QA: PASS**
+
+**QA-OWNER FINAL SIGN-OFF: NOT CLAIMED**
+
+**OWNER MERGE AUTHORIZATION: GO**
+
+Owner-reported results against the exact Preview source:
+
+- User A preference persistence: PASS
+- User A → User B isolation: PASS
+- User B preference persistence: PASS
+- User B → User A restoration: PASS
+- Reminder regression: PASS
+- Logout stale-state check: PASS
+- Legacy global preference handling: PASS
+- Scoped preference identity/value mapping: PASS
+- Unexpected authenticated 401: NO
+- Auth/session loop: NO
+- Unrelated blocking regression: NONE
+
+## Storage interpretation
+
+Multiple `lockdin_notification_prefs:<user-id>` entries may coexist in one
+browser profile. That is expected. Isolation is enforced by selecting only the
+authenticated user's scoped entry as authoritative. Logout does not delete
+another account's stored device-local preferences.
+
+No actual user IDs are recorded in this report.
+
+## Security handling
+
+**EXPOSED QA SESSION: INVALIDATED BY OWNER**
+
+No credential value, email, session ID, or QA user ID is recorded here.
+
+## Non-blocking follow-up
+
+**PHASE 5 FOLLOW-UP — UI/NAVIGATION STATE PERSISTENCE AUDIT**
+
+Confirmed example: when Settings → Alerts is selected, refreshing `/settings`
+returns the interface to Account. Leaving and returning to the browser tab can
+also restore the default Settings view.
+
+**Classification: NON-BLOCKING FOR SLICE 1**
+
+The follow-up audit should determine deliberately which tab, selected-view,
+filter, disclosure, and page-local navigation states should reset, remain
+memory-only, be URL-addressable, use browser persistence, or restore from
+server state across refresh, direct reload, back/forward navigation, component
+remount, and browser/tab restoration. No such behavior is implemented in this
+slice.
+
+## Preview QA disposition
+
+**PHASE 5 SLICE 1 PREVIEW QA: PASS**
+
+**SLICE 1 HUMAN QA BLOCKERS: NONE**
+
+**OWNER MERGE AUTHORIZATION: GO**
 
 ## Merge status
 
