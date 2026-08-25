@@ -154,6 +154,7 @@ describe("AuthProvider", () => {
       "lockdin_morning_ping",
       "lockdin_deadline_ping",
       "lockdin_exam_ping",
+      "lockdin_notification_prefs",
     ]) {
       localStorage.setItem(key, "legacy");
     }
@@ -196,6 +197,7 @@ describe("AuthProvider", () => {
       "lockdin_morning_ping",
       "lockdin_deadline_ping",
       "lockdin_exam_ping",
+      "lockdin_notification_prefs",
     ]) {
       expect(localStorage.getItem(key)).toBeNull();
     }

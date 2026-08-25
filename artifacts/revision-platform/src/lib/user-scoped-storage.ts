@@ -5,6 +5,7 @@ export const LEGACY_PERSONAL_STORAGE_KEYS = [
   "lockdin_morning_ping",
   "lockdin_deadline_ping",
   "lockdin_exam_ping",
+  "lockdin_notification_prefs",
 ] as const;
 
 export type PersonalStorageBaseKey =
