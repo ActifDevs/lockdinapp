@@ -179,4 +179,7 @@ Task, paper, syllabus topic, profile, and membership mutation semantics; cache i
 
 ## Merge status
 
-NOT MERGED TO MAIN
+- MERGED TO MAIN: `b30bd578ade111493036158133d1383ac1127e25`
+- Production Deployment: `dpl_DVABbVZUjpy95EBRzdSyj8orc525` (`https://lockdinapp-pd9eaezo1-actif-devs.vercel.app`, `https://lockdinapp-web.vercel.app`)
+- Owner-Performed Authenticated Production QA: PASS
+- Authoritative Release Closeout: `docs/cursor/reports/77-phase5-slice3-merge-and-production-closeout.md`
