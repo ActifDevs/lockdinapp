@@ -37,9 +37,21 @@ import { useEffect, useState, type ElementType } from "react";
 import { PageHeader } from "@/components/page-header";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { cn } from "@/lib/utils";
-import { Link } from "wouter";
+import { Link, useSearchParams } from "wouter";
 import { LEVEL_OPTIONS, getUpcomingExamSessions } from "@/lib/exam-sessions";
 import { ReadStateNotice } from "@/components/read-state-notice";
+import {
+  omitDefaultQueryValue,
+  resolveQueryParam,
+  updateQueryParams,
+} from "@/lib/navigation-query-state";
+
+const SETTINGS_TABS = [
+  "account",
+  "subjects",
+  "appearance",
+  "notifications",
+] as const;
 
 function ComingSoonBadge() {
   return (
@@ -127,6 +139,9 @@ function ThemeOption({
 
 export default function Settings() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { value: activeTab, needsNormalization: tabNeedsNormalization } =
+    resolveQueryParam(searchParams, "tab", SETTINGS_TABS, "account");
   const { theme, setTheme } = useTheme();
   const { user, updateUser } = useAuth();
   const { prefs, updatePref, requestBrowserPermission } =
@@ -157,15 +172,32 @@ export default function Settings() {
   const catalogueUnavailable = subjectsError && subjects === undefined;
   const catalogueRefreshFailed = subjectsError && subjects !== undefined;
   const examOptions = [...getUpcomingExamSessions(), "Other"];
-  const defaultTab = (() => {
-    try {
-      return (
-        new URLSearchParams(window.location.search).get("tab") || "account"
-      );
-    } catch {
-      return "account";
+
+  useEffect(() => {
+    if (!tabNeedsNormalization) return;
+    setSearchParams((current) => updateQueryParams(current, [["tab", null]]), {
+      replace: true,
+    });
+  }, [setSearchParams, tabNeedsNormalization]);
+
+  const handleTabChange = (value: string) => {
+    if (!SETTINGS_TABS.includes(value as (typeof SETTINGS_TABS)[number])) {
+      return;
     }
-  })();
+    setSearchParams(
+      (current) =>
+        updateQueryParams(current, [
+          [
+            "tab",
+            omitDefaultQueryValue(
+              value as (typeof SETTINGS_TABS)[number],
+              "account",
+            ),
+          ],
+        ]),
+      { replace: false },
+    );
+  };
 
   useEffect(() => {
     setName(user?.name || "");
@@ -284,7 +316,11 @@ export default function Settings() {
         subtitle="Manage your account, preferences, and workspace."
       />
 
-      <Tabs defaultValue={defaultTab} className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="w-full"
+      >
         <TabsList className="settings-tabs-list flex h-auto w-full flex-wrap justify-start gap-1 lg:w-auto tabs-scroll lg:overflow-visible">
           <TabsTrigger
             value="account"

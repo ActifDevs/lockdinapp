@@ -4,7 +4,14 @@ import {
   type ReactNode,
 } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -18,7 +25,8 @@ const api = vi.hoisted(() => ({
   updateTask: vi.fn(),
 }));
 
-vi.mock("wouter", () => ({
+vi.mock("wouter", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("wouter")>()),
   useRoute: () => [true, { id: "9" }],
   Link: ({
     children,
@@ -104,6 +112,7 @@ const ok = (data: unknown) => ({
 });
 
 beforeEach(() => {
+  window.history.replaceState({}, "", "/subjects/9");
   api.subject.mockReturnValue(ok(subject));
   api.syllabus.mockReturnValue(ok(syllabus));
   api.performance.mockReturnValue(ok(performance));
@@ -120,6 +129,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 function renderPage() {
@@ -265,6 +275,88 @@ describe("Subject Detail read states", () => {
     expect(screen.getByText("Tasks are unavailable")).toBeVisible();
     expect(screen.queryByText("No pending tasks")).not.toBeInTheDocument();
     expect(screen.queryByText("0 papers")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Mathematics" })).toBeVisible();
+  });
+});
+
+describe("Subject Detail navigation state", () => {
+  it.each([
+    ["/subjects/9", "Overview"],
+    ["/subjects/9?tab=overview", "Overview"],
+    ["/subjects/9?tab=syllabus", "Syllabus"],
+    ["/subjects/9?tab=tasks", /Tasks/],
+    ["/subjects/9?tab=performance", "Performance"],
+  ])("restores %s as the selected tab", (path, label) => {
+    window.history.replaceState({}, "", path);
+    const view = renderPage();
+    expect(screen.getByRole("tab", { name: label })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+    view.unmount();
+    renderPage();
+    expect(screen.getByRole("tab", { name: label })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+  });
+
+  it("pushes tab changes, preserves route identity, and omits Overview", async () => {
+    window.history.replaceState({}, "", "/subjects/9?keep=1&keep=2");
+    const push = vi.spyOn(window.history, "pushState");
+    renderPage();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Syllabus" }));
+    expect(window.location.pathname).toBe("/subjects/9");
+    expect(window.location.search).toBe("?keep=1&keep=2&tab=syllabus");
+    expect(push).toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Overview" }));
+    expect(window.location.search).toBe("?keep=1&keep=2");
+  });
+
+  it("shows Overview and replace-normalizes invalid state", async () => {
+    window.history.replaceState({}, "", "/subjects/9?tab=unknown&keep=1");
+    const replace = vi.spyOn(window.history, "replaceState");
+    renderPage();
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+    await waitFor(() => expect(window.location.search).toBe("?keep=1"));
+    expect(replace).toHaveBeenCalled();
+  });
+
+  it("restores tabs through browser Back and Forward", async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole("tab", { name: "Syllabus" }));
+    await userEvent.click(screen.getByRole("tab", { name: /Tasks/ }));
+
+    await act(async () => window.history.back());
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Syllabus" })).toHaveAttribute(
+        "data-state",
+        "active",
+      ),
+    );
+    await act(async () => window.history.forward());
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: /Tasks/ })).toHaveAttribute(
+        "data-state",
+        "active",
+      ),
+    );
+  });
+
+  it("keeps Slice 2 syllabus failure UI on a direct Syllabus link", () => {
+    window.history.replaceState({}, "", "/subjects/9?tab=syllabus");
+    api.syllabus.mockReturnValue({
+      ...ok(undefined),
+      isError: true,
+      error: new Error("Failed to fetch"),
+    });
+    renderPage();
+    expect(screen.getByText("Syllabus is unavailable")).toBeVisible();
     expect(screen.getByRole("heading", { name: "Mathematics" })).toBeVisible();
   });
 });

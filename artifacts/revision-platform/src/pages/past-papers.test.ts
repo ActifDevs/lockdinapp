@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createElement, Fragment, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -91,6 +92,7 @@ const source = readFileSync(
 );
 
 beforeEach(() => {
+  window.history.replaceState({}, "", "/past-papers");
   apiMocks.useListCurrentUserSubjects.mockReturnValue({
     data: [
       {
@@ -172,6 +174,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 function renderPastPapers() {
@@ -529,5 +532,157 @@ describe("past-paper ownership and year UI wiring", () => {
     expect(
       screen.getByRole("option", { name: /Pure Mathematics 1/ }),
     ).toBeVisible();
+  });
+});
+
+describe("Past Papers navigation state", () => {
+  const filterSelect = () =>
+    screen
+      .getByRole("option", { name: "All Subjects" })
+      .closest("select") as HTMLSelectElement;
+
+  it.each(["/past-papers", "/past-papers?subject=all"])(
+    "uses All for %s",
+    (path) => {
+      window.history.replaceState({}, "", path);
+      renderPastPapers();
+      expect(filterSelect()).toHaveValue("all");
+      expect(apiMocks.useListPastPaperAttempts.mock.calls.at(-1)?.[0]).toEqual(
+        {},
+      );
+    },
+  );
+
+  it("restores a current numeric membership and drives the filtered query", () => {
+    window.history.replaceState({}, "", "/past-papers?subject=9");
+    const view = renderPastPapers();
+    expect(filterSelect()).toHaveValue("9");
+    expect(apiMocks.useListPastPaperAttempts.mock.calls.at(-1)?.[0]).toEqual({
+      subjectId: 9,
+    });
+
+    view.unmount();
+    renderPastPapers();
+    expect(filterSelect()).toHaveValue("9");
+  });
+
+  it("pushes user filters, preserves params, and omits All", async () => {
+    window.history.replaceState({}, "", "/past-papers?keep=one&keep=two");
+    const push = vi.spyOn(window.history, "pushState");
+    renderPastPapers();
+
+    fireEvent.change(filterSelect(), { target: { value: "9" } });
+    await waitFor(() => expect(filterSelect()).toHaveValue("9"));
+    expect(window.location.search).toBe("?keep=one&keep=two&subject=9");
+    expect(apiMocks.useListPastPaperAttempts.mock.calls.at(-1)?.[0]).toEqual({
+      subjectId: 9,
+    });
+    expect(push).toHaveBeenCalled();
+
+    fireEvent.change(filterSelect(), { target: { value: "all" } });
+    await waitFor(() => expect(filterSelect()).toHaveValue("all"));
+    expect(window.location.search).toBe("?keep=one&keep=two");
+  });
+
+  it("keeps a numeric URL provisional during membership loading or failure", () => {
+    window.history.replaceState({}, "", "/past-papers?subject=9&keep=1");
+    apiMocks.useListCurrentUserSubjects.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    const view = renderPastPapers();
+    expect(filterSelect()).toHaveValue("all");
+    expect(filterSelect()).toBeDisabled();
+    expect(apiMocks.useListPastPaperAttempts.mock.calls.at(-1)?.[0]).toEqual(
+      {},
+    );
+    expect(window.location.search).toBe("?subject=9&keep=1");
+
+    apiMocks.useListCurrentUserSubjects.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: vi.fn(),
+    });
+    view.rerender(
+      createElement(
+        QueryClientProvider,
+        { client: new QueryClient() },
+        createElement(PastPapers),
+      ),
+    );
+    expect(filterSelect()).toHaveValue("all");
+    expect(apiMocks.useListPastPaperAttempts.mock.calls.at(-1)?.[0]).toEqual(
+      {},
+    );
+    expect(window.location.search).toBe("?subject=9&keep=1");
+  });
+
+  it.each(["09", "garbage", "10"])(
+    "replace-normalizes stale or invalid subject %s after membership resolution",
+    async (subjectValue) => {
+      window.history.replaceState(
+        {},
+        "",
+        `/past-papers?subject=${subjectValue}&keep=1`,
+      );
+      const replace = vi.spyOn(window.history, "replaceState");
+      renderPastPapers();
+      expect(filterSelect()).toHaveValue("all");
+      expect(apiMocks.useListPastPaperAttempts.mock.calls.at(-1)?.[0]).toEqual(
+        {},
+      );
+      await waitFor(() => expect(window.location.search).toBe("?keep=1"));
+      expect(replace).toHaveBeenCalled();
+    },
+  );
+
+  it("revalidates a prior-account filter against the next account", async () => {
+    window.history.replaceState({}, "", "/past-papers?subject=9");
+    const view = renderPastPapers();
+    expect(filterSelect()).toHaveValue("9");
+
+    apiMocks.useListCurrentUserSubjects.mockReturnValue({
+      data: [
+        {
+          subject: {
+            id: 10,
+            name: "Physics",
+            code: "9702",
+            color: "#1d4ed8",
+            topicsTotal: 18,
+          },
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    view.rerender(
+      createElement(
+        QueryClientProvider,
+        { client: new QueryClient() },
+        createElement(PastPapers),
+      ),
+    );
+
+    await waitFor(() => expect(window.location.search).toBe(""));
+    expect(filterSelect()).toHaveValue("all");
+    expect(apiMocks.useListPastPaperAttempts.mock.calls.at(-1)?.[0]).toEqual(
+      {},
+    );
+  });
+
+  it("restores the current-account filter through Back and Forward", async () => {
+    renderPastPapers();
+    fireEvent.change(filterSelect(), { target: { value: "9" } });
+    fireEvent.change(filterSelect(), { target: { value: "all" } });
+
+    await act(async () => window.history.back());
+    await waitFor(() => expect(filterSelect()).toHaveValue("9"));
+    await act(async () => window.history.forward());
+    await waitFor(() => expect(filterSelect()).toHaveValue("all"));
   });
 });
