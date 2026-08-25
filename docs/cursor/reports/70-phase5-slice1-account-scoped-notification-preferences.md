@@ -4,8 +4,8 @@
 - **Baseline:** `391a62c37e0ff92aaa882747fdfd044a7e8485d8`
 - **Implementation SHA:** `3c2cdcea033de33f71798d0fdc15be528013b3d2`
 - **Branch:** `phase5-slice1-account-scoped-notification-prefs`
-- **Status:** Implementation complete; automated validation complete; owner-performed Preview QA passed; merge authorized
-- **Merge status:** **NOT MERGED TO MAIN**
+- **Status:** Implementation and Preview QA passed; merged to `main` and Production release verified — authoritative closeout in Report 71
+- **Merge status:** **MERGED TO MAIN — `32ac5d61d9adc87db5fb0203bfd88af0715f6c20`**
 
 ## Baseline
 
