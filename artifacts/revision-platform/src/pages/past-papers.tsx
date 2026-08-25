@@ -53,6 +53,11 @@ import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { formatPercentage } from "@/lib/format-percentage";
 import { buildAssessmentComponentOptions } from "@/lib/assessment-component-options";
 import { ReadStateNotice } from "@/components/read-state-notice";
+import { useSearchParams } from "wouter";
+import {
+  omitDefaultQueryValue,
+  updateQueryParams,
+} from "@/lib/navigation-query-state";
 
 const ScoreTrendLineChart = lazy(
   () => import("@/components/charts/score-trend-line-chart"),
@@ -87,7 +92,7 @@ const paperSchema = z
 type PaperFormValues = z.infer<typeof paperSchema>;
 
 export default function PastPapers() {
-  const [filterSubject, setFilterSubject] = useState<string>("all");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -100,6 +105,25 @@ export default function PastPapers() {
     query: { queryKey: getListCurrentUserSubjectsQueryKey() },
   });
   const subjects = memberships?.map((membership) => membership.subject);
+  const membershipsAuthoritative =
+    memberships !== undefined && !membershipsLoading && !membershipsError;
+  const rawSubjectValues = searchParams.getAll("subject");
+  const rawSubject = rawSubjectValues[0] ?? null;
+  const currentSubjectIds = new Set(
+    subjects?.map((subject) => subject.id) ?? [],
+  );
+  const validCurrentSubject =
+    membershipsAuthoritative &&
+    rawSubjectValues.length === 1 &&
+    rawSubject !== null &&
+    /^[1-9]\d*$/.test(rawSubject) &&
+    currentSubjectIds.has(Number(rawSubject));
+  const filterSubject = validCurrentSubject ? rawSubject : "all";
+  const filterNeedsNormalization =
+    membershipsAuthoritative &&
+    rawSubjectValues.length > 0 &&
+    !(rawSubjectValues.length === 1 && rawSubject === "all") &&
+    !validCurrentSubject;
   const canLogPaper =
     !membershipsLoading && !membershipsError && (subjects?.length ?? 0) > 0;
 
@@ -204,6 +228,30 @@ export default function PastPapers() {
     (!componentsError || components !== undefined) &&
     componentOptions.length > 0;
 
+  useEffect(() => {
+    if (!filterNeedsNormalization) return;
+    setSearchParams(
+      (current) => updateQueryParams(current, [["subject", null]]),
+      { replace: true },
+    );
+  }, [filterNeedsNormalization, setSearchParams]);
+
+  const handleFilterSubjectChange = (value: string) => {
+    if (
+      value !== "all" &&
+      !subjects?.some((subject) => subject.id.toString() === value)
+    ) {
+      return;
+    }
+    setSearchParams(
+      (current) =>
+        updateQueryParams(current, [
+          ["subject", omitDefaultQueryValue(value, "all")],
+        ]),
+      { replace: false },
+    );
+  };
+
   // Component belongs to a specific subject — clear it (and any dependent
   // variant/session selection) whenever the subject changes so a stale
   // component from a different subject can never be submitted.
@@ -214,15 +262,12 @@ export default function PastPapers() {
   useEffect(() => {
     if (!subjects) return;
     const subjectIds = new Set(subjects.map((subject) => subject.id));
-    if (filterSubject !== "all" && !subjectIds.has(Number(filterSubject))) {
-      setFilterSubject("all");
-    }
     const formSubjectId = form.getValues("subjectId");
     if (formSubjectId && !subjectIds.has(Number(formSubjectId))) {
       form.setValue("subjectId", undefined as unknown as number);
       form.setValue("componentId", undefined as unknown as number);
     }
-  }, [subjects, filterSubject, form]);
+  }, [subjects, form]);
 
   const onSubmit = (data: PaperFormValues) => {
     createAttempt.mutate({
@@ -327,7 +372,7 @@ export default function PastPapers() {
               <div className="w-full sm:w-[180px]">
                 <Select
                   value={filterSubject}
-                  onValueChange={setFilterSubject}
+                  onValueChange={handleFilterSubjectChange}
                   disabled={membershipsLoading || membershipsError}
                 >
                   <SelectTrigger>

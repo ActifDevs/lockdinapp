@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   useListTasks,
   getListTasksQueryKey,
@@ -35,12 +35,73 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
+import { useSearchParams } from "wouter";
+import {
+  formatLocalCalendarDate,
+  formatLocalCalendarMonth,
+  parseLocalCalendarDate,
+  parseLocalCalendarMonth,
+  updateQueryParams,
+} from "@/lib/navigation-query-state";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function CalendarPage() {
-  const [viewMonth, setViewMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const today = useMemo(() => new Date(), []);
+  const rawDateValues = searchParams.getAll("date");
+  const rawMonthValues = searchParams.getAll("month");
+  const parsedDate =
+    rawDateValues.length === 1
+      ? parseLocalCalendarDate(rawDateValues[0])
+      : null;
+  const parsedMonth =
+    rawMonthValues.length === 1
+      ? parseLocalCalendarMonth(rawMonthValues[0])
+      : null;
+  const selectedDate = parsedDate ?? today;
+  const viewMonth = parsedMonth ?? startOfMonth(parsedDate ?? today);
+  const dateNeedsNormalization =
+    rawDateValues.length > 0 &&
+    (rawDateValues.length !== 1 ||
+      parsedDate === null ||
+      isSameDay(parsedDate, today));
+  const monthNeedsNormalization =
+    rawMonthValues.length > 0 &&
+    (rawMonthValues.length !== 1 ||
+      parsedMonth === null ||
+      isSameMonth(parsedMonth, selectedDate));
+
+  useEffect(() => {
+    if (!dateNeedsNormalization && !monthNeedsNormalization) return;
+    const updates: Array<readonly [string, string | null]> = [];
+    if (dateNeedsNormalization) updates.push(["date", null]);
+    if (monthNeedsNormalization) updates.push(["month", null]);
+    setSearchParams((current) => updateQueryParams(current, updates), {
+      replace: true,
+    });
+  }, [dateNeedsNormalization, monthNeedsNormalization, setSearchParams]);
+
+  const writeCalendarState = (nextMonth: Date, nextDate: Date) => {
+    setSearchParams(
+      (current) =>
+        updateQueryParams(current, [
+          [
+            "month",
+            isSameMonth(nextMonth, nextDate)
+              ? null
+              : formatLocalCalendarMonth(nextMonth),
+          ],
+          [
+            "date",
+            isSameDay(nextDate, today)
+              ? null
+              : formatLocalCalendarDate(nextDate),
+          ],
+        ]),
+      { replace: true },
+    );
+  };
 
   const {
     data: tasks,
@@ -50,7 +111,7 @@ export default function CalendarPage() {
     refetch: refetchTasks,
   } = useListTasks(
     { filter: "all" },
-    { query: { queryKey: getListTasksQueryKey({ filter: "all" }) } }
+    { query: { queryKey: getListTasksQueryKey({ filter: "all" }) } },
   );
   const {
     data: exams,
@@ -172,7 +233,9 @@ export default function CalendarPage() {
           subtitle="Revision deadlines and exam countdowns in one calm view."
         />
         <div className="dash-panel flex min-h-[40vh] flex-col items-center justify-center gap-4">
-          <h2 className="text-2xl font-bold tracking-tight">Could not load calendar</h2>
+          <h2 className="text-2xl font-bold tracking-tight">
+            Could not load calendar
+          </h2>
           <p className="max-w-md text-center text-muted-foreground">
             {getQueryErrorMessage(loadError)}
           </p>
@@ -194,11 +257,17 @@ export default function CalendarPage() {
 
       {/* Exam countdown strip */}
       {upcomingExams.length > 0 && (
-        <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar" role="list" aria-label="Upcoming exams">
+        <div
+          className="flex gap-3 overflow-x-auto pb-1 no-scrollbar"
+          role="list"
+          aria-label="Upcoming exams"
+        >
           {upcomingExams.slice(0, 5).map((exam) => {
             const diff = differenceInCalendarDays(exam._date, new Date());
-            const urgency = diff <= 7 ? "urgent" : diff <= 21 ? "soon" : "upcoming";
-            const countdown = diff === 0 ? "Today" : diff === 1 ? "1 day" : `${diff} days`;
+            const urgency =
+              diff <= 7 ? "urgent" : diff <= 21 ? "soon" : "upcoming";
+            const countdown =
+              diff === 0 ? "Today" : diff === 1 ? "1 day" : `${diff} days`;
             return (
               <button
                 key={exam.id}
@@ -212,8 +281,7 @@ export default function CalendarPage() {
                   urgency === "upcoming" && "surface-card border-border/60",
                 )}
                 onClick={() => {
-                  setSelectedDate(exam._date);
-                  setViewMonth(exam._date);
+                  writeCalendarState(exam._date, exam._date);
                 }}
               >
                 <div
@@ -227,14 +295,20 @@ export default function CalendarPage() {
                   aria-hidden
                 />
                 <div>
-                  <div className="font-semibold leading-tight">{exam.subjectName}</div>
-                  <div className="mt-0.5 text-xs opacity-75">{exam.paperCode}</div>
+                  <div className="font-semibold leading-tight">
+                    {exam.subjectName}
+                  </div>
+                  <div className="mt-0.5 text-xs opacity-75">
+                    {exam.paperCode}
+                  </div>
                 </div>
                 <div className="ml-2 shrink-0 text-right">
                   <div className="font-bold tabular-nums">
                     {diff === 0 ? "Today" : diff === 1 ? "1 day" : `${diff}d`}
                   </div>
-                  <div className="text-xs opacity-60">{format(exam._date, "d MMM")}</div>
+                  <div className="text-xs opacity-60">
+                    {format(exam._date, "d MMM")}
+                  </div>
                 </div>
               </button>
             );
@@ -249,7 +323,9 @@ export default function CalendarPage() {
           <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[var(--elev-2)]">
             <div className="flex flex-col gap-3 border-b px-4 py-4">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-bold tracking-[-0.01em]">{format(viewMonth, "MMMM yyyy")}</h2>
+                <h2 className="text-lg font-bold tracking-[-0.01em]">
+                  {format(viewMonth, "MMMM yyyy")}
+                </h2>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground rounded-full bg-muted px-2.5 py-1">
                   <span>{monthTaskCount} tasks</span>
                   <span className="mx-1 opacity-40">·</span>
@@ -262,9 +338,7 @@ export default function CalendarPage() {
                   size="sm"
                   className="h-11 text-xs"
                   onClick={() => {
-                    const today = new Date();
-                    setViewMonth(today);
-                    setSelectedDate(today);
+                    writeCalendarState(today, today);
                   }}
                 >
                   Today
@@ -275,18 +349,30 @@ export default function CalendarPage() {
                     size="icon"
                     className="h-11 w-11 rounded-r-none border-r-0"
                     aria-label="Previous month"
-                    onClick={() => setViewMonth((m) => subMonths(m, 1))}
+                    onClick={() =>
+                      writeCalendarState(subMonths(viewMonth, 1), selectedDate)
+                    }
                   >
-                    <ChevronLeft className="h-4 w-4" aria-hidden strokeWidth={2} />
+                    <ChevronLeft
+                      className="h-4 w-4"
+                      aria-hidden
+                      strokeWidth={2}
+                    />
                   </Button>
                   <Button
                     variant="outline"
                     size="icon"
                     className="h-11 w-11 rounded-l-none"
                     aria-label="Next month"
-                    onClick={() => setViewMonth((m) => addMonths(m, 1))}
+                    onClick={() =>
+                      writeCalendarState(addMonths(viewMonth, 1), selectedDate)
+                    }
                   >
-                    <ChevronRight className="h-4 w-4" aria-hidden strokeWidth={2} />
+                    <ChevronRight
+                      className="h-4 w-4"
+                      aria-hidden
+                      strokeWidth={2}
+                    />
                   </Button>
                 </div>
               </div>
@@ -306,7 +392,7 @@ export default function CalendarPage() {
                     aria-label={format(day, "EEEE, MMMM d")}
                     aria-current={todayDay ? "date" : undefined}
                     aria-selected={selected}
-                    onClick={() => setSelectedDate(day)}
+                    onClick={() => writeCalendarState(viewMonth, day)}
                     className={cn(
                       "scroll-snap-start flex min-w-[3.25rem] shrink-0 flex-col items-center gap-1 rounded-xl border px-2 py-2 text-center transition-colors",
                       selected
@@ -326,7 +412,10 @@ export default function CalendarPage() {
                       {format(day, "d")}
                     </span>
                     {eventCount > 0 && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
+                      <span
+                        className="h-1.5 w-1.5 rounded-full bg-primary"
+                        aria-hidden
+                      />
                     )}
                   </button>
                 );
@@ -355,9 +444,7 @@ export default function CalendarPage() {
                 size="sm"
                 className="h-11 text-xs"
                 onClick={() => {
-                  const today = new Date();
-                  setViewMonth(today);
-                  setSelectedDate(today);
+                  writeCalendarState(today, today);
                 }}
               >
                 Today
@@ -368,18 +455,30 @@ export default function CalendarPage() {
                   size="icon"
                   className="h-11 w-11 rounded-r-none border-r-0"
                   aria-label="Previous month"
-                  onClick={() => setViewMonth((m) => subMonths(m, 1))}
+                  onClick={() =>
+                    writeCalendarState(subMonths(viewMonth, 1), selectedDate)
+                  }
                 >
-                  <ChevronLeft className="h-4 w-4" aria-hidden strokeWidth={2} />
+                  <ChevronLeft
+                    className="h-4 w-4"
+                    aria-hidden
+                    strokeWidth={2}
+                  />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
                   className="h-11 w-11 rounded-l-none"
                   aria-label="Next month"
-                  onClick={() => setViewMonth((m) => addMonths(m, 1))}
+                  onClick={() =>
+                    writeCalendarState(addMonths(viewMonth, 1), selectedDate)
+                  }
                 >
-                  <ChevronRight className="h-4 w-4" aria-hidden strokeWidth={2} />
+                  <ChevronRight
+                    className="h-4 w-4"
+                    aria-hidden
+                    strokeWidth={2}
+                  />
                 </Button>
               </div>
             </div>
@@ -393,7 +492,7 @@ export default function CalendarPage() {
                 role="columnheader"
                 className={cn(
                   "py-2.5 text-center text-xs font-medium text-muted-foreground",
-                  (d === "Sat" || d === "Sun") && "text-muted-foreground/60"
+                  (d === "Sat" || d === "Sun") && "text-muted-foreground/60",
                 )}
               >
                 {d}
@@ -402,118 +501,138 @@ export default function CalendarPage() {
           </div>
 
           {/* Day cells */}
-          <div className="grid grid-cols-1 auto-rows-[minmax(90px,1fr)]" role="grid" aria-label={format(viewMonth, "MMMM yyyy")}>
+          <div
+            className="grid grid-cols-1 auto-rows-[minmax(90px,1fr)]"
+            role="grid"
+            aria-label={format(viewMonth, "MMMM yyyy")}
+          >
             {calendarWeeks.map((week, weekIdx) => (
               <div key={weekIdx} className="grid grid-cols-7" role="row">
                 {week.map((day, idx) => {
-              const key = format(day, "yyyy-MM-dd");
-              const dayTasks = tasksByDate.get(key) ?? [];
-              const dayExams = examsByDate.get(key) ?? [];
-              const eventCount = dayTasks.length + dayExams.length;
-              const allEvents = [
-                ...dayExams.map((e) => ({
-                  type: "exam" as const,
-                  id: `e-${e.id}`,
-                  label: e.paperCode,
-                  color: "#ef4444",
-                  subjectName: e.subjectName,
-                })),
-                ...dayTasks.map((t) => ({
-                  type: "task" as const,
-                  id: `t-${t.id}`,
-                  label: t.title,
-                  color: resolveSubjectAccent({
-                    name: t.subjectName,
-                    color: t.subjectColor,
-                  }),
-                  completed: t.completed,
-                })),
-              ];
-              const overflow = allEvents.length > 3 ? allEvents.length - 2 : 0;
-              const visible = overflow > 0 ? allEvents.slice(0, 2) : allEvents.slice(0, 3);
-              const inMonth = isSameMonth(day, viewMonth);
-              const todayDay = isToday(day);
-              const selected = isSameDay(day, selectedDate);
-              const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-              const dayLabel = format(day, "EEEE, MMMM d, yyyy");
-              const eventsLabel =
-                eventCount === 0
-                  ? "no events"
-                  : `${eventCount} event${eventCount === 1 ? "" : "s"}`;
+                  const key = format(day, "yyyy-MM-dd");
+                  const dayTasks = tasksByDate.get(key) ?? [];
+                  const dayExams = examsByDate.get(key) ?? [];
+                  const eventCount = dayTasks.length + dayExams.length;
+                  const allEvents = [
+                    ...dayExams.map((e) => ({
+                      type: "exam" as const,
+                      id: `e-${e.id}`,
+                      label: e.paperCode,
+                      color: "#ef4444",
+                      subjectName: e.subjectName,
+                    })),
+                    ...dayTasks.map((t) => ({
+                      type: "task" as const,
+                      id: `t-${t.id}`,
+                      label: t.title,
+                      color: resolveSubjectAccent({
+                        name: t.subjectName,
+                        color: t.subjectColor,
+                      }),
+                      completed: t.completed,
+                    })),
+                  ];
+                  const overflow =
+                    allEvents.length > 3 ? allEvents.length - 2 : 0;
+                  const visible =
+                    overflow > 0
+                      ? allEvents.slice(0, 2)
+                      : allEvents.slice(0, 3);
+                  const inMonth = isSameMonth(day, viewMonth);
+                  const todayDay = isToday(day);
+                  const selected = isSameDay(day, selectedDate);
+                  const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                  const dayLabel = format(day, "EEEE, MMMM d, yyyy");
+                  const eventsLabel =
+                    eventCount === 0
+                      ? "no events"
+                      : `${eventCount} event${eventCount === 1 ? "" : "s"}`;
 
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  role="gridcell"
-                  aria-selected={selected}
-                  aria-current={todayDay ? "date" : undefined}
-                  aria-label={`${dayLabel}, ${eventsLabel}`}
-                  onClick={() => setSelectedDate(day)}
-                  className={cn(
-                    "relative flex min-h-[90px] flex-col gap-1 border-b border-r p-2 text-left transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
-                    idx === 6 && "border-r-0",
-                    !inMonth && "bg-muted/30",
-                    inMonth && isWeekend && "bg-muted/10",
-                    inMonth && !isWeekend && "bg-card",
-                    selected && "bg-primary/5 ring-2 ring-inset ring-primary/50",
-                    !selected && "hover:bg-muted/40"
-                  )}
-                >
-                  {/* Day number */}
-                  <div className="flex justify-end">
-                    <span
-                      aria-hidden
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      role="gridcell"
+                      aria-selected={selected}
+                      aria-current={todayDay ? "date" : undefined}
+                      aria-label={`${dayLabel}, ${eventsLabel}`}
+                      onClick={() => writeCalendarState(viewMonth, day)}
                       className={cn(
-                        "flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium leading-none transition-colors",
-                        !inMonth && "text-muted-foreground/40",
-                        inMonth && !todayDay && "text-foreground",
-                        todayDay &&
-                          "bg-primary font-bold text-primary-foreground",
-                        selected && !todayDay && "font-semibold text-primary"
+                        "relative flex min-h-[90px] flex-col gap-1 border-b border-r p-2 text-left transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
+                        idx === 6 && "border-r-0",
+                        !inMonth && "bg-muted/30",
+                        inMonth && isWeekend && "bg-muted/10",
+                        inMonth && !isWeekend && "bg-card",
+                        selected &&
+                          "bg-primary/5 ring-2 ring-inset ring-primary/50",
+                        !selected && "hover:bg-muted/40",
                       )}
                     >
-                      {format(day, "d")}
-                    </span>
-                  </div>
+                      {/* Day number */}
+                      <div className="flex justify-end">
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium leading-none transition-colors",
+                            !inMonth && "text-muted-foreground/40",
+                            inMonth && !todayDay && "text-foreground",
+                            todayDay &&
+                              "bg-primary font-bold text-primary-foreground",
+                            selected &&
+                              !todayDay &&
+                              "font-semibold text-primary",
+                          )}
+                        >
+                          {format(day, "d")}
+                        </span>
+                      </div>
 
-                  {/* Event chips */}
-                  <div className="flex min-h-0 flex-col gap-0.5" aria-hidden>
-                    {visible.map((ev) => (
+                      {/* Event chips */}
                       <div
-                        key={ev.id}
-                        className={cn(
-                          "flex items-center gap-1 truncate rounded px-1.5 py-0.5 text-xs leading-tight font-medium",
-                          ev.type === "exam"
-                            ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
-                            : "opacity-90"
-                        )}
-                        style={
-                          ev.type === "task"
-                            ? {
-                                backgroundColor: `${ev.color}18`,
-                                color: ev.color,
-                              }
-                            : undefined
-                        }
+                        className="flex min-h-0 flex-col gap-0.5"
+                        aria-hidden
                       >
-                        {ev.type === "exam" && (
-                          <AlertCircle className="h-2.5 w-2.5 shrink-0" strokeWidth={2} />
-                        )}
-                        <span className="truncate">{ev.label}</span>
-                        {ev.type === "task" && ev.completed && (
-                          <CheckCircle2 className="h-2.5 w-2.5 shrink-0 opacity-70" strokeWidth={2} />
+                        {visible.map((ev) => (
+                          <div
+                            key={ev.id}
+                            className={cn(
+                              "flex items-center gap-1 truncate rounded px-1.5 py-0.5 text-xs leading-tight font-medium",
+                              ev.type === "exam"
+                                ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
+                                : "opacity-90",
+                            )}
+                            style={
+                              ev.type === "task"
+                                ? {
+                                    backgroundColor: `${ev.color}18`,
+                                    color: ev.color,
+                                  }
+                                : undefined
+                            }
+                          >
+                            {ev.type === "exam" && (
+                              <AlertCircle
+                                className="h-2.5 w-2.5 shrink-0"
+                                strokeWidth={2}
+                              />
+                            )}
+                            <span className="truncate">{ev.label}</span>
+                            {ev.type === "task" && ev.completed && (
+                              <CheckCircle2
+                                className="h-2.5 w-2.5 shrink-0 opacity-70"
+                                strokeWidth={2}
+                              />
+                            )}
+                          </div>
+                        ))}
+                        {overflow > 0 && (
+                          <div className="px-1.5 text-xs font-medium text-muted-foreground">
+                            +{overflow} more
+                          </div>
                         )}
                       </div>
-                    ))}
-                    {overflow > 0 && (
-                      <div className="px-1.5 text-xs font-medium text-muted-foreground">
-                        +{overflow} more
-                      </div>
-                    )}
-                  </div>
-                </button>
-              );
+                    </button>
+                  );
                 })}
               </div>
             ))}
@@ -553,12 +672,12 @@ export default function CalendarPage() {
                 <div className="divide-y">
                   {/* Exams first */}
                   {selExams.map((exam) => (
-                    <div
-                      key={`exam-${exam.id}`}
-                      className="p-4 pastel-pink"
-                    >
+                    <div key={`exam-${exam.id}`} className="p-4 pastel-pink">
                       <div className="flex items-center gap-2 mb-1.5">
-                        <AlertCircle className="h-3.5 w-3.5 text-[hsl(var(--semantic-critical))] flex-shrink-0" strokeWidth={2} />
+                        <AlertCircle
+                          className="h-3.5 w-3.5 text-[hsl(var(--semantic-critical))] flex-shrink-0"
+                          strokeWidth={2}
+                        />
                         <Badge
                           variant="destructive"
                           className="h-auto px-2 py-0.5 text-xs font-medium"
@@ -595,67 +714,70 @@ export default function CalendarPage() {
                       color: task.subjectColor,
                     });
                     return (
-                    <div
-                      key={`task-${task.id}`}
-                      className={cn(
-                        "p-4 transition-colors",
-                        task.completed && "opacity-60"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                            <span
-                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full leading-none"
-                              style={{
-                                backgroundColor: `${accent}20`,
-                                color: accent,
-                              }}
-                            >
-                              {task.subjectName}
-                            </span>
-                            <span
+                      <div
+                        key={`task-${task.id}`}
+                        className={cn(
+                          "p-4 transition-colors",
+                          task.completed && "opacity-60",
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                              <span
+                                className="text-[10px] font-semibold px-2 py-0.5 rounded-full leading-none"
+                                style={{
+                                  backgroundColor: `${accent}20`,
+                                  color: accent,
+                                }}
+                              >
+                                {task.subjectName}
+                              </span>
+                              <span
+                                className={cn(
+                                  "text-[10px] font-medium px-1.5 py-0.5 rounded leading-none capitalize",
+                                  task.priority === "high" &&
+                                    "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400",
+                                  task.priority === "medium" &&
+                                    "bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400",
+                                  task.priority === "low" &&
+                                    "bg-muted text-muted-foreground",
+                                )}
+                              >
+                                {task.priority}
+                              </span>
+                            </div>
+                            <p
                               className={cn(
-                                "text-[10px] font-medium px-1.5 py-0.5 rounded leading-none capitalize",
-                                task.priority === "high" &&
-                                  "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400",
-                                task.priority === "medium" &&
-                                  "bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400",
-                                task.priority === "low" &&
-                                  "bg-muted text-muted-foreground"
+                                "text-sm font-medium leading-snug",
+                                task.completed &&
+                                  "line-through text-muted-foreground",
                               )}
                             >
-                              {task.priority}
-                            </span>
-                          </div>
-                          <p
-                            className={cn(
-                              "text-sm font-medium leading-snug",
-                              task.completed &&
-                                "line-through text-muted-foreground"
-                            )}
-                          >
-                            {task.title}
-                          </p>
-                          {task.topicTitle && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {task.topicTitle}
+                              {task.title}
                             </p>
-                          )}
-                        </div>
-                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                          {task.completed ? (
-                            <CheckCircle2 className="h-4 w-4 text-[hsl(var(--semantic-complete))]" strokeWidth={2} />
-                          ) : null}
-                          {task.estimatedMinutes && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1 whitespace-nowrap">
-                              <Clock className="h-3 w-3" strokeWidth={2} />
-                              {task.estimatedMinutes}m
-                            </span>
-                          )}
+                            {task.topicTitle && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {task.topicTitle}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                            {task.completed ? (
+                              <CheckCircle2
+                                className="h-4 w-4 text-[hsl(var(--semantic-complete))]"
+                                strokeWidth={2}
+                              />
+                            ) : null}
+                            {task.estimatedMinutes && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1 whitespace-nowrap">
+                                <Clock className="h-3 w-3" strokeWidth={2} />
+                                {task.estimatedMinutes}m
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
                     );
                   })}
                 </div>

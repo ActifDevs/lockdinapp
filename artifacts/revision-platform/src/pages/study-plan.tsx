@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useListTasks,
   getListTasksQueryKey,
@@ -44,7 +44,14 @@ import { Plus, Trash2, Calendar as CalendarIcon } from "lucide-react";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ReadStateNotice } from "@/components/read-state-notice";
-import { Link } from "wouter";
+import { Link, useSearchParams } from "wouter";
+import {
+  omitDefaultQueryValue,
+  resolveQueryParam,
+  updateQueryParams,
+} from "@/lib/navigation-query-state";
+
+const TASK_VIEWS = ["today", "upcoming", "completed", "all"] as const;
 
 const taskSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -61,10 +68,36 @@ const taskSchema = z.object({
 type TaskFormValues = z.infer<typeof taskSchema>;
 
 export default function StudyPlan() {
-  const [activeTab, setActiveTab] = useState("today");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { value: activeTab, needsNormalization: viewNeedsNormalization } =
+    resolveQueryParam(searchParams, "view", TASK_VIEWS, "today");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!viewNeedsNormalization) return;
+    setSearchParams((current) => updateQueryParams(current, [["view", null]]), {
+      replace: true,
+    });
+  }, [setSearchParams, viewNeedsNormalization]);
+
+  const handleViewChange = (value: string) => {
+    if (!TASK_VIEWS.includes(value as (typeof TASK_VIEWS)[number])) return;
+    setSearchParams(
+      (current) =>
+        updateQueryParams(current, [
+          [
+            "view",
+            omitDefaultQueryValue(
+              value as (typeof TASK_VIEWS)[number],
+              "today",
+            ),
+          ],
+        ]),
+      { replace: false },
+    );
+  };
 
   const mutationMessage = (error: unknown) =>
     error instanceof Error && error.message.trim()
@@ -261,7 +294,11 @@ export default function StudyPlan() {
       )}
 
       <Card className="card-tint-cream overflow-hidden border-[hsl(var(--card-border))] shadow-[var(--elev-2)]">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs
+          value={activeTab}
+          onValueChange={handleViewChange}
+          className="w-full"
+        >
           <CardHeader className="bg-muted/10 pb-0">
             <TabsList className="tabs-scroll rounded-none border-b-0 bg-transparent p-0">
               <TabsTrigger

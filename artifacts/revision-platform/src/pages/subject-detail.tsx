@@ -16,7 +16,7 @@ import {
   type SyllabusUnit,
   type SyllabusTopic,
 } from "@workspace/api-client-react";
-import { Link, useRoute } from "wouter";
+import { Link, useRoute, useSearchParams } from "wouter";
 import { lazy, Suspense, useEffect, useState, type CSSProperties } from "react";
 import { APP_NAME } from "@/lib/app-config";
 import {
@@ -53,6 +53,13 @@ import { ReadStateNotice } from "@/components/read-state-notice";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { subjectMark } from "@/lib/subject-mark";
 import { cn } from "@/lib/utils";
+import {
+  omitDefaultQueryValue,
+  resolveQueryParam,
+  updateQueryParams,
+} from "@/lib/navigation-query-state";
+
+const SUBJECT_TABS = ["overview", "syllabus", "tasks", "performance"] as const;
 
 const ScoreTrendLineChart = lazy(
   () => import("@/components/charts/score-trend-line-chart"),
@@ -77,12 +84,39 @@ function unitProgressStatus(
 
 export default function SubjectDetail() {
   const [, params] = useRoute("/subjects/:id");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { value: activeTab, needsNormalization: tabNeedsNormalization } =
+    resolveQueryParam(searchParams, "tab", SUBJECT_TABS, "overview");
   const subjectId = params?.id ? parseInt(params.id) : null;
   const queryClient = useQueryClient();
   const [expandedUnits, setExpandedUnits] = useState<Set<number>>(
     () => new Set(),
   );
   const [unitBusyId, setUnitBusyId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!tabNeedsNormalization) return;
+    setSearchParams((current) => updateQueryParams(current, [["tab", null]]), {
+      replace: true,
+    });
+  }, [setSearchParams, tabNeedsNormalization]);
+
+  const handleTabChange = (value: string) => {
+    if (!SUBJECT_TABS.includes(value as (typeof SUBJECT_TABS)[number])) return;
+    setSearchParams(
+      (current) =>
+        updateQueryParams(current, [
+          [
+            "tab",
+            omitDefaultQueryValue(
+              value as (typeof SUBJECT_TABS)[number],
+              "overview",
+            ),
+          ],
+        ]),
+      { replace: false },
+    );
+  };
 
   // Queries
   const {
@@ -495,7 +529,11 @@ export default function SubjectDetail() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="w-full"
+      >
         <TabsList className="tabs-scroll mb-6 rounded-none border-b bg-transparent p-0">
           <TabsTrigger
             value="overview"

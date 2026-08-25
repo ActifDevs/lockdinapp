@@ -4,7 +4,15 @@ import {
   type ReactNode,
 } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
@@ -13,7 +21,8 @@ const api = vi.hoisted(() => ({
   replace: vi.fn(),
 }));
 
-vi.mock("wouter", () => ({
+vi.mock("wouter", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("wouter")>()),
   Link: ({
     children,
     href,
@@ -84,6 +93,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 function renderPage() {
@@ -165,5 +175,78 @@ describe("Settings catalogue read states", () => {
     expect(screen.getByText("Subject catalogue refresh failed")).toBeVisible();
     expect(screen.getByText("Mathematics")).toBeVisible();
     expect(screen.getByRole("button", { name: "Save subjects" })).toBeEnabled();
+  });
+});
+
+describe("Settings navigation state", () => {
+  it.each([
+    ["/settings", "Account"],
+    ["/settings?tab=account", "Account"],
+    ["/settings?tab=subjects", "Subjects"],
+    ["/settings?tab=appearance", "Appearance"],
+    ["/settings?tab=notifications", "Alerts"],
+  ])("restores %s as the %s tab", (path, label) => {
+    window.history.replaceState({}, "", path);
+    const view = renderPage();
+    expect(screen.getByRole("tab", { name: label })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+
+    view.unmount();
+    renderPage();
+    expect(screen.getByRole("tab", { name: label })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+  });
+
+  it("pushes tab changes, omits Account, and preserves unrelated params", async () => {
+    window.history.replaceState({}, "", "/settings?keep=one&keep=two");
+    const push = vi.spyOn(window.history, "pushState");
+    renderPage();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Alerts" }));
+    expect(window.location.search).toBe("?keep=one&keep=two&tab=notifications");
+    expect(push).toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Account" }));
+    expect(window.location.search).toBe("?keep=one&keep=two");
+  });
+
+  it("renders Account and replace-normalizes an invalid tab", async () => {
+    window.history.replaceState({}, "", "/settings?tab=garbage&keep=1");
+    const replace = vi.spyOn(window.history, "replaceState");
+    renderPage();
+
+    expect(screen.getByRole("tab", { name: "Account" })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+    await waitFor(() => expect(window.location.search).toBe("?keep=1"));
+    expect(replace).toHaveBeenCalled();
+  });
+
+  it("restores tab selection through browser Back and Forward", async () => {
+    window.history.replaceState({}, "", "/settings");
+    renderPage();
+    await userEvent.click(screen.getByRole("tab", { name: "Subjects" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Appearance" }));
+
+    await act(async () => window.history.back());
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Subjects" })).toHaveAttribute(
+        "data-state",
+        "active",
+      ),
+    );
+
+    await act(async () => window.history.forward());
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Appearance" })).toHaveAttribute(
+        "data-state",
+        "active",
+      ),
+    );
   });
 });

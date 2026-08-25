@@ -4,7 +4,15 @@ import {
   type ReactNode,
 } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
@@ -13,9 +21,11 @@ const api = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
+  taskKey: vi.fn(),
 }));
 
-vi.mock("wouter", () => ({
+vi.mock("wouter", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("wouter")>()),
   Link: ({
     children,
     href,
@@ -27,7 +37,7 @@ vi.mock("wouter", () => ({
 }));
 
 vi.mock("@workspace/api-client-react", () => ({
-  getListTasksQueryKey: () => ["/api/tasks"],
+  getListTasksQueryKey: api.taskKey,
   getListCurrentUserSubjectsQueryKey: () => ["/api/user-subjects"],
   getGetDashboardSummaryQueryKey: () => ["/api/dashboard/summary"],
   getGetProgressOverviewQueryKey: () => ["/api/progress/overview"],
@@ -68,6 +78,7 @@ const mutation = () => ({
 });
 
 beforeEach(() => {
+  window.history.replaceState({}, "", "/study-plan");
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
     value: vi.fn().mockImplementation((query: string) => ({
@@ -86,11 +97,13 @@ beforeEach(() => {
   api.create.mockReturnValue(mutation());
   api.update.mockReturnValue(mutation());
   api.remove.mockReturnValue(mutation());
+  api.taskKey.mockImplementation((params?: unknown) => ["/api/tasks", params]);
 });
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 function renderPage() {
@@ -207,5 +220,92 @@ describe("Study Plan read states", () => {
     expect(
       screen.queryByText("Task creation is unavailable"),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("Study Plan navigation state", () => {
+  it.each([
+    ["/study-plan", "Today", "today"],
+    ["/study-plan?view=today", "Today", "today"],
+    ["/study-plan?view=upcoming", "Upcoming", "upcoming"],
+    ["/study-plan?view=completed", "Completed", "completed"],
+    ["/study-plan?view=all", "All tasks", "all"],
+  ])("restores %s and queries %s", (path, label, filter) => {
+    window.history.replaceState({}, "", path);
+    const view = renderPage();
+    expect(screen.getByRole("tab", { name: label })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+    expect(api.tasks.mock.calls.at(-1)?.[0]).toEqual({ filter });
+    expect(api.taskKey).toHaveBeenCalledWith({ filter });
+
+    view.unmount();
+    renderPage();
+    expect(screen.getByRole("tab", { name: label })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+    expect(api.tasks.mock.calls.at(-1)?.[0]).toEqual({ filter });
+  });
+
+  it("pushes view/query changes, preserves params, and omits Today", async () => {
+    window.history.replaceState({}, "", "/study-plan?keep=one&keep=two");
+    const push = vi.spyOn(window.history, "pushState");
+    renderPage();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Upcoming" }));
+    await waitFor(() =>
+      expect(api.tasks.mock.calls.at(-1)?.[0]).toEqual({
+        filter: "upcoming",
+      }),
+    );
+    expect(window.location.search).toBe("?keep=one&keep=two&view=upcoming");
+    expect(api.taskKey).toHaveBeenCalledWith({ filter: "upcoming" });
+    expect(push).toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Today" }));
+    expect(window.location.search).toBe("?keep=one&keep=two");
+    expect(api.tasks.mock.calls.at(-1)?.[0]).toEqual({ filter: "today" });
+  });
+
+  it("never sends an invalid URL view to the task query", async () => {
+    window.history.replaceState({}, "", "/study-plan?view=wat&keep=1");
+    const replace = vi.spyOn(window.history, "replaceState");
+    renderPage();
+    expect(screen.getByRole("tab", { name: "Today" })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+    expect(
+      api.tasks.mock.calls.every(([params]) => params.filter !== "wat"),
+    ).toBe(true);
+    expect(api.tasks.mock.calls.at(-1)?.[0]).toEqual({ filter: "today" });
+    await waitFor(() => expect(window.location.search).toBe("?keep=1"));
+    expect(replace).toHaveBeenCalled();
+  });
+
+  it("restores matching view and query through Back and Forward", async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole("tab", { name: "Upcoming" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Completed" }));
+
+    await act(async () => window.history.back());
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: "Upcoming" })).toHaveAttribute(
+        "data-state",
+        "active",
+      );
+      expect(api.tasks.mock.calls.at(-1)?.[0]).toEqual({ filter: "upcoming" });
+    });
+
+    await act(async () => window.history.forward());
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: "Completed" })).toHaveAttribute(
+        "data-state",
+        "active",
+      );
+      expect(api.tasks.mock.calls.at(-1)?.[0]).toEqual({ filter: "completed" });
+    });
   });
 });
