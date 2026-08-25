@@ -43,6 +43,8 @@ import { PageHeader } from "@/components/page-header";
 import { Plus, Trash2, Calendar as CalendarIcon } from "lucide-react";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
+import { ReadStateNotice } from "@/components/read-state-notice";
+import { Link } from "wouter";
 
 const taskSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -69,15 +71,30 @@ export default function StudyPlan() {
       ? error.message
       : "We couldn't save your changes. Try again.";
 
-  const { data: tasks, isLoading: tasksLoading } = useListTasks(
+  const {
+    data: tasks,
+    isLoading: tasksLoading,
+    isError: tasksError,
+    error: tasksLoadError,
+    refetch: refetchTasks,
+  } = useListTasks(
     { filter: activeTab as any },
     { query: { queryKey: getListTasksQueryKey({ filter: activeTab as any }) } },
   );
 
-  const { data: memberships } = useListCurrentUserSubjects({
+  const {
+    data: memberships,
+    isLoading: membershipsLoading,
+    isError: membershipsError,
+    error: membershipsLoadError,
+    refetch: refetchMemberships,
+  } = useListCurrentUserSubjects({
     query: { queryKey: getListCurrentUserSubjectsQueryKey() },
   });
   const subjects = memberships?.map((membership) => membership.subject);
+  const canCreateTask =
+    !membershipsLoading && !membershipsError && (subjects?.length ?? 0) > 0;
+  const tasksRefreshFailed = tasksError && tasks !== undefined;
 
   const invalidateTaskAggregates = () => {
     queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
@@ -203,11 +220,36 @@ export default function StudyPlan() {
         title="Study plan"
         subtitle="Build today's mission, protect your streak, and keep revision finishable."
         action={
-          <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Button
+            onClick={() => setIsAddDialogOpen(true)}
+            disabled={!canCreateTask}
+          >
             <Plus className="h-4 w-4" strokeWidth={2} aria-hidden /> Add task
           </Button>
         }
       />
+
+      {membershipsError && (
+        <ReadStateNotice
+          title="Task creation is unavailable"
+          error={membershipsLoadError}
+          description="Your tasks are still available, but subjects could not be loaded for task creation."
+          onRetry={() => void refetchMemberships()}
+        />
+      )}
+      {!membershipsLoading &&
+        !membershipsError &&
+        memberships?.length === 0 && (
+          <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+            Choose at least one subject before creating tasks.{" "}
+            <Link
+              href="/settings"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Open subject settings
+            </Link>
+          </div>
+        )}
 
       {actionError && (
         <div
@@ -249,12 +291,24 @@ export default function StudyPlan() {
             </TabsList>
           </CardHeader>
           <CardContent className="p-0">
-            {tasksLoading ? (
-              <div className="space-y-3 p-6">
+            {tasksLoading && tasks === undefined ? (
+              <div
+                className="space-y-3 p-6"
+                role="status"
+                aria-label="Loading study plan tasks"
+              >
+                <span className="sr-only">Loading study plan tasks</span>
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="dash-skeleton h-16 rounded-xl" />
                 ))}
               </div>
+            ) : tasksError && tasks === undefined ? (
+              <ReadStateNotice
+                title="Tasks could not be loaded"
+                error={tasksLoadError}
+                onRetry={() => void refetchTasks()}
+                className="m-6"
+              />
             ) : !tasks || tasks.length === 0 ? (
               <RichEmptyState
                 scene={activeTab === "completed" ? "calm" : "tasks"}
@@ -273,19 +327,33 @@ export default function StudyPlan() {
                       : "Break revision into small, finishable blocks and schedule the next session."
                 }
                 actionLabel={
-                  activeTab !== "completed"
+                  activeTab !== "completed" && canCreateTask
                     ? "Create today's mission"
                     : undefined
                 }
                 onAction={
-                  activeTab !== "completed"
+                  activeTab !== "completed" && canCreateTask
                     ? () => setIsAddDialogOpen(true)
                     : undefined
                 }
                 variant="mint"
               />
             ) : (
-              <div className="list-divider group">{tasks.map(renderTask)}</div>
+              <div>
+                {tasksRefreshFailed && (
+                  <ReadStateNotice
+                    stale
+                    compact
+                    title="Task refresh failed"
+                    error={tasksLoadError}
+                    onRetry={() => void refetchTasks()}
+                    className="m-4"
+                  />
+                )}
+                <div className="list-divider group">
+                  {tasks.map(renderTask)}
+                </div>
+              </div>
             )}
           </CardContent>
         </Tabs>
@@ -307,6 +375,26 @@ export default function StudyPlan() {
                 {mutationMessage(createTask.error)}
               </p>
             )}
+            {membershipsLoading && (
+              <p role="status" className="text-sm text-muted-foreground">
+                Loading subjects for task creation…
+              </p>
+            )}
+            {membershipsError && (
+              <ReadStateNotice
+                compact
+                title="Subjects could not be loaded"
+                error={membershipsLoadError}
+                onRetry={() => void refetchMemberships()}
+              />
+            )}
+            {!membershipsLoading &&
+              !membershipsError &&
+              memberships?.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Choose a subject in Settings before adding a task.
+                </p>
+              )}
             <FormField
               control={form.control}
               name="title"
@@ -333,6 +421,7 @@ export default function StudyPlan() {
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value?.toString()}
+                    disabled={!canCreateTask}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -416,7 +505,10 @@ export default function StudyPlan() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createTask.isPending}>
+              <Button
+                type="submit"
+                disabled={createTask.isPending || !canCreateTask}
+              >
                 {createTask.isPending ? "Adding…" : "Add task"}
               </Button>
             </DialogFooter>

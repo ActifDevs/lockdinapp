@@ -45,7 +45,11 @@ import {
 import { format, parseISO } from "date-fns";
 import { ChartSkeleton } from "@/components/charts/chart-skeleton";
 import { useQueryClient } from "@tanstack/react-query";
-import { getQueryErrorMessage } from "@/lib/query-error-message";
+import {
+  getQueryErrorMessage,
+  getQueryErrorStatus,
+} from "@/lib/query-error-message";
+import { ReadStateNotice } from "@/components/read-state-notice";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { subjectMark } from "@/lib/subject-mark";
 import { cn } from "@/lib/utils";
@@ -94,21 +98,39 @@ export default function SubjectDetail() {
     },
   });
 
-  const { data: syllabus } = useGetSubjectSyllabus(subjectId!, {
+  const {
+    data: syllabus,
+    isPending: syllabusLoading,
+    isError: syllabusError,
+    error: syllabusLoadError,
+    refetch: refetchSyllabus,
+  } = useGetSubjectSyllabus(subjectId!, {
     query: {
       enabled: !!subjectId,
       queryKey: getGetSubjectSyllabusQueryKey(subjectId!),
     },
   });
 
-  const { data: performance } = useGetSubjectPerformance(subjectId!, {
+  const {
+    data: performance,
+    isPending: performanceLoading,
+    isError: performanceError,
+    error: performanceLoadError,
+    refetch: refetchPerformance,
+  } = useGetSubjectPerformance(subjectId!, {
     query: {
       enabled: !!subjectId,
       queryKey: getGetSubjectPerformanceQueryKey(subjectId!),
     },
   });
 
-  const { data: tasks } = useListTasks(
+  const {
+    data: tasks,
+    isPending: tasksLoading,
+    isError: tasksError,
+    error: tasksLoadError,
+    refetch: refetchTasks,
+  } = useListTasks(
     { subjectId: subjectId! },
     {
       query: {
@@ -184,9 +206,14 @@ export default function SubjectDetail() {
     );
   }
 
-  if (subjectLoading) {
+  if (subjectLoading && !subject) {
     return (
-      <div className="app-page animate-pulse">
+      <div
+        className="app-page animate-pulse"
+        role="status"
+        aria-label="Loading subject"
+      >
+        <span className="sr-only">Loading subject</span>
         <div className="h-20 rounded-xl bg-muted" />
         <div className="h-10 w-full rounded bg-muted" />
         <div className="h-96 rounded-xl bg-muted" />
@@ -194,7 +221,8 @@ export default function SubjectDetail() {
     );
   }
 
-  if (subjectError || !subject) {
+  if ((subjectError && !subject) || !subject) {
+    const subjectNotFound = getQueryErrorStatus(subjectLoadError) === 404;
     return (
       <div className="app-page">
         <Breadcrumb className="mb-4">
@@ -213,27 +241,36 @@ export default function SubjectDetail() {
 
         <div className="dash-panel mt-6 flex min-h-[40vh] flex-col items-center justify-center gap-4">
           <h2 className="text-2xl font-bold tracking-tight">
-            Could not load subject
+            {subjectNotFound ? "Subject not found" : "Could not load subject"}
           </h2>
           <p className="max-w-md text-center text-muted-foreground">
-            {getQueryErrorMessage(subjectLoadError)}
+            {subjectNotFound
+              ? "This subject does not exist or is no longer available."
+              : getQueryErrorMessage(subjectLoadError)}
           </p>
-          <Button onClick={() => refetchSubject()}>Retry</Button>
+          {subjectNotFound ? (
+            <Button asChild>
+              <Link href="/subjects">Back to subjects</Link>
+            </Button>
+          ) : (
+            <Button onClick={() => void refetchSubject()}>Retry</Button>
+          )}
         </div>
       </div>
     );
   }
 
   const allSyllabusTopics = syllabus?.flatMap((unit) => unit.topics) ?? [];
-  const syllabusProgress =
-    allSyllabusTopics.length === 0
+  const syllabusProgress = syllabus
+    ? allSyllabusTopics.length === 0
       ? 0
       : Math.round(
           (allSyllabusTopics.filter((topic) => topic.status === "completed")
             .length /
             allSyllabusTopics.length) *
             100,
-        );
+        )
+    : null;
 
   const cycleTopicStatus = (topicId: number, currentStatus: string) => {
     let nextStatus: "not_started" | "in_progress" | "completed" = "in_progress";
@@ -331,6 +368,11 @@ export default function SubjectDetail() {
   };
 
   const pendingTasks = tasks?.filter((t) => !t.completed) || [];
+  const subjectRefreshFailed = subjectError && !!subject;
+  const syllabusRefreshFailed = syllabusError && syllabus !== undefined;
+  const performanceRefreshFailed =
+    performanceError && performance !== undefined;
+  const tasksRefreshFailed = tasksError && tasks !== undefined;
   const accent = resolveSubjectAccent({
     code: subject.code,
     name: subject.name,
@@ -353,6 +395,16 @@ export default function SubjectDetail() {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
+
+      {subjectRefreshFailed && (
+        <ReadStateNotice
+          stale
+          title="Subject refresh failed"
+          error={subjectLoadError}
+          onRetry={() => void refetchSubject()}
+          className="mb-5"
+        />
+      )}
 
       {/* Header */}
       <div
@@ -380,17 +432,29 @@ export default function SubjectDetail() {
 
             <div className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:gap-6">
               <div className="flex items-center gap-4">
-                <ProgressRing
-                  value={syllabusProgress}
-                  label={`${subject.name} syllabus`}
-                  color={accent}
-                  size={56}
-                  strokeWidth={5}
-                />
+                {syllabusProgress !== null ? (
+                  <ProgressRing
+                    value={syllabusProgress}
+                    label={`${subject.name} syllabus`}
+                    color={accent}
+                    size={56}
+                    strokeWidth={5}
+                  />
+                ) : (
+                  <div
+                    className="dash-skeleton h-14 w-14 shrink-0 rounded-full"
+                    role="status"
+                    aria-label="Loading syllabus progress"
+                  />
+                )}
                 <div>
                   <p className="card-label">Syllabus</p>
-                  <p className="text-2xl font-bold tabular-nums">
-                    {syllabusProgress}%
+                  <p className="text-2xl font-bold tabular-nums" role="status">
+                    {syllabusError && syllabus === undefined
+                      ? "Unavailable"
+                      : syllabusProgress === null
+                        ? "Loading…"
+                        : `${syllabusProgress}%`}
                   </p>
                 </div>
               </div>
@@ -398,19 +462,31 @@ export default function SubjectDetail() {
                 <div>
                   <p className="card-label mb-0.5">Tasks</p>
                   <p className="text-base font-bold">
-                    {pendingTasks.length}{" "}
-                    <span className="text-xs font-normal text-muted-foreground">
-                      pending
-                    </span>
+                    {tasksError && tasks === undefined ? (
+                      "Unavailable"
+                    ) : tasksLoading ? (
+                      "Loading…"
+                    ) : (
+                      <>
+                        {pendingTasks.length}{" "}
+                        <span className="text-xs font-normal text-muted-foreground">
+                          pending
+                        </span>
+                      </>
+                    )}
                   </p>
                 </div>
                 <div>
                   <p className="card-label mb-0.5">Latest score</p>
                   <p className="text-base font-bold tabular">
-                    {performance?.latestScore !== null &&
-                    performance?.latestScore !== undefined
-                      ? `${performance.latestScore}%`
-                      : "N/A"}
+                    {performanceError && performance === undefined
+                      ? "Unavailable"
+                      : performanceLoading
+                        ? "Loading…"
+                        : performance?.latestScore !== null &&
+                            performance?.latestScore !== undefined
+                          ? `${performance.latestScore}%`
+                          : "N/A"}
                   </p>
                 </div>
               </div>
@@ -437,7 +513,11 @@ export default function SubjectDetail() {
             value="tasks"
             className="rounded-none border-b-2 border-transparent px-1 pb-3 pt-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
           >
-            Tasks ({pendingTasks.length})
+            {tasksError && tasks === undefined
+              ? "Tasks"
+              : tasksLoading
+                ? "Tasks (…)"
+                : `Tasks (${pendingTasks.length})`}
           </TabsTrigger>
           <TabsTrigger
             value="performance"
@@ -450,6 +530,21 @@ export default function SubjectDetail() {
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-2 space-y-6">
+              {performanceError && performance === undefined && (
+                <ReadStateNotice
+                  title="Performance is unavailable"
+                  error={performanceLoadError}
+                  onRetry={() => void refetchPerformance()}
+                />
+              )}
+              {performanceRefreshFailed && (
+                <ReadStateNotice
+                  stale
+                  title="Performance refresh failed"
+                  error={performanceLoadError}
+                  onRetry={() => void refetchPerformance()}
+                />
+              )}
               {/* Insight if available */}
               {performance?.insight && (
                 <InsightCard
@@ -478,7 +573,28 @@ export default function SubjectDetail() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  {pendingTasks.length === 0 ? (
+                  {tasksLoading && tasks === undefined ? (
+                    <div
+                      className="space-y-3 p-6"
+                      role="status"
+                      aria-label="Loading subject tasks"
+                    >
+                      <span className="sr-only">Loading subject tasks</span>
+                      {[1, 2].map((item) => (
+                        <div
+                          key={item}
+                          className="dash-skeleton h-12 rounded-xl"
+                        />
+                      ))}
+                    </div>
+                  ) : tasksError && tasks === undefined ? (
+                    <ReadStateNotice
+                      title="Tasks are unavailable"
+                      error={tasksLoadError}
+                      onRetry={() => void refetchTasks()}
+                      className="m-6"
+                    />
+                  ) : pendingTasks.length === 0 ? (
                     <RichEmptyState
                       scene="tasks"
                       title="No pending tasks"
@@ -489,30 +605,44 @@ export default function SubjectDetail() {
                       className="py-8"
                     />
                   ) : (
-                    <div className="divide-y divide-border/30">
-                      {pendingTasks.slice(0, 5).map((task) => (
-                        <div
-                          key={task.id}
-                          className="flex items-center justify-between p-4 hover:bg-muted/30"
-                        >
-                          <div>
-                            <p className="text-sm font-medium">{task.title}</p>
-                            {task.topicTitle && (
-                              <p className="text-xs text-muted-foreground">
-                                {task.topicTitle}
+                    <div>
+                      {tasksRefreshFailed && (
+                        <ReadStateNotice
+                          stale
+                          compact
+                          title="Task refresh failed"
+                          error={tasksLoadError}
+                          onRetry={() => void refetchTasks()}
+                          className="m-4"
+                        />
+                      )}
+                      <div className="divide-y divide-border/30">
+                        {pendingTasks.slice(0, 5).map((task) => (
+                          <div
+                            key={task.id}
+                            className="flex items-center justify-between p-4 hover:bg-muted/30"
+                          >
+                            <div>
+                              <p className="text-sm font-medium">
+                                {task.title}
                               </p>
+                              {task.topicTitle && (
+                                <p className="text-xs text-muted-foreground">
+                                  {task.topicTitle}
+                                </p>
+                              )}
+                            </div>
+                            {task.deadline && (
+                              <Badge
+                                variant="secondary"
+                                className="text-xs font-normal"
+                              >
+                                {format(parseISO(task.deadline), "MMM d")}
+                              </Badge>
                             )}
                           </div>
-                          {task.deadline && (
-                            <Badge
-                              variant="secondary"
-                              className="text-xs font-normal"
-                            >
-                              {format(parseISO(task.deadline), "MMM d")}
-                            </Badge>
-                          )}
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -527,34 +657,58 @@ export default function SubjectDetail() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between border-b pb-3">
-                    <span className="text-sm text-muted-foreground">
-                      Papers completed
-                    </span>
-                    <span className="text-lg font-semibold tabular">
-                      {performance?.papersCompleted || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between border-b pb-3">
-                    <span className="text-sm text-muted-foreground">
-                      Average score
-                    </span>
-                    <span className="text-lg font-semibold tabular">
-                      {performance?.averageScore
-                        ? `${performance.averageScore}%`
-                        : "-"}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Best score
-                    </span>
-                    <span className="text-lg font-semibold tabular text-[hsl(var(--semantic-progress))]">
-                      {performance?.bestScore
-                        ? `${performance.bestScore}%`
-                        : "-"}
-                    </span>
-                  </div>
+                  {performanceLoading && performance === undefined ? (
+                    <div
+                      className="space-y-3"
+                      role="status"
+                      aria-label="Loading subject statistics"
+                    >
+                      <span className="sr-only">
+                        Loading subject statistics
+                      </span>
+                      {[1, 2, 3].map((item) => (
+                        <div
+                          key={item}
+                          className="dash-skeleton h-8 rounded-lg"
+                        />
+                      ))}
+                    </div>
+                  ) : performanceError && performance === undefined ? (
+                    <p className="text-sm text-muted-foreground">
+                      Statistics are unavailable until performance data reloads.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between border-b pb-3">
+                        <span className="text-sm text-muted-foreground">
+                          Papers completed
+                        </span>
+                        <span className="text-lg font-semibold tabular">
+                          {performance?.papersCompleted || 0}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between border-b pb-3">
+                        <span className="text-sm text-muted-foreground">
+                          Average score
+                        </span>
+                        <span className="text-lg font-semibold tabular">
+                          {performance?.averageScore
+                            ? `${performance.averageScore}%`
+                            : "-"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          Best score
+                        </span>
+                        <span className="text-lg font-semibold tabular text-[hsl(var(--semantic-progress))]">
+                          {performance?.bestScore
+                            ? `${performance.bestScore}%`
+                            : "-"}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -573,139 +727,173 @@ export default function SubjectDetail() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              {syllabus?.length === 0 ? (
+              {syllabusLoading && syllabus === undefined ? (
+                <div
+                  className="space-y-3 p-6"
+                  role="status"
+                  aria-label="Loading syllabus"
+                >
+                  <span className="sr-only">Loading syllabus</span>
+                  {[1, 2, 3].map((item) => (
+                    <div key={item} className="dash-skeleton h-14 rounded-xl" />
+                  ))}
+                </div>
+              ) : syllabusError && syllabus === undefined ? (
+                <ReadStateNotice
+                  title="Syllabus is unavailable"
+                  error={syllabusLoadError}
+                  onRetry={() => void refetchSyllabus()}
+                  className="m-6"
+                />
+              ) : syllabus?.length === 0 ? (
                 <div className="p-8 text-center text-muted-foreground">
-                  Syllabus data unavailable.
+                  No syllabus topics are available for this subject yet.
                 </div>
               ) : (
-                <div className="divide-y divide-border/50">
-                  {syllabus?.map((unit, uIdx) => {
-                    const expanded = expandedUnits.has(unit.id);
-                    const unitStatus = unitProgressStatus(unit.topics);
-                    const doneCount = unit.topics.filter(
-                      (t) => t.status === "completed",
-                    ).length;
-                    const indexLabel = (uIdx + 1).toString().padStart(2, "0");
-                    const title = stripLeadingIndex(unit.title);
-                    const busy = unitBusyId === unit.id;
+                <div>
+                  {syllabusRefreshFailed && (
+                    <ReadStateNotice
+                      stale
+                      compact
+                      title="Syllabus refresh failed"
+                      error={syllabusLoadError}
+                      onRetry={() => void refetchSyllabus()}
+                      className="m-4"
+                    />
+                  )}
+                  <div className="divide-y divide-border/50">
+                    {syllabus?.map((unit, uIdx) => {
+                      const expanded = expandedUnits.has(unit.id);
+                      const unitStatus = unitProgressStatus(unit.topics);
+                      const doneCount = unit.topics.filter(
+                        (t) => t.status === "completed",
+                      ).length;
+                      const indexLabel = (uIdx + 1).toString().padStart(2, "0");
+                      const title = stripLeadingIndex(unit.title);
+                      const busy = unitBusyId === unit.id;
 
-                    return (
-                      <div
-                        key={unit.id}
-                        className="bg-card"
-                        style={{ "--subject-accent": accent } as CSSProperties}
-                      >
-                        <div className="flex items-center gap-1 py-1 pl-3 pr-2 sm:pl-4 sm:pr-3">
-                          <button
-                            type="button"
-                            disabled={
-                              busy ||
-                              unit.topics.length === 0 ||
-                              updateTopic.isPending
-                            }
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void toggleUnitComplete(unit);
-                            }}
-                            aria-label={
-                              unitStatus === "completed"
-                                ? `Mark all subtopics in ${title} as not started`
-                                : `Mark all subtopics in ${title} as completed`
-                            }
-                            aria-pressed={unitStatus === "completed"}
-                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
-                          >
-                            {getStatusIcon(unitStatus)}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => toggleUnitExpanded(unit.id)}
-                            aria-expanded={expanded}
-                            className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors hover:bg-muted/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                          >
-                            <span
-                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-semibold tabular-nums"
-                              style={{
-                                color: accent,
-                                backgroundColor: `color-mix(in oklab, ${accent} 14%, transparent)`,
+                      return (
+                        <div
+                          key={unit.id}
+                          className="bg-card"
+                          style={
+                            { "--subject-accent": accent } as CSSProperties
+                          }
+                        >
+                          <div className="flex items-center gap-1 py-1 pl-3 pr-2 sm:pl-4 sm:pr-3">
+                            <button
+                              type="button"
+                              disabled={
+                                busy ||
+                                unit.topics.length === 0 ||
+                                updateTopic.isPending
+                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void toggleUnitComplete(unit);
                               }}
+                              aria-label={
+                                unitStatus === "completed"
+                                  ? `Mark all subtopics in ${title} as not started`
+                                  : `Mark all subtopics in ${title} as completed`
+                              }
+                              aria-pressed={unitStatus === "completed"}
+                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
                             >
-                              {indexLabel}
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span
-                                className={cn(
-                                  "block truncate text-sm font-semibold leading-5 tracking-[-0.01em]",
-                                  unitStatus === "completed" &&
-                                    "text-muted-foreground",
-                                )}
-                              >
-                                {title}
-                              </span>
-                              <span className="mt-0.5 block text-xs text-muted-foreground tabular-nums">
-                                {doneCount}/{unit.topics.length} subtopics
-                              </span>
-                            </span>
-                            <ChevronDown
-                              className={cn(
-                                "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
-                                expanded && "rotate-180",
-                              )}
-                              strokeWidth={2}
-                              aria-hidden
-                            />
-                          </button>
-                        </div>
+                              {getStatusIcon(unitStatus)}
+                            </button>
 
-                        {expanded && (
-                          <div className="bg-muted/15 pb-2 pl-3 pr-2 pt-1 sm:pl-4 sm:pr-3">
-                            {unit.topics.length === 0 ? (
-                              <p className="px-3 py-3 text-sm text-muted-foreground">
-                                No subtopics yet.
-                              </p>
-                            ) : (
-                              unit.topics.map((topic) => (
-                                <div
-                                  key={topic.id}
-                                  className="flex items-center gap-1 rounded-lg py-0.5 pl-1 hover:bg-muted/40"
+                            <button
+                              type="button"
+                              onClick={() => toggleUnitExpanded(unit.id)}
+                              aria-expanded={expanded}
+                              className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors hover:bg-muted/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            >
+                              <span
+                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-semibold tabular-nums"
+                                style={{
+                                  color: accent,
+                                  backgroundColor: `color-mix(in oklab, ${accent} 14%, transparent)`,
+                                }}
+                              >
+                                {indexLabel}
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span
+                                  className={cn(
+                                    "block truncate text-sm font-semibold leading-5 tracking-[-0.01em]",
+                                    unitStatus === "completed" &&
+                                      "text-muted-foreground",
+                                  )}
                                 >
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      cycleTopicStatus(topic.id, topic.status)
-                                    }
-                                    disabled={updateTopic.isPending}
-                                    aria-label={`${topic.title}: ${topicStatusLabel(topic.status)}. ${topicStatusAction(topic.status)}.`}
-                                    aria-pressed={topic.status === "completed"}
-                                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
-                                  >
-                                    {getStatusIcon(topic.status)}
-                                  </button>
-                                  <div className="min-w-0 flex-1 py-2 pr-2">
-                                    <p
-                                      className={cn(
-                                        "text-sm font-medium leading-5",
-                                        topic.status === "completed" &&
-                                          "text-muted-foreground",
-                                      )}
-                                    >
-                                      {stripLeadingIndex(topic.title)}
-                                    </p>
-                                    {topic.notes && (
-                                      <p className="mt-1 inline-block rounded bg-muted/50 p-2 text-xs text-muted-foreground">
-                                        {topic.notes}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              ))
-                            )}
+                                  {title}
+                                </span>
+                                <span className="mt-0.5 block text-xs text-muted-foreground tabular-nums">
+                                  {doneCount}/{unit.topics.length} subtopics
+                                </span>
+                              </span>
+                              <ChevronDown
+                                className={cn(
+                                  "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                                  expanded && "rotate-180",
+                                )}
+                                strokeWidth={2}
+                                aria-hidden
+                              />
+                            </button>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
+
+                          {expanded && (
+                            <div className="bg-muted/15 pb-2 pl-3 pr-2 pt-1 sm:pl-4 sm:pr-3">
+                              {unit.topics.length === 0 ? (
+                                <p className="px-3 py-3 text-sm text-muted-foreground">
+                                  No subtopics yet.
+                                </p>
+                              ) : (
+                                unit.topics.map((topic) => (
+                                  <div
+                                    key={topic.id}
+                                    className="flex items-center gap-1 rounded-lg py-0.5 pl-1 hover:bg-muted/40"
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        cycleTopicStatus(topic.id, topic.status)
+                                      }
+                                      disabled={updateTopic.isPending}
+                                      aria-label={`${topic.title}: ${topicStatusLabel(topic.status)}. ${topicStatusAction(topic.status)}.`}
+                                      aria-pressed={
+                                        topic.status === "completed"
+                                      }
+                                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
+                                    >
+                                      {getStatusIcon(topic.status)}
+                                    </button>
+                                    <div className="min-w-0 flex-1 py-2 pr-2">
+                                      <p
+                                        className={cn(
+                                          "text-sm font-medium leading-5",
+                                          topic.status === "completed" &&
+                                            "text-muted-foreground",
+                                        )}
+                                      >
+                                        {stripLeadingIndex(topic.title)}
+                                      </p>
+                                      {topic.notes && (
+                                        <p className="mt-1 inline-block rounded bg-muted/50 p-2 text-xs text-muted-foreground">
+                                          {topic.notes}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -720,7 +908,25 @@ export default function SubjectDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {!tasks || tasks.length === 0 ? (
+              {tasksLoading && tasks === undefined ? (
+                <div
+                  className="space-y-3 p-6"
+                  role="status"
+                  aria-label="Loading subject tasks"
+                >
+                  <span className="sr-only">Loading subject tasks</span>
+                  {[1, 2, 3].map((item) => (
+                    <div key={item} className="dash-skeleton h-14 rounded-xl" />
+                  ))}
+                </div>
+              ) : tasksError && tasks === undefined ? (
+                <ReadStateNotice
+                  title="Tasks are unavailable"
+                  error={tasksLoadError}
+                  onRetry={() => void refetchTasks()}
+                  className="m-6"
+                />
+              ) : !tasks || tasks.length === 0 ? (
                 <RichEmptyState
                   scene="tasks"
                   title="Ready to schedule this subject?"
@@ -730,27 +936,39 @@ export default function SubjectDetail() {
                   variant="mint"
                 />
               ) : (
-                <div className="list-divider">
-                  {tasks.map((task) => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      disabled={updateTask.isPending}
-                      onToggle={() =>
-                        updateTask.mutate({
-                          taskId: task.id,
-                          data: { completed: !task.completed },
-                        })
-                      }
-                      trailing={
-                        task.deadline ? (
-                          <span className="hidden shrink-0 self-center pt-1 text-xs text-muted-foreground sm:inline">
-                            {format(parseISO(task.deadline), "MMM d")}
-                          </span>
-                        ) : undefined
-                      }
+                <div>
+                  {tasksRefreshFailed && (
+                    <ReadStateNotice
+                      stale
+                      compact
+                      title="Task refresh failed"
+                      error={tasksLoadError}
+                      onRetry={() => void refetchTasks()}
+                      className="m-4"
                     />
-                  ))}
+                  )}
+                  <div className="list-divider">
+                    {tasks.map((task) => (
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        disabled={updateTask.isPending}
+                        onToggle={() =>
+                          updateTask.mutate({
+                            taskId: task.id,
+                            data: { completed: !task.completed },
+                          })
+                        }
+                        trailing={
+                          task.deadline ? (
+                            <span className="hidden shrink-0 self-center pt-1 text-xs text-muted-foreground sm:inline">
+                              {format(parseISO(task.deadline), "MMM d")}
+                            </span>
+                          ) : undefined
+                        }
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -758,89 +976,118 @@ export default function SubjectDetail() {
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-6">
-          <Card className="card-tint-cream shadow-[var(--elev-2)]">
-            <CardHeader>
-              <CardTitle className="text-xl font-bold tracking-[-0.01em]">
-                Score trend
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!performance || performance.trend.length < 2 ? (
-                <RichEmptyState
-                  scene="chart"
-                  title="Log two papers to unlock trends"
-                  description="Timed attempts reveal your score trajectory and sharpen predicted grades."
-                  actionHref="/past-papers"
-                  actionLabel="Log a paper"
-                  variant="mint"
-                  className="py-10"
+          {performanceLoading && performance === undefined ? (
+            <div
+              className="space-y-4"
+              role="status"
+              aria-label="Loading subject performance"
+            >
+              <span className="sr-only">Loading subject performance</span>
+              <div className="dash-skeleton h-80 rounded-[var(--surface-radius)]" />
+              <div className="dash-skeleton h-56 rounded-[var(--surface-radius)]" />
+            </div>
+          ) : performanceError && performance === undefined ? (
+            <ReadStateNotice
+              title="Performance is unavailable"
+              error={performanceLoadError}
+              onRetry={() => void refetchPerformance()}
+            />
+          ) : (
+            <>
+              {performanceRefreshFailed && (
+                <ReadStateNotice
+                  stale
+                  title="Performance refresh failed"
+                  error={performanceLoadError}
+                  onRetry={() => void refetchPerformance()}
                 />
-              ) : (
-                <Suspense fallback={<ChartSkeleton height={300} />}>
-                  <ScoreTrendLineChart
-                    data={performance.trend}
-                    xKey="label"
-                    stroke={accent}
-                    height={300}
-                  />
-                </Suspense>
               )}
-            </CardContent>
-          </Card>
+              <Card className="card-tint-cream shadow-[var(--elev-2)]">
+                <CardHeader>
+                  <CardTitle className="text-xl font-bold tracking-[-0.01em]">
+                    Score trend
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!performance || performance.trend.length < 2 ? (
+                    <RichEmptyState
+                      scene="chart"
+                      title="Log two papers to unlock trends"
+                      description="Timed attempts reveal your score trajectory and sharpen predicted grades."
+                      actionHref="/past-papers"
+                      actionLabel="Log a paper"
+                      variant="mint"
+                      className="py-10"
+                    />
+                  ) : (
+                    <Suspense fallback={<ChartSkeleton height={300} />}>
+                      <ScoreTrendLineChart
+                        data={performance.trend}
+                        xKey="label"
+                        stroke={accent}
+                        height={300}
+                      />
+                    </Suspense>
+                  )}
+                </CardContent>
+              </Card>
 
-          <Card className="card-tint-cream shadow-[var(--elev-2)]">
-            <CardHeader>
-              <CardTitle className="text-xl font-bold tracking-[-0.01em]">
-                Component breakdown
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {!performance || performance.componentBreakdown.length === 0 ? (
-                <RichEmptyState
-                  scene="chart"
-                  title="No component data yet"
-                  description="As you log papers with paper codes, component averages will appear here."
-                  actionHref="/past-papers"
-                  actionLabel="Log a paper"
-                  variant="mint"
-                  className="py-8"
-                />
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[320px] text-left text-sm">
-                    <thead className="bg-muted/50 text-muted-foreground">
-                      <tr>
-                        <th className="px-6 py-3 font-medium">Component</th>
-                        <th className="px-6 py-3 font-medium text-center">
-                          Attempts
-                        </th>
-                        <th className="px-6 py-3 font-medium text-right">
-                          Latest Score
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {performance.componentBreakdown.map((cb, idx) => (
-                        <tr key={idx}>
-                          <td className="px-6 py-4 font-medium">
-                            {cb.componentName}
-                          </td>
-                          <td className="px-6 py-4 text-center text-muted-foreground">
-                            {cb.attempts}
-                          </td>
-                          <td className="px-6 py-4 text-right font-semibold">
-                            {cb.latestPercentage
-                              ? `${cb.latestPercentage}%`
-                              : "-"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              <Card className="card-tint-cream shadow-[var(--elev-2)]">
+                <CardHeader>
+                  <CardTitle className="text-xl font-bold tracking-[-0.01em]">
+                    Component breakdown
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {!performance ||
+                  performance.componentBreakdown.length === 0 ? (
+                    <RichEmptyState
+                      scene="chart"
+                      title="No component data yet"
+                      description="As you log papers with paper codes, component averages will appear here."
+                      actionHref="/past-papers"
+                      actionLabel="Log a paper"
+                      variant="mint"
+                      className="py-8"
+                    />
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[320px] text-left text-sm">
+                        <thead className="bg-muted/50 text-muted-foreground">
+                          <tr>
+                            <th className="px-6 py-3 font-medium">Component</th>
+                            <th className="px-6 py-3 font-medium text-center">
+                              Attempts
+                            </th>
+                            <th className="px-6 py-3 font-medium text-right">
+                              Latest Score
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {performance.componentBreakdown.map((cb, idx) => (
+                            <tr key={idx}>
+                              <td className="px-6 py-4 font-medium">
+                                {cb.componentName}
+                              </td>
+                              <td className="px-6 py-4 text-center text-muted-foreground">
+                                {cb.attempts}
+                              </td>
+                              <td className="px-6 py-4 text-right font-semibold">
+                                {cb.latestPercentage
+                                  ? `${cb.latestPercentage}%`
+                                  : "-"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
       </Tabs>
     </div>
