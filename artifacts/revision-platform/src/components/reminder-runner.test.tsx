@@ -10,17 +10,8 @@ vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({
     isAuthenticated: true,
     isOnboarded: true,
+    isLoading: false,
     user: { id: state.userId },
-  }),
-}));
-
-vi.mock("@/hooks/use-notification-prefs", () => ({
-  useNotificationPrefs: () => ({
-    prefs: {
-      morningSummary: true,
-      deadlineReminders: false,
-      examAlerts: false,
-    },
   }),
 }));
 
@@ -55,10 +46,53 @@ describe("ReminderRunner account switches", () => {
     );
 
     await act(async () => vi.advanceTimersByTimeAsync(2500));
-    expect(listTasks).toHaveBeenCalledTimes(1);
+    expect(listTasks).toHaveBeenCalledTimes(2);
     expect(localStorage.getItem("lockdin_morning_ping:user-a")).toBe(
       "2026-08-14",
     );
+
+    state.userId = "user-b";
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <ReminderRunner />
+      </QueryClientProvider>,
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(2500));
+
+    expect(listTasks).toHaveBeenCalledTimes(4);
+    expect(localStorage.getItem("lockdin_morning_ping:user-b")).toBe(
+      "2026-08-14",
+    );
+  });
+
+  it("honors the current user's scoped notification preference", async () => {
+    localStorage.setItem(
+      "lockdin_notification_prefs:user-a",
+      JSON.stringify({
+        morningSummary: false,
+        deadlineReminders: false,
+        examAlerts: false,
+      }),
+    );
+    localStorage.setItem(
+      "lockdin_notification_prefs",
+      JSON.stringify({
+        morningSummary: true,
+        deadlineReminders: true,
+        examAlerts: true,
+      }),
+    );
+
+    const queryClient = new QueryClient();
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <ReminderRunner />
+      </QueryClientProvider>,
+    );
+
+    await act(async () => vi.advanceTimersByTimeAsync(2500));
+    expect(listTasks).not.toHaveBeenCalled();
+    expect(localStorage.getItem("lockdin_morning_ping:user-a")).toBeNull();
 
     state.userId = "user-b";
     rerender(

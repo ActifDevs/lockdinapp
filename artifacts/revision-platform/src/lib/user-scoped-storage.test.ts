@@ -12,6 +12,9 @@ describe("user-scoped storage keys", () => {
     expect(userScopedStorageKey("lockdin_longest_streak", "user-b")).toBe(
       "lockdin_longest_streak:user-b",
     );
+    expect(userScopedStorageKey("lockdin_notification_prefs", "user-a")).toBe(
+      "lockdin_notification_prefs:user-a",
+    );
   });
 
   it("lists every ambiguous legacy personal key", () => {
@@ -22,6 +25,7 @@ describe("user-scoped storage keys", () => {
       "lockdin_morning_ping",
       "lockdin_deadline_ping",
       "lockdin_exam_ping",
+      "lockdin_notification_prefs",
     ]);
   });
 });
