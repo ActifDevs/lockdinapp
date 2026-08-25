@@ -166,16 +166,68 @@ were not changed.
 
 ## Preview
 
-PENDING
+- Deployment ID: `dpl_4m2njB5XRCVaeRQdL6xP3LeYEvJz`
+- Immutable URL: `https://lockdinapp-vdby64w6x-actif-devs.vercel.app/`
+- Source SHA: `a1369179a5585518762a20ca9f4ca770c75addcd`
+- Branch: `phase5-slice2-read-state-reconciliation`
+- Target: Preview
+- State: **READY**
+
+Technical Preview smoke passed against the immutable deployment:
+
+- `GET /api/healthz` returned `200`, status `ok`, and a valid
+  `X-Request-Id`.
+- `GET /api/healthz/db` returned `200`, database `ok`, and a valid
+  `X-Request-Id`.
+- Anonymous `GET /api/tasks` returned `401` with a valid `X-Request-Id`.
+- The rendered login page loaded without browser console warnings or errors,
+  and the anonymous protected-route guard redirected to login.
 
 ## Human QA
 
-PENDING
+OWNER-PERFORMED HUMAN QA: PASS
 
-Human QA must use the exact verified Preview source. It should cover normal
-authenticated page loads, controlled dependency failure/retry, cached stale
-notices, localized partial-page behavior, and the absence of logout/session
-loops. Navigation persistence is explicitly excluded.
+QA-OWNER FINAL SIGN-OFF: NOT CLAIMED
+
+OWNER MERGE AUTHORIZATION: GO
+
+PHASE 5 SLICE 2 PREVIEW QA: PASS
+
+SLICE 2 HUMAN QA BLOCKERS: NONE
+
+The owner performed authenticated QA against exact Preview source
+`a1369179a5585518762a20ca9f4ca770c75addcd`. Subject Detail, Study Plan, Past
+Papers, and Settings passed their normal authenticated baselines. Controlled
+browser-side request blocking was used only as a non-destructive local failure
+mechanism; it verified representative network/request failures, partial-page
+isolation, retry recovery, stale-data warnings, and genuine-empty distinctions.
+It did not produce or prove real HTTP `403` or `500` responses.
+
+The following manually reproduced cases passed:
+
+- syllabus, performance, and Subject Detail task failure isolation;
+- primary subject 404 and transient primary failure presentation;
+- Study Plan task failure versus genuine empty and membership isolation;
+- Past Papers attempts failure versus genuine empty and form-local assessment
+  component failure;
+- Settings catalogue failure isolation;
+- cached-data stale warning and recovery; and
+- retry recovery for the manually reproduced controlled cases.
+
+A manual controlled `403` response was not reproduced. The `403`/logout
+boundary is supported by automated coverage, which passed. Human QA observed
+no unexpected authenticated `401`, logout, auth/session loop, raw or sensitive
+server error, unrelated blocking regression, or failure of retry recovery.
+
+Navigation-state persistence was reconfirmed as deferred: Subject Detail can
+return to Overview after reload/remount/tab discard. It remains outside Slice
+2. One approximately 30-second Dashboard load was observed once in one browser,
+was not reproduced, and is non-blocking; source inspection found no deliberate
+30-second application delay.
+
+DASHBOARD/AUTH LOAD LATENCY:
+
+ONE-OFF OBSERVATION — NOT REPRODUCED
 
 ## Merge status
 
