@@ -39,6 +39,7 @@ import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 import { LEVEL_OPTIONS, getUpcomingExamSessions } from "@/lib/exam-sessions";
+import { ReadStateNotice } from "@/components/read-state-notice";
 
 function ComingSoonBadge() {
   return (
@@ -130,7 +131,13 @@ export default function Settings() {
   const { user, updateUser } = useAuth();
   const { prefs, updatePref, requestBrowserPermission } =
     useNotificationPrefs();
-  const { data: subjects } = useListSubjects({
+  const {
+    data: subjects,
+    isLoading: subjectsLoading,
+    isError: subjectsError,
+    error: subjectsLoadError,
+    refetch: refetchSubjects,
+  } = useListSubjects({
     query: { queryKey: getListSubjectsQueryKey() },
   });
   const {
@@ -147,6 +154,8 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<number[]>([]);
+  const catalogueUnavailable = subjectsError && subjects === undefined;
+  const catalogueRefreshFailed = subjectsError && subjects !== undefined;
   const examOptions = [...getUpcomingExamSessions(), "Other"];
   const defaultTab = (() => {
     try {
@@ -414,6 +423,8 @@ export default function Settings() {
                 onClick={() => void saveSubjects()}
                 disabled={
                   membershipsLoading ||
+                  catalogueUnavailable ||
+                  subjectsLoading ||
                   replaceSubjects.isPending ||
                   selectedSubjectIds.length < 1
                 }
@@ -440,63 +451,93 @@ export default function Settings() {
               <p className="text-sm text-muted-foreground">
                 Loading your subjects…
               </p>
+            ) : subjectsLoading && subjects === undefined ? (
+              <div
+                className="space-y-3"
+                role="status"
+                aria-label="Loading subject catalogue"
+              >
+                <span className="sr-only">Loading subject catalogue</span>
+                {[1, 2, 3, 4].map((item) => (
+                  <div key={item} className="dash-skeleton h-16 rounded-xl" />
+                ))}
+              </div>
+            ) : catalogueUnavailable ? (
+              <ReadStateNotice
+                title="Subject catalogue is unavailable"
+                error={subjectsLoadError}
+                description="Your saved subjects have not changed. Reload the catalogue before editing them."
+                onRetry={() => void refetchSubjects()}
+              />
             ) : subjects && subjects.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {subjects.map((subject) => {
-                  const selected = selectedSubjectIds.includes(subject.id);
-                  const disabled = !selected && selectedSubjectIds.length >= 5;
-                  const accent = resolveSubjectAccent({
-                    code: subject.code,
-                    name: subject.name,
-                    color: subject.color,
-                  });
-                  return (
-                    <div
-                      key={subject.id}
-                      className={cn(
-                        "dash-list-row !items-center rounded-xl border px-3 py-3",
-                        selected
-                          ? "border-primary/40 bg-primary/5"
-                          : "border-border/50 bg-muted/20",
-                      )}
-                    >
-                      <button
-                        type="button"
-                        aria-pressed={selected}
-                        disabled={disabled}
-                        onClick={() => toggleSelectedSubject(subject.id)}
-                        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              <div className="space-y-4">
+                {catalogueRefreshFailed && (
+                  <ReadStateNotice
+                    stale
+                    compact
+                    title="Subject catalogue refresh failed"
+                    error={subjectsLoadError}
+                    onRetry={() => void refetchSubjects()}
+                  />
+                )}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {subjects.map((subject) => {
+                    const selected = selectedSubjectIds.includes(subject.id);
+                    const disabled =
+                      !selected && selectedSubjectIds.length >= 5;
+                    const accent = resolveSubjectAccent({
+                      code: subject.code,
+                      name: subject.name,
+                      color: subject.color,
+                    });
+                    return (
+                      <div
+                        key={subject.id}
+                        className={cn(
+                          "dash-list-row !items-center rounded-xl border px-3 py-3",
+                          selected
+                            ? "border-primary/40 bg-primary/5"
+                            : "border-border/50 bg-muted/20",
+                        )}
                       >
-                        <div
-                          className="h-3 w-3 shrink-0 rounded-full"
-                          style={{ backgroundColor: accent }}
-                          aria-hidden
-                        />
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">
-                            {subject.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {subject.code}
-                          </p>
-                        </div>
-                        {selected && (
-                          <Check
-                            className="ml-auto h-4 w-4 shrink-0 text-primary"
+                        <button
+                          type="button"
+                          aria-pressed={selected}
+                          disabled={disabled}
+                          onClick={() => toggleSelectedSubject(subject.id)}
+                          className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <div
+                            className="h-3 w-3 shrink-0 rounded-full"
+                            style={{ backgroundColor: accent }}
                             aria-hidden
                           />
-                        )}
-                      </button>
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/subjects/${subject.id}`}>View</Link>
-                      </Button>
-                    </div>
-                  );
-                })}
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">
+                              {subject.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {subject.code}
+                            </p>
+                          </div>
+                          {selected && (
+                            <Check
+                              className="ml-auto h-4 w-4 shrink-0 text-primary"
+                              aria-hidden
+                            />
+                          )}
+                        </button>
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/subjects/${subject.id}`}>View</Link>
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No catalogue subjects are available yet.
+                The subject catalogue is currently empty.
               </p>
             )}
           </SettingsSectionCard>

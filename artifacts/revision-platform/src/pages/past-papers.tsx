@@ -52,6 +52,7 @@ import { ChartSkeleton } from "@/components/charts/chart-skeleton";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { formatPercentage } from "@/lib/format-percentage";
 import { buildAssessmentComponentOptions } from "@/lib/assessment-component-options";
+import { ReadStateNotice } from "@/components/read-state-notice";
 
 const ScoreTrendLineChart = lazy(
   () => import("@/components/charts/score-trend-line-chart"),
@@ -102,7 +103,13 @@ export default function PastPapers() {
   const canLogPaper =
     !membershipsLoading && !membershipsError && (subjects?.length ?? 0) > 0;
 
-  const { data: papers, isLoading } = useListPastPaperAttempts(
+  const {
+    data: papers,
+    isLoading,
+    isError: attemptsError,
+    error: attemptsLoadError,
+    refetch: refetchAttempts,
+  } = useListPastPaperAttempts(
     filterSubject !== "all" ? { subjectId: Number(filterSubject) } : {},
     {
       query: {
@@ -176,13 +183,26 @@ export default function PastPapers() {
   const selectedSubjectId = form.watch("subjectId");
   const selectedSession = form.watch("session");
 
-  const { data: components } = useListAssessmentComponents(selectedSubjectId, {
+  const {
+    data: components,
+    isPending: componentsLoading,
+    isError: componentsError,
+    error: componentsLoadError,
+    refetch: refetchComponents,
+  } = useListAssessmentComponents(selectedSubjectId, {
     query: {
       queryKey: getListAssessmentComponentsQueryKey(selectedSubjectId),
       enabled: !!selectedSubjectId,
     },
   });
   const componentOptions = buildAssessmentComponentOptions(components ?? []);
+  const attemptsRefreshFailed = attemptsError && papers !== undefined;
+  const componentsRefreshFailed = componentsError && components !== undefined;
+  const canSelectComponent =
+    !!selectedSubjectId &&
+    !componentsLoading &&
+    (!componentsError || components !== undefined) &&
+    componentOptions.length > 0;
 
   // Component belongs to a specific subject — clear it (and any dependent
   // variant/session selection) whenever the subject changes so a stale
@@ -277,188 +297,127 @@ export default function PastPapers() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <Card className="card-tint-cream lg:col-span-3 shadow-[var(--elev-2)]">
-          <CardHeader className="flex flex-col gap-4 pb-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="text-lg font-bold tracking-[-0.01em]">
-                Performance trend
-              </CardTitle>
-              <CardDescription>Percentage scores over time</CardDescription>
-            </div>
-            <div className="w-full sm:w-[180px]">
-              <Select
-                value={filterSubject}
-                onValueChange={setFilterSubject}
-                disabled={membershipsLoading || membershipsError}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Subjects" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Subjects</SelectItem>
-                  {subjects?.map((s) => (
-                    <SelectItem key={s.id} value={s.id.toString()}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {chartData.length < 2 ? (
-              <RichEmptyState
-                scene="chart"
-                title="Start your paper bank"
-                description="Log at least two past papers to unlock score trends and see which subjects are rising."
-                actionLabel="Log a paper"
-                onAction={
-                  canLogPaper ? () => setIsAddDialogOpen(true) : undefined
-                }
-                variant="mint"
-                className="py-10"
-              />
-            ) : (
-              <div className="mt-4">
-                <Suspense
-                  fallback={<ChartSkeleton height={300} className="mt-4" />}
-                >
-                  <ScoreTrendLineChart
-                    data={chartData}
-                    xKey="name"
-                    stroke="hsl(var(--semantic-progress))"
-                    height={300}
-                    tooltipLabelFormatter={(label, items) => {
-                      const payload = items[0]?.payload as
-                        { subject?: string; date?: string } | undefined;
-                      if (payload?.subject && payload?.date) {
-                        return `${payload.subject} - ${label} (${payload.date})`;
-                      }
-                      return label;
-                    }}
-                  />
-                </Suspense>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {attemptsError && papers === undefined && (
+        <ReadStateNotice
+          title="Past papers could not be loaded"
+          error={attemptsLoadError}
+          description="Your paper history and performance trend are unavailable. Logging remains available when its subject data is ready."
+          onRetry={() => void refetchAttempts()}
+        />
+      )}
+      {attemptsRefreshFailed && (
+        <ReadStateNotice
+          stale
+          title="Paper history refresh failed"
+          error={attemptsLoadError}
+          onRetry={() => void refetchAttempts()}
+        />
+      )}
 
-        <Card className="card-tint-cream lg:col-span-3 shadow-[var(--elev-2)]">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold tracking-[-0.01em]">
-              Paper log
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="space-y-3 p-6">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="dash-skeleton h-12 rounded-xl" />
-                ))}
+      {!(attemptsError && papers === undefined) && (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <Card className="card-tint-cream lg:col-span-3 shadow-[var(--elev-2)]">
+            <CardHeader className="flex flex-col gap-4 pb-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-lg font-bold tracking-[-0.01em]">
+                  Performance trend
+                </CardTitle>
+                <CardDescription>Percentage scores over time</CardDescription>
               </div>
-            ) : !papers || papers.length === 0 ? (
-              <RichEmptyState
-                scene="papers"
-                title="Start building your paper bank"
-                description="Every timed paper you log sharpens predicted grades and shows where to focus next."
-                actionLabel="Log your first paper"
-                onAction={
-                  canLogPaper ? () => setIsAddDialogOpen(true) : undefined
-                }
-                variant="mint"
-              />
-            ) : (
-              <>
-                <div className="mobile-card-list">
-                  {papers.map((paper) => {
-                    const accent = resolveSubjectAccent({
-                      name: paper.subjectName,
-                      color: paper.subjectColor,
-                    });
-                    return (
-                      <div key={paper.id} className="mobile-card-row">
-                        <div className="min-w-0 space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge
-                              variant="outline"
-                              className="border-0 font-medium"
-                              style={{
-                                backgroundColor: `${accent}18`,
-                                color: accent,
-                              }}
-                            >
-                              {paper.subjectName}
-                            </Badge>
-                            <span className="text-sm font-semibold">
-                              {paper.paperLabel}
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {paper.componentName ?? "Component removed"}
-                          </p>
-                          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                            <span className="text-lg font-bold tabular">
-                              {formatPercentage(paper.percentage)}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {paper.score}/{paper.totalMarks} marks
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {format(
-                                parseISO(paper.dateAttempted),
-                                "d MMM yyyy",
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-11 w-11 shrink-0 self-end text-muted-foreground hover:text-destructive sm:self-center"
-                          aria-label={`Delete paper: ${paper.subjectName} ${paper.paperLabel}`}
-                          onClick={() =>
-                            deleteAttempt.mutate({
-                              pastPaperAttemptId: paper.id,
-                            })
-                          }
-                        >
-                          <Trash2
-                            className="h-4 w-4"
-                            aria-hidden
-                            strokeWidth={2}
-                          />
-                        </Button>
-                      </div>
-                    );
-                  })}
+              <div className="w-full sm:w-[180px]">
+                <Select
+                  value={filterSubject}
+                  onValueChange={setFilterSubject}
+                  disabled={membershipsLoading || membershipsError}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Subjects" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Subjects</SelectItem>
+                    {subjects?.map((s) => (
+                      <SelectItem key={s.id} value={s.id.toString()}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {chartData.length < 2 ? (
+                <RichEmptyState
+                  scene="chart"
+                  title="Start your paper bank"
+                  description="Log at least two past papers to unlock score trends and see which subjects are rising."
+                  actionLabel="Log a paper"
+                  onAction={
+                    canLogPaper ? () => setIsAddDialogOpen(true) : undefined
+                  }
+                  variant="mint"
+                  className="py-10"
+                />
+              ) : (
+                <div className="mt-4">
+                  <Suspense
+                    fallback={<ChartSkeleton height={300} className="mt-4" />}
+                  >
+                    <ScoreTrendLineChart
+                      data={chartData}
+                      xKey="name"
+                      stroke="hsl(var(--semantic-progress))"
+                      height={300}
+                      tooltipLabelFormatter={(label, items) => {
+                        const payload = items[0]?.payload as
+                          { subject?: string; date?: string } | undefined;
+                        if (payload?.subject && payload?.date) {
+                          return `${payload.subject} - ${label} (${payload.date})`;
+                        }
+                        return label;
+                      }}
+                    />
+                  </Suspense>
                 </div>
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b">
-                      <tr>
-                        <th className="px-6 py-3 font-medium">Subject</th>
-                        <th className="px-6 py-3 font-medium">Paper</th>
-                        <th className="px-6 py-3 font-medium">Session</th>
-                        <th className="px-6 py-3 font-medium">Score</th>
-                        <th className="px-6 py-3 font-medium">Date</th>
-                        <th className="px-6 py-3 text-right font-medium">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y border-b">
-                      {papers.map((paper) => {
-                        const accent = resolveSubjectAccent({
-                          name: paper.subjectName,
-                          color: paper.subjectColor,
-                        });
-                        return (
-                          <tr
-                            key={paper.id}
-                            className="bg-card hover:bg-muted/30 transition-colors"
-                          >
-                            <td className="px-6 py-4">
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="card-tint-cream lg:col-span-3 shadow-[var(--elev-2)]">
+            <CardHeader>
+              <CardTitle className="text-lg font-bold tracking-[-0.01em]">
+                Paper log
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="space-y-3 p-6">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="dash-skeleton h-12 rounded-xl" />
+                  ))}
+                </div>
+              ) : !papers || papers.length === 0 ? (
+                <RichEmptyState
+                  scene="papers"
+                  title="Start building your paper bank"
+                  description="Every timed paper you log sharpens predicted grades and shows where to focus next."
+                  actionLabel="Log your first paper"
+                  onAction={
+                    canLogPaper ? () => setIsAddDialogOpen(true) : undefined
+                  }
+                  variant="mint"
+                />
+              ) : (
+                <>
+                  <div className="mobile-card-list">
+                    {papers.map((paper) => {
+                      const accent = resolveSubjectAccent({
+                        name: paper.subjectName,
+                        color: paper.subjectColor,
+                      });
+                      return (
+                        <div key={paper.id} className="mobile-card-row">
+                          <div className="min-w-0 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               <Badge
                                 variant="outline"
                                 className="border-0 font-medium"
@@ -469,62 +428,142 @@ export default function PastPapers() {
                               >
                                 {paper.subjectName}
                               </Badge>
-                            </td>
-                            <td className="px-6 py-4 font-medium">
-                              <div>{paper.paperLabel}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {paper.componentName ?? "Component removed"}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-muted-foreground">
-                              {paper.session} {paper.year}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-base tabular">
-                                  {formatPercentage(paper.percentage)}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  ({paper.score}/{paper.totalMarks})
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">
-                              {format(
-                                parseISO(paper.dateAttempted),
-                                "d MMM yyyy",
-                              )}
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-11 w-11 text-muted-foreground hover:text-destructive"
-                                aria-label={`Delete paper: ${paper.subjectName} ${paper.paperLabel}`}
-                                onClick={() =>
-                                  deleteAttempt.mutate({
-                                    pastPaperAttemptId: paper.id,
-                                  })
-                                }
-                              >
-                                <Trash2
-                                  className="h-4 w-4"
-                                  aria-hidden
-                                  strokeWidth={2}
-                                />
-                              </Button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                              <span className="text-sm font-semibold">
+                                {paper.paperLabel}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {paper.componentName ?? "Component removed"}
+                            </p>
+                            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                              <span className="text-lg font-bold tabular">
+                                {formatPercentage(paper.percentage)}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {paper.score}/{paper.totalMarks} marks
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {format(
+                                  parseISO(paper.dateAttempted),
+                                  "d MMM yyyy",
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-11 w-11 shrink-0 self-end text-muted-foreground hover:text-destructive sm:self-center"
+                            aria-label={`Delete paper: ${paper.subjectName} ${paper.paperLabel}`}
+                            onClick={() =>
+                              deleteAttempt.mutate({
+                                pastPaperAttemptId: paper.id,
+                              })
+                            }
+                          >
+                            <Trash2
+                              className="h-4 w-4"
+                              aria-hidden
+                              strokeWidth={2}
+                            />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="hidden overflow-x-auto md:block">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b">
+                        <tr>
+                          <th className="px-6 py-3 font-medium">Subject</th>
+                          <th className="px-6 py-3 font-medium">Paper</th>
+                          <th className="px-6 py-3 font-medium">Session</th>
+                          <th className="px-6 py-3 font-medium">Score</th>
+                          <th className="px-6 py-3 font-medium">Date</th>
+                          <th className="px-6 py-3 text-right font-medium">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y border-b">
+                        {papers.map((paper) => {
+                          const accent = resolveSubjectAccent({
+                            name: paper.subjectName,
+                            color: paper.subjectColor,
+                          });
+                          return (
+                            <tr
+                              key={paper.id}
+                              className="bg-card hover:bg-muted/30 transition-colors"
+                            >
+                              <td className="px-6 py-4">
+                                <Badge
+                                  variant="outline"
+                                  className="border-0 font-medium"
+                                  style={{
+                                    backgroundColor: `${accent}18`,
+                                    color: accent,
+                                  }}
+                                >
+                                  {paper.subjectName}
+                                </Badge>
+                              </td>
+                              <td className="px-6 py-4 font-medium">
+                                <div>{paper.paperLabel}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {paper.componentName ?? "Component removed"}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-muted-foreground">
+                                {paper.session} {paper.year}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-base tabular">
+                                    {formatPercentage(paper.percentage)}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    ({paper.score}/{paper.totalMarks})
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">
+                                {format(
+                                  parseISO(paper.dateAttempted),
+                                  "d MMM yyyy",
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-11 w-11 text-muted-foreground hover:text-destructive"
+                                  aria-label={`Delete paper: ${paper.subjectName} ${paper.paperLabel}`}
+                                  onClick={() =>
+                                    deleteAttempt.mutate({
+                                      pastPaperAttemptId: paper.id,
+                                    })
+                                  }
+                                >
+                                  <Trash2
+                                    className="h-4 w-4"
+                                    aria-hidden
+                                    strokeWidth={2}
+                                  />
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <ResponsiveFormPanel
         open={isAddDialogOpen}
@@ -576,15 +615,21 @@ export default function PastPapers() {
                   <Select
                     onValueChange={field.onChange}
                     value={field.value?.toString() ?? ""}
-                    disabled={!selectedSubjectId}
+                    disabled={!canSelectComponent}
                   >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue
                           placeholder={
-                            selectedSubjectId
-                              ? "Select a component"
-                              : "Select a subject first"
+                            !selectedSubjectId
+                              ? "Select a subject first"
+                              : componentsLoading
+                                ? "Loading components…"
+                                : componentsError && components === undefined
+                                  ? "Components unavailable"
+                                  : componentOptions.length === 0
+                                    ? "No components available"
+                                    : "Select a component"
                           }
                         />
                       </SelectTrigger>
@@ -597,6 +642,38 @@ export default function PastPapers() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {!!selectedSubjectId && componentsLoading && (
+                    <p role="status" className="text-sm text-muted-foreground">
+                      Loading assessment components…
+                    </p>
+                  )}
+                  {!!selectedSubjectId &&
+                    componentsError &&
+                    components === undefined && (
+                      <ReadStateNotice
+                        compact
+                        title="Components could not be loaded"
+                        error={componentsLoadError}
+                        onRetry={() => void refetchComponents()}
+                      />
+                    )}
+                  {!!selectedSubjectId && componentsRefreshFailed && (
+                    <ReadStateNotice
+                      stale
+                      compact
+                      title="Component refresh failed"
+                      error={componentsLoadError}
+                      onRetry={() => void refetchComponents()}
+                    />
+                  )}
+                  {!!selectedSubjectId &&
+                    !componentsLoading &&
+                    !componentsError &&
+                    components?.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        No assessment components are available for this subject.
+                      </p>
+                    )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -764,7 +841,10 @@ export default function PastPapers() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createAttempt.isPending}>
+              <Button
+                type="submit"
+                disabled={createAttempt.isPending || !canSelectComponent}
+              >
                 {createAttempt.isPending ? "Logging..." : "Log Paper"}
               </Button>
             </DialogFooter>

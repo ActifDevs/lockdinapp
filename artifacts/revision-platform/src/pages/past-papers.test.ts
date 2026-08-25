@@ -125,6 +125,9 @@ beforeEach(() => {
       },
     ],
     isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
   });
   apiMocks.useListAssessmentComponents.mockReturnValue({
     data: [
@@ -151,6 +154,10 @@ beforeEach(() => {
         orderIndex: 4,
       },
     ],
+    isPending: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
   });
   apiMocks.useCreatePastPaperAttempt.mockReturnValue({
     mutate: vi.fn(),
@@ -332,5 +339,195 @@ describe("past-paper ownership and year UI wiring", () => {
     expect(source).toContain(
       'form.setValue("subjectId", undefined as unknown as number)',
     );
+  });
+
+  it("keeps genuine zero attempts as the paper-bank empty experience", () => {
+    apiMocks.useListPastPaperAttempts.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderPastPapers();
+    expect(screen.getByText("Start building your paper bank")).toBeVisible();
+    expect(
+      screen.queryByText("Past papers could not be loaded"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows attempts failure and retry instead of false empty history", () => {
+    const refetch = vi.fn();
+    apiMocks.useListPastPaperAttempts.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error("Failed to fetch"),
+      refetch,
+    });
+    renderPastPapers();
+    expect(screen.getByText("Past papers could not be loaded")).toBeVisible();
+    expect(
+      screen.queryByText("Start building your paper bank"),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it("keeps cached attempt history visible with a stale warning", () => {
+    const cached = apiMocks.useListPastPaperAttempts();
+    apiMocks.useListPastPaperAttempts.mockReturnValue({
+      ...cached,
+      isError: true,
+      error: new Error("Failed to fetch"),
+    });
+    renderPastPapers();
+    expect(screen.getByText("Paper history refresh failed")).toBeVisible();
+    expect(screen.getAllByText("66.7%").length).toBeGreaterThan(0);
+  });
+
+  it("renders recovered attempt history after retry", () => {
+    apiMocks.useListPastPaperAttempts.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error("Failed to fetch"),
+      refetch: vi.fn(),
+    });
+    const view = renderPastPapers();
+    apiMocks.useListPastPaperAttempts.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    view.rerender(
+      createElement(
+        QueryClientProvider,
+        { client: new QueryClient() },
+        createElement(PastPapers),
+      ),
+    );
+    expect(screen.getByText("Start building your paper bank")).toBeVisible();
+  });
+
+  it("shows component loading only inside the logging form", () => {
+    apiMocks.useListAssessmentComponents.mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderPastPapers();
+    fireEvent.change(
+      screen
+        .getAllByRole("option", { name: "Mathematics" })
+        .at(-1)!
+        .closest("select")!,
+      {
+        target: { value: "9" },
+      },
+    );
+    expect(screen.getByText("Loading assessment components…")).toBeVisible();
+    expect(screen.getAllByText("66.7%").length).toBeGreaterThan(0);
+  });
+
+  it("keeps component failure form-local and retryable", () => {
+    const refetch = vi.fn();
+    apiMocks.useListAssessmentComponents.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      error: Object.assign(new Error("forbidden"), { status: 403 }),
+      refetch,
+    });
+    renderPastPapers();
+    fireEvent.change(
+      screen
+        .getAllByRole("option", { name: "Mathematics" })
+        .at(-1)!
+        .closest("select")!,
+      {
+        target: { value: "9" },
+      },
+    );
+    expect(screen.getByText("Components could not be loaded")).toBeVisible();
+    expect(screen.getAllByText("66.7%").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it("distinguishes a genuinely empty component catalogue", () => {
+    apiMocks.useListAssessmentComponents.mockReturnValue({
+      data: [],
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderPastPapers();
+    fireEvent.change(
+      screen
+        .getAllByRole("option", { name: "Mathematics" })
+        .at(-1)!
+        .closest("select")!,
+      {
+        target: { value: "9" },
+      },
+    );
+    expect(
+      screen.getByText(
+        "No assessment components are available for this subject.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("Components could not be loaded"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders recovered components after retry", () => {
+    apiMocks.useListAssessmentComponents.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      error: new Error("Failed to fetch"),
+      refetch: vi.fn(),
+    });
+    const view = renderPastPapers();
+    fireEvent.change(
+      screen
+        .getAllByRole("option", { name: "Mathematics" })
+        .at(-1)!
+        .closest("select")!,
+      {
+        target: { value: "9" },
+      },
+    );
+    apiMocks.useListAssessmentComponents.mockReturnValue({
+      data: [
+        {
+          id: 42,
+          paperCode: "9709/1",
+          componentName: "Pure Mathematics 1",
+          level: "AS Level",
+        },
+      ],
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    view.rerender(
+      createElement(
+        QueryClientProvider,
+        { client: new QueryClient() },
+        createElement(PastPapers),
+      ),
+    );
+    expect(
+      screen.getByRole("option", { name: /Pure Mathematics 1/ }),
+    ).toBeVisible();
   });
 });
