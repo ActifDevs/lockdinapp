@@ -2,6 +2,7 @@
 
 - **Date:** 2026-08-25
 - **Baseline:** `391a62c37e0ff92aaa882747fdfd044a7e8485d8`
+- **Implementation SHA:** `3c2cdcea033de33f71798d0fdc15be528013b3d2`
 - **Branch:** `phase5-slice1-account-scoped-notification-prefs`
 - **Status:** Implementation complete; automated validation complete; Preview and human QA as recorded below
 - **Merge status:** **NOT MERGED TO MAIN**
