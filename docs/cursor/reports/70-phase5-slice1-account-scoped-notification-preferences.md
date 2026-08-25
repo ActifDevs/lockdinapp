@@ -146,11 +146,19 @@ Implementation is limited to the notification preference hook, the shared user-s
 
 ## Preview
 
-Initially: PENDING (filled after deployment)
+- Project: `actif-devs/lockdinapp-web`
+- Target: Preview (not Production)
+- State: READY
+- GitHub deployment ID: `6080828132`
+- Vercel inspector: `https://vercel.com/actif-devs/lockdinapp-web/7SEVJLnBNLB5qLoqemgws3pgkKs6`
+- Immutable URL: `https://lockdinapp-dqasppvce-actif-devs.vercel.app`
+- Branch: `phase5-slice1-account-scoped-notification-prefs`
+- Source SHA: `eb6c6c4dd849f28e08d2ba49de68a0c07933d1db` (feature branch HEAD after implementation + SHA note)
+- Implementation commit: `3c2cdcea033de33f71798d0fdc15be528013b3d2`
 
 ## Human QA
 
-Initially: PENDING — checklist is in the Slice 1 closeout response for two authorized accounts (A → B → A, reminder regression, legacy policy).
+PENDING — two authorized accounts must complete the A → B → A checklist in the Slice 1 closeout response. This agent did not perform cross-account preference QA in a real browser session.
 
 ## Merge status
 
