@@ -128,11 +128,54 @@ Task, paper, syllabus topic, profile, and membership mutation semantics; cache i
 
 ## Preview
 
-PENDING
+- Deployment ID: `dpl_3iyPVPAW3NhFpFGmAfYcg97vBQeh`
+- Immutable URL: `https://lockdinapp-qu0n5a5kp-actif-devs.vercel.app/`
+- Branch: `phase5-slice3-navigation-state-persistence`
+- Exact Source SHA: `34ca048c84a305ec1ed2f692d58bcaab7954bd04`
+- Target: Preview
+- Status: READY / STAGED
+- Health Smoke (`GET /api/healthz`): PASS (200, valid `X-Request-Id`)
+- DB-Health Smoke (`GET /api/healthz/db`): PASS (200, valid `X-Request-Id`)
+- Anonymous Tasks Smoke (`GET /api/tasks`): PASS (401, valid `X-Request-Id`)
+- Landing/Login Load: PASS
+- Protected Route Redirect: PASS
 
 ## Human QA
 
-PENDING
+- OWNER-PERFORMED HUMAN QA: PASS
+- QA-OWNER FINAL SIGN-OFF: NOT CLAIMED
+- OWNER MERGE AUTHORIZATION: GO
+- PHASE 5 SLICE 3 PREVIEW QA: PASS
+- PHASE 5 SLICE 3 HUMAN QA BLOCKERS: NONE
+
+### Surface & Interaction Results
+
+- Authentication baseline: PASS
+- Settings navigation persistence: PASS
+- Subject Detail navigation persistence: PASS
+- Slice 2 Subject Detail regression: PASS
+- Study Plan navigation persistence: PASS
+- Study Plan query/view synchronization: PASS
+- Past Papers navigation persistence: PASS
+- Past Papers account-filter safety: PASS
+- Calendar navigation persistence: PASS
+- Calendar timezone/date correctness: PASS
+- Calendar history semantics: PASS
+- Unrelated query parameters preserved: PASS
+- Accessibility interaction regression: PASS
+- Unexpected authenticated 401: NO
+- Unexpected logout: NO
+- Auth/session loop: NO
+- Raw/sensitive server detail exposed: NO
+- Slice 2 read-state regression observed: NO
+- Mutation UI regression: NO
+- Unrelated blocking regression: NO
+
+### Specific Observations
+
+- BACKGROUND TAB/DOCUMENT RESTORATION: PASS — URL-OWNED STATE RESTORED CORRECTLY
+- UNRELATED QUERY-PARAMETER PRESERVATION: PASS
+- CALENDAR EXAM JUMP: NOT TESTED — NOT AVAILABLE — NON-BLOCKING (No suitable exam-date/jump target was available through the current UI/account)
 
 ## Merge status
 
