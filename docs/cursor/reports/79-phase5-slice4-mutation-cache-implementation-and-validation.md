@@ -157,9 +157,54 @@ No tokens, passwords, auth headers, session values, or DB credentials in the dif
 
 Initially: PENDING
 
+Final verified environment:
+
+- Feature SHA: `03331548d7ff9813d5a5c5973e580969af4a80e5`
+- Exact Preview: `https://lockdinapp-qt12senmc-actif-devs.vercel.app`
+- Vercel deployment: `7X1CSvvDmdKxoyvsP49qmwGVMZUc`
+- Source / branch / Preview target / READY state: **VERIFIED**
+
+**Preview: READY / VERIFIED**
+
 ## Human QA
 
 Initially: PENDING
+
+The standalone Codex/MCP run initially returned:
+
+**PHASE 5 SLICE 4 MACHINE-ASSISTED PREVIEW QA: INCOMPLETE**
+
+That verdict was accurate at the time because the Past Paper DELETE failure path could not be completed after the browser session lost request-routing capability. The owner subsequently completed that one remaining delta on the same exact Preview using explicit browser request blocking. An earlier offline attempt was inconclusive because the paused mutation resumed when connectivity returned; it is not counted as PASS or FAIL. The later request-blocking result is authoritative.
+
+### Final combined Preview QA evidence
+
+- Authentication baseline: PASS; no login loop, unexpected authenticated 401, or unexpected logout.
+- Add Task: normal creation PASS. A mocked `POST /api/tasks` 500 kept the dialog open, preserved values, re-enabled submit, showed safe in-dialog feedback, suppressed synthetic backend detail, and retried to exactly one task. Cleanup completed.
+- Dashboard task: normal convergence PASS. Mocked 500 produced one safe localized toast with no false persistence.
+- Subject Detail task: normal and failure paths PASS; `?tab=tasks` preserved.
+- Single syllabus topic: normal and failure paths PASS; original state restored.
+- Bulk topic: normal settlement and one-request partial failure PASS. Exactly one request failed while the remaining requests succeeded; server-truth convergence, at-most-one notification, and busy-state cleanup verified. No unhandled rejection or uncaught exception. Original unit state restored.
+- Past Paper create: normal and failure paths PASS. Safe in-dialog feedback and input preservation verified; retry created one attempt with no duplicate.
+- Past Paper delete: normal delete PASS. Codex route-mocked failure **NOT COMPLETED — SESSION ROUTING CAPABILITY LOST**. Owner manual request-blocking failure test PASS: one controlled attempt was created; its DELETE request was deliberately blocked; safe localized destructive feedback appeared; the attempt remained; no raw server/database/stack detail appeared; the authenticated session remained active; the delete control became usable again; blocking was removed; normal retry succeeded; history/chart converged; residue NONE.
+- Profile: save and Dashboard convergence without hard refresh PASS; original value restored.
+- Mocked 403 frontend handling: PASS with no logout. Real backend 403 remains automated/integration coverage only.
+- Notification preference: Morning summary enabled → disabled → persisted disabled → restored enabled → persisted enabled. PASS; final intended state ENABLED.
+- Account switch: User A → User B → User A PASS. No cross-account stale data; User B not mutated; User A-scoped notification preference restored; no login loop or unexpected 401.
+- Security: no raw/sensitive server detail, duplicate mutations, unexpected logout, or cross-account data exposure.
+- Cleanup: temporary task NONE; temporary Past Paper attempt NONE; profile RESTORED; topic/unit RESTORED; notification preference RESTORED TO ENABLED.
+- Runtime: no unexpected browser-console errors, unhandled promise rejection, or Vercel blocking runtime errors.
+
+**COMBINED OWNER + CODEX/MCP PREVIEW QA: PASS**
+
+**OWNER MERGE AUTHORIZATION: GO**
+
+**QA-OWNER FINAL SIGN-OFF: NOT CLAIMED**
+
+**PHASE 5 SLICE 4 PREVIEW QA: PASS**
+
+**PHASE 5 SLICE 4 HUMAN / COMBINED QA BLOCKERS: NONE**
+
+**PHASE 5 SLICE 4 PREVIEW QA BLOCKERS: NONE**
 
 ## Merge status
 
