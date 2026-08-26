@@ -75,6 +75,7 @@ const mutation = () => ({
   isPending: false,
   isError: false,
   error: null,
+  reset: vi.fn(),
 });
 
 beforeEach(() => {

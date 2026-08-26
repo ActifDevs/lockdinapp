@@ -53,6 +53,9 @@ import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { formatPercentage } from "@/lib/format-percentage";
 import { buildAssessmentComponentOptions } from "@/lib/assessment-component-options";
 import { ReadStateNotice } from "@/components/read-state-notice";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { toast } from "@/hooks/use-toast";
+import { getMutationErrorMessage } from "@/lib/query-error-message";
 import { useSearchParams } from "wouter";
 import {
   omitDefaultQueryValue,
@@ -189,6 +192,13 @@ export default function PastPapers() {
           });
         }
       },
+      onError: (error) => {
+        toast({
+          title: "Could not delete attempt",
+          description: getMutationErrorMessage(error),
+          variant: "destructive",
+        });
+      },
     },
   });
 
@@ -308,7 +318,10 @@ export default function PastPapers() {
         subtitle="Log timed attempts to unlock trends, predicted grades, and sharper focus."
         action={
           <Button
-            onClick={() => setIsAddDialogOpen(true)}
+            onClick={() => {
+              createAttempt.reset();
+              setIsAddDialogOpen(true);
+            }}
             disabled={!canLogPaper}
           >
             <Plus className="h-4 w-4" strokeWidth={2} aria-hidden /> Log paper
@@ -612,7 +625,10 @@ export default function PastPapers() {
 
       <ResponsiveFormPanel
         open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
+        onOpenChange={(open) => {
+          setIsAddDialogOpen(open);
+          if (!open) createAttempt.reset();
+        }}
         title="Log past paper attempt"
         description="Record your score to track your progress."
         className="sm:max-w-[500px]"
@@ -622,6 +638,12 @@ export default function PastPapers() {
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4 py-2"
           >
+            {createAttempt.isError && (
+              <Alert variant="destructive">
+                <AlertTitle>Could not log attempt</AlertTitle>
+                <p>{getMutationErrorMessage(createAttempt.error)}</p>
+              </Alert>
+            )}
             <FormField
               control={form.control}
               name="subjectId"
@@ -882,7 +904,10 @@ export default function PastPapers() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
+                onClick={() => {
+                  createAttempt.reset();
+                  setIsAddDialogOpen(false);
+                }}
               >
                 Cancel
               </Button>

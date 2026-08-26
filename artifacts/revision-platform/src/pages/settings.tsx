@@ -267,6 +267,9 @@ export default function Settings() {
         level: level.trim() || undefined,
         examSession: examSession.trim() || undefined,
       });
+      await queryClient.invalidateQueries({
+        queryKey: getGetDashboardSummaryQueryKey(),
+      });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
       toast({ title: "Profile updated" });

@@ -44,6 +44,8 @@ import { Plus, Trash2, Calendar as CalendarIcon } from "lucide-react";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ReadStateNotice } from "@/components/read-state-notice";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { getMutationErrorMessage } from "@/lib/query-error-message";
 import { Link, useSearchParams } from "wouter";
 import {
   omitDefaultQueryValue,
@@ -99,10 +101,7 @@ export default function StudyPlan() {
     );
   };
 
-  const mutationMessage = (error: unknown) =>
-    error instanceof Error && error.message.trim()
-      ? error.message
-      : "We couldn't save your changes. Try again.";
+  const mutationMessage = (error: unknown) => getMutationErrorMessage(error);
 
   const {
     data: tasks,
@@ -147,7 +146,6 @@ export default function StudyPlan() {
         setIsAddDialogOpen(false);
         form.reset();
       },
-      onError: (error) => setActionError(mutationMessage(error)),
     },
   });
 
@@ -254,7 +252,10 @@ export default function StudyPlan() {
         subtitle="Build today's mission, protect your streak, and keep revision finishable."
         action={
           <Button
-            onClick={() => setIsAddDialogOpen(true)}
+            onClick={() => {
+              createTask.reset();
+              setIsAddDialogOpen(true);
+            }}
             disabled={!canCreateTask}
           >
             <Plus className="h-4 w-4" strokeWidth={2} aria-hidden /> Add task
@@ -370,7 +371,10 @@ export default function StudyPlan() {
                 }
                 onAction={
                   activeTab !== "completed" && canCreateTask
-                    ? () => setIsAddDialogOpen(true)
+                    ? () => {
+                        createTask.reset();
+                        setIsAddDialogOpen(true);
+                      }
                     : undefined
                 }
                 variant="mint"
@@ -398,7 +402,10 @@ export default function StudyPlan() {
 
       <ResponsiveFormPanel
         open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
+        onOpenChange={(open) => {
+          setIsAddDialogOpen(open);
+          if (!open) createTask.reset();
+        }}
         title="Add new task"
         className="sm:max-w-[425px]"
       >
@@ -408,9 +415,10 @@ export default function StudyPlan() {
             className="space-y-4 py-4"
           >
             {createTask.isError && (
-              <p role="alert" className="text-sm text-destructive">
-                {mutationMessage(createTask.error)}
-              </p>
+              <Alert variant="destructive">
+                <AlertTitle>Could not add task</AlertTitle>
+                <p>{getMutationErrorMessage(createTask.error)}</p>
+              </Alert>
             )}
             {membershipsLoading && (
               <p role="status" className="text-sm text-muted-foreground">
@@ -538,7 +546,10 @@ export default function StudyPlan() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
+                onClick={() => {
+                  createTask.reset();
+                  setIsAddDialogOpen(false);
+                }}
               >
                 Cancel
               </Button>

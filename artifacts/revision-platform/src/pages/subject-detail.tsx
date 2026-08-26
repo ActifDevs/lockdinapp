@@ -45,7 +45,9 @@ import {
 import { format, parseISO } from "date-fns";
 import { ChartSkeleton } from "@/components/charts/chart-skeleton";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 import {
+  getMutationErrorMessage,
   getQueryErrorMessage,
   getQueryErrorStatus,
 } from "@/lib/query-error-message";
@@ -184,24 +186,40 @@ export default function SubjectDetail() {
     },
   );
 
+  const invalidateTopicAggregates = () => {
+    if (!subjectId) return Promise.resolve();
+    return Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: getGetSubjectSyllabusQueryKey(subjectId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: getGetSubjectQueryKey(subjectId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: getGetProgressOverviewQueryKey(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: getGetDashboardSummaryQueryKey(),
+      }),
+    ]);
+  };
+
   const updateTopic = useUpdateSyllabusTopic({
     mutation: {
       onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: getGetSubjectSyllabusQueryKey(subjectId!),
-        });
-        queryClient.invalidateQueries({
-          queryKey: getGetSubjectQueryKey(subjectId!),
-        });
-        queryClient.invalidateQueries({
-          queryKey: getGetProgressOverviewQueryKey(),
-        });
-        queryClient.invalidateQueries({
-          queryKey: getGetDashboardSummaryQueryKey(),
+        void invalidateTopicAggregates();
+      },
+      onError: (error) => {
+        toast({
+          title: "Could not update topic",
+          description: getMutationErrorMessage(error),
+          variant: "destructive",
         });
       },
     },
   });
+
+  const bulkUpdateTopic = useUpdateSyllabusTopic();
 
   const updateTask = useUpdateTask({
     mutation: {
@@ -212,6 +230,13 @@ export default function SubjectDetail() {
         });
         queryClient.invalidateQueries({
           queryKey: getGetProgressOverviewQueryKey(),
+        });
+      },
+      onError: (error) => {
+        toast({
+          title: "Could not update task",
+          description: getMutationErrorMessage(error),
+          variant: "destructive",
         });
       },
     },
@@ -337,14 +362,23 @@ export default function SubjectDetail() {
 
     setUnitBusyId(unit.id);
     try {
-      await Promise.all(
+      const results = await Promise.allSettled(
         targets.map((topic) =>
-          updateTopic.mutateAsync({
+          bulkUpdateTopic.mutateAsync({
             topicId: topic.id,
             data: { status: nextStatus },
           }),
         ),
       );
+      await invalidateTopicAggregates();
+      if (results.some((result) => result.status === "rejected")) {
+        toast({
+          title: "Could not update all topics",
+          description:
+            "The unit could not be fully updated. The latest saved progress is shown.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setUnitBusyId(null);
     }
@@ -898,7 +932,10 @@ export default function SubjectDetail() {
                                       onClick={() =>
                                         cycleTopicStatus(topic.id, topic.status)
                                       }
-                                      disabled={updateTopic.isPending}
+                                      disabled={
+                                        updateTopic.isPending ||
+                                        unitBusyId !== null
+                                      }
                                       aria-label={`${topic.title}: ${topicStatusLabel(topic.status)}. ${topicStatusAction(topic.status)}.`}
                                       aria-pressed={
                                         topic.status === "completed"
