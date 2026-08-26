@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getMutationErrorMessage,
   getQueryErrorMessage,
   getQueryErrorStatus,
   isCancelledQueryError,
@@ -73,5 +74,44 @@ describe("getQueryErrorMessage", () => {
     expect(getQueryErrorMessage("nope")).toBe(
       "Please check your connection and try again.",
     );
+  });
+});
+
+describe("getMutationErrorMessage", () => {
+  it("never returns raw backend or database text", () => {
+    expect(
+      getMutationErrorMessage(
+        new Error("HTTP 500 Internal Server Error: relation users does not exist"),
+      ),
+    ).toBe(
+      "The API returned a server error. Please retry while we investigate.",
+    );
+    expect(getMutationErrorMessage(new Error("stack at Object.query"))).toBe(
+      "We couldn't save your changes. Please try again.",
+    );
+  });
+
+  it("keeps 403 distinct without using the raw message", () => {
+    const error = Object.assign(new Error("hidden server detail"), {
+      status: 403,
+    });
+    expect(getMutationErrorMessage(error)).toBe(
+      "You don't have permission to complete this action.",
+    );
+  });
+
+  it("maps validation and conflict statuses to retry copy", () => {
+    expect(
+      getMutationErrorMessage(
+        Object.assign(new Error("bad"), { status: 400 }),
+      ),
+    ).toBe(
+      "The request was not accepted. Please check your details and try again.",
+    );
+    expect(
+      getMutationErrorMessage(
+        Object.assign(new Error("conflict"), { status: 409 }),
+      ),
+    ).toBe("This changed while you were saving. Please retry.");
   });
 });

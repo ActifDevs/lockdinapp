@@ -78,3 +78,37 @@ export function getQueryErrorMessage(error: unknown): string {
 
   return "We couldn't load this information. Please try again.";
 }
+
+export function getMutationErrorMessage(error: unknown): string {
+  const status = getQueryErrorStatus(error);
+
+  if (status === 400) {
+    return "The request was not accepted. Please check your details and try again.";
+  }
+  if (status === 403) {
+    return "You don't have permission to complete this action.";
+  }
+  if (status === 404) {
+    return "That item could not be found. Please refresh and try again.";
+  }
+  if (status === 409) {
+    return "This changed while you were saving. Please retry.";
+  }
+  if (status === 429) {
+    return "Too many requests were made. Please wait a moment and try again.";
+  }
+  if (status !== null && status >= 500) {
+    return "The API returned a server error. Please retry while we investigate.";
+  }
+
+  if (!(error instanceof Error)) {
+    return "We couldn't save your changes. Please try again.";
+  }
+
+  const message = error.message.trim();
+  if (/fetch failed|Failed to fetch|NetworkError|ECONNREFUSED/i.test(message)) {
+    return "We couldn't reach Lockdin. Check your connection and try again.";
+  }
+
+  return "We couldn't save your changes. Please try again.";
+}

@@ -164,6 +164,9 @@ beforeEach(() => {
   apiMocks.useCreatePastPaperAttempt.mockReturnValue({
     mutate: vi.fn(),
     isPending: false,
+    isError: false,
+    error: null,
+    reset: vi.fn(),
   });
   apiMocks.useDeletePastPaperAttempt.mockReturnValue({
     mutate: vi.fn(),

@@ -54,7 +54,10 @@ import {
   pickMissionFocus,
   syncLongestStreak,
 } from "@/lib/dashboard-gamification";
-import { getQueryErrorMessage } from "@/lib/query-error-message";
+import {
+  getMutationErrorMessage,
+  getQueryErrorMessage,
+} from "@/lib/query-error-message";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 
 const WeeklyActivityBarChart = lazy(
@@ -175,6 +178,13 @@ export default function Dashboard() {
           queryKey: getGetProgressOverviewQueryKey(),
         });
         queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
+      },
+      onError: (error) => {
+        toast({
+          title: "Could not update task",
+          description: getMutationErrorMessage(error),
+          variant: "destructive",
+        });
       },
     },
   });
