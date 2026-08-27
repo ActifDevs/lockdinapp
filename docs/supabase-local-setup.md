@@ -57,7 +57,15 @@ Lockdin’s application schema is owned by **Drizzle**:
 
 - Definitions: `lib/db/src/schema/`
 - Committed migrations: `lib/db/migrations/`
-- Apply with: `pnpm --filter @workspace/db migrate` (set `DATABASE_URL`, preferably a direct or session-mode URL)
+- Apply with: `pnpm --filter @workspace/db migrate`
+
+Connection contract:
+
+- Application runtime `DATABASE_URL`: in hosted/serverless environments, use the Supabase Transaction pooler on port `6543`.
+- Hosted migration, DDL, and administrative `DIRECT_DATABASE_URL`: use a direct connection where supported, or a supported Session-mode connection appropriate for migration tooling.
+- Do not use Transaction pooling as the preferred migration or DDL connection.
+
+Migration tooling retains a compatibility fallback from `DIRECT_DATABASE_URL` to `DATABASE_URL`. The fallback is suitable only when `DATABASE_URL` itself is valid for migration usage, such as an appropriate local or single-connection setup. A hosted serverless runtime `DATABASE_URL` using Transaction pooling is not the recommended migration connection.
 
 Do **not**:
 
@@ -83,7 +91,7 @@ Requires a working `DATABASE_URL`. Starting local Supabase does not import Cambr
 |--------|-------------------------|
 | `pnpm supabase:start` / `stop` / `status` | No — local Docker only |
 | `supabase login` / `link` | Links **your** CLI to hosted metadata; does not migrate or import by itself |
-| `pnpm --filter @workspace/db migrate` | Yes, if `DATABASE_URL` points at hosted |
+| `pnpm --filter @workspace/db migrate` | Yes, if `DIRECT_DATABASE_URL` (or its compatible `DATABASE_URL` fallback) points at hosted |
 | Syllabus `syllabus:import` | Yes, if `DATABASE_URL` points at hosted |
 
 ## PostgreSQL major version
