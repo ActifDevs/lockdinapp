@@ -57,7 +57,7 @@ Lockdin’s application schema is owned by **Drizzle**:
 
 - Definitions: `lib/db/src/schema/`
 - Committed migrations: `lib/db/migrations/`
-- Apply with: `pnpm --filter @workspace/db migrate` (set `DATABASE_URL`, preferably a direct or session-mode URL)
+- Apply with: `pnpm --filter @workspace/db migrate` (set `DIRECT_DATABASE_URL` or direct/session-mode connection; serverless application runtime `DATABASE_URL` uses transaction pooler :6543)
 
 Do **not**:
 
