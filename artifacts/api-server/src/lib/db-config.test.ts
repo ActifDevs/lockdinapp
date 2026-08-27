@@ -5,9 +5,9 @@ import {
 } from "@workspace/db";
 
 describe("Database configuration & pooling contracts (P5-CUTOVER-01)", () => {
-  const REDACTED_PASSWORD = "secret_password_123";
-  const SUPABASE_SESSION_URL = `postgres://postgres.hazvcdrcvsxmuwdfiucx:${REDACTED_PASSWORD}@aws-0-eu-west-1.pooler.supabase.com:5432/postgres`;
-  const SUPABASE_TRANSACTION_URL = `postgres://postgres.hazvcdrcvsxmuwdfiucx:${REDACTED_PASSWORD}@aws-0-eu-west-1.pooler.supabase.com:6543/postgres`;
+  const SYNTHETIC_PASSWORD = "fake-test-password";
+  const SUPABASE_SESSION_URL = `postgres://postgres.synthetic-project:${SYNTHETIC_PASSWORD}@aws-0-test-region.pooler.supabase.com:5432/postgres`;
+  const SUPABASE_TRANSACTION_URL = `postgres://postgres.synthetic-project:${SYNTHETIC_PASSWORD}@aws-0-test-region.pooler.supabase.com:6543/postgres`;
   const LOCAL_DB_URL = "postgres://postgres:postgres@127.0.0.1:5432/lockdin";
   const CUSTOM_HOST_URL = "postgres://user:pass@db.customhost.internal:5432/lockdin";
 
@@ -55,7 +55,66 @@ describe("Database configuration & pooling contracts (P5-CUTOVER-01)", () => {
     });
   });
 
-  describe("C. Local Development / Non-Supabase Configuration", () => {
+  describe("C. Auto-detected Vercel Runtime", () => {
+    it("rejects session pooling without an explicit serverless override", () => {
+      const originalVercel = process.env.VERCEL;
+
+      try {
+        process.env.VERCEL = "1";
+        let thrown: unknown;
+
+        try {
+          createDatabasePoolConfig({
+            connectionString: SUPABASE_SESSION_URL,
+          });
+        } catch (error) {
+          thrown = error;
+        }
+
+        expect(thrown).toBeInstanceOf(Error);
+        const message = (thrown as Error).message;
+        expect(message).toContain("Supabase session pooling (port 5432)");
+        expect(message).toContain("transaction pooling (port 6543)");
+        expect(message).not.toContain(SYNTHETIC_PASSWORD);
+        expect(message).not.toContain(SUPABASE_SESSION_URL);
+        expect(message).not.toContain("synthetic-project");
+        expect(message).not.toContain("aws-0-test-region");
+      } finally {
+        if (originalVercel === undefined) {
+          delete process.env.VERCEL;
+        } else {
+          process.env.VERCEL = originalVercel;
+        }
+      }
+    });
+
+    it("accepts transaction pooling without an explicit serverless override", () => {
+      const originalVercel = process.env.VERCEL;
+
+      try {
+        process.env.VERCEL = "1";
+        const config = createDatabasePoolConfig({
+          connectionString: SUPABASE_TRANSACTION_URL,
+        });
+
+        expect(config.connectionString).toBe(SUPABASE_TRANSACTION_URL);
+        expect(config.max).toBe(1);
+        expect(config.idleTimeoutMillis).toBe(5_000);
+        expect(config.connectionTimeoutMillis).toBe(10_000);
+        expect(config.query_timeout).toBe(15_000);
+        expect(config.statement_timeout).toBe(15_000);
+        expect(config.allowExitOnIdle).toBe(true);
+      } finally {
+        if (originalVercel === undefined) {
+          delete process.env.VERCEL;
+        } else {
+          process.env.VERCEL = originalVercel;
+        }
+      }
+    });
+  });
+
+  describe("D. Local Development / Non-Supabase Configuration", () => {
     it("accepts local Postgres on port 5432 even when serverless flag is set", () => {
       const result = validateDatabaseUrl(LOCAL_DB_URL, {
         isServerless: true,
@@ -87,30 +146,30 @@ describe("Database configuration & pooling contracts (P5-CUTOVER-01)", () => {
     });
   });
 
-  describe("D. Secret Safety & Sanitization", () => {
+  describe("E. Secret Safety & Sanitization", () => {
     it("never includes passwords or credentials in validation errors", () => {
       const result = validateDatabaseUrl(SUPABASE_SESSION_URL, {
         isServerless: true,
       });
 
       expect(result.error).toBeDefined();
-      expect(result.error).not.toContain(REDACTED_PASSWORD);
-      expect(result.error).not.toContain("postgres.hazvcdrcvsxmuwdfiucx");
-      expect(result.error).not.toContain("aws-0-eu-west-1.pooler.supabase.com");
+      expect(result.error).not.toContain(SYNTHETIC_PASSWORD);
+      expect(result.error).not.toContain("postgres.synthetic-project");
+      expect(result.error).not.toContain("aws-0-test-region.pooler.supabase.com");
     });
 
     it("never includes credentials in invalid URL error", () => {
-      const malformedUrl = `http://user:${REDACTED_PASSWORD}@`;
+      const malformedUrl = `http://user:${SYNTHETIC_PASSWORD}@`;
       const result = validateDatabaseUrl(malformedUrl, {
         isServerless: true,
       });
 
       expect(result.isValid).toBe(false);
-      expect(result.error).not.toContain(REDACTED_PASSWORD);
+      expect(result.error).not.toContain(SYNTHETIC_PASSWORD);
     });
   });
 
-  describe("E. Bounded Timeout Contract", () => {
+  describe("F. Bounded Timeout Contract", () => {
     it("configures bounded connection, query, and statement timeouts", () => {
       const config = createDatabasePoolConfig({
         connectionString: SUPABASE_TRANSACTION_URL,
