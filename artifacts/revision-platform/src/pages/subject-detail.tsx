@@ -60,6 +60,7 @@ import {
   resolveQueryParam,
   updateQueryParams,
 } from "@/lib/navigation-query-state";
+import { useIdempotentControlledNavigation } from "@/hooks/use-idempotent-controlled-navigation";
 
 const SUBJECT_TABS = ["overview", "syllabus", "tasks", "performance"] as const;
 
@@ -89,6 +90,7 @@ export default function SubjectDetail() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { value: activeTab, needsNormalization: tabNeedsNormalization } =
     resolveQueryParam(searchParams, "tab", SUBJECT_TABS, "overview");
+  const shouldNavigateToTab = useIdempotentControlledNavigation(activeTab);
   const subjectId = params?.id ? parseInt(params.id) : null;
   const queryClient = useQueryClient();
   const [expandedUnits, setExpandedUnits] = useState<Set<number>>(
@@ -105,6 +107,7 @@ export default function SubjectDetail() {
 
   const handleTabChange = (value: string) => {
     if (!SUBJECT_TABS.includes(value as (typeof SUBJECT_TABS)[number])) return;
+    if (!shouldNavigateToTab(value as (typeof SUBJECT_TABS)[number])) return;
     setSearchParams(
       (current) =>
         updateQueryParams(current, [

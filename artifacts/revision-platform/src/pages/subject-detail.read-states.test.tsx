@@ -309,22 +309,32 @@ describe("Subject Detail navigation state", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Syllabus" }));
     expect(window.location.pathname).toBe("/subjects/9");
     expect(window.location.search).toBe("?keep=1&keep=2&tab=syllabus");
-    expect(push).toHaveBeenCalled();
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(push.mock.calls.map(([, , url]) => String(url))).toEqual([
+      "/subjects/9?keep=1&keep=2&tab=syllabus",
+    ]);
 
     await userEvent.click(screen.getByRole("tab", { name: "Overview" }));
     expect(window.location.search).toBe("?keep=1&keep=2");
+    expect(push).toHaveBeenCalledTimes(2);
+    expect(push.mock.calls.map(([, , url]) => String(url))).toEqual([
+      "/subjects/9?keep=1&keep=2&tab=syllabus",
+      "/subjects/9?keep=1&keep=2",
+    ]);
   });
 
   it("shows Overview and replace-normalizes invalid state", async () => {
     window.history.replaceState({}, "", "/subjects/9?tab=unknown&keep=1");
     const replace = vi.spyOn(window.history, "replaceState");
+    const push = vi.spyOn(window.history, "pushState");
     renderPage();
     expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute(
       "data-state",
       "active",
     );
     await waitFor(() => expect(window.location.search).toBe("?keep=1"));
-    expect(replace).toHaveBeenCalled();
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("restores tabs through browser Back and Forward", async () => {
@@ -339,6 +349,7 @@ describe("Subject Detail navigation state", () => {
         "active",
       ),
     );
+    expect(window.location.search).toBe("?tab=syllabus");
     await act(async () => window.history.forward());
     await waitFor(() =>
       expect(screen.getByRole("tab", { name: /Tasks/ })).toHaveAttribute(
@@ -346,6 +357,7 @@ describe("Subject Detail navigation state", () => {
         "active",
       ),
     );
+    expect(window.location.search).toBe("?tab=tasks");
   });
 
   it("keeps Slice 2 syllabus failure UI on a direct Syllabus link", () => {
