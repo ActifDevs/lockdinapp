@@ -263,16 +263,25 @@ describe("Study Plan navigation state", () => {
     );
     expect(window.location.search).toBe("?keep=one&keep=two&view=upcoming");
     expect(api.taskKey).toHaveBeenCalledWith({ filter: "upcoming" });
-    expect(push).toHaveBeenCalled();
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(push.mock.calls.map(([, , url]) => String(url))).toEqual([
+      "/study-plan?keep=one&keep=two&view=upcoming",
+    ]);
 
     await userEvent.click(screen.getByRole("tab", { name: "Today" }));
     expect(window.location.search).toBe("?keep=one&keep=two");
     expect(api.tasks.mock.calls.at(-1)?.[0]).toEqual({ filter: "today" });
+    expect(push).toHaveBeenCalledTimes(2);
+    expect(push.mock.calls.map(([, , url]) => String(url))).toEqual([
+      "/study-plan?keep=one&keep=two&view=upcoming",
+      "/study-plan?keep=one&keep=two",
+    ]);
   });
 
   it("never sends an invalid URL view to the task query", async () => {
     window.history.replaceState({}, "", "/study-plan?view=wat&keep=1");
     const replace = vi.spyOn(window.history, "replaceState");
+    const push = vi.spyOn(window.history, "pushState");
     renderPage();
     expect(screen.getByRole("tab", { name: "Today" })).toHaveAttribute(
       "data-state",
@@ -283,7 +292,8 @@ describe("Study Plan navigation state", () => {
     ).toBe(true);
     expect(api.tasks.mock.calls.at(-1)?.[0]).toEqual({ filter: "today" });
     await waitFor(() => expect(window.location.search).toBe("?keep=1"));
-    expect(replace).toHaveBeenCalled();
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("restores matching view and query through Back and Forward", async () => {
@@ -299,6 +309,7 @@ describe("Study Plan navigation state", () => {
       );
       expect(api.tasks.mock.calls.at(-1)?.[0]).toEqual({ filter: "upcoming" });
     });
+    expect(window.location.search).toBe("?view=upcoming");
 
     await act(async () => window.history.forward());
     await waitFor(() => {
@@ -308,5 +319,6 @@ describe("Study Plan navigation state", () => {
       );
       expect(api.tasks.mock.calls.at(-1)?.[0]).toEqual({ filter: "completed" });
     });
+    expect(window.location.search).toBe("?view=completed");
   });
 });

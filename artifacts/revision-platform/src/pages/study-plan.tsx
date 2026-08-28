@@ -52,6 +52,7 @@ import {
   resolveQueryParam,
   updateQueryParams,
 } from "@/lib/navigation-query-state";
+import { useIdempotentControlledNavigation } from "@/hooks/use-idempotent-controlled-navigation";
 
 const TASK_VIEWS = ["today", "upcoming", "completed", "all"] as const;
 
@@ -73,6 +74,7 @@ export default function StudyPlan() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { value: activeTab, needsNormalization: viewNeedsNormalization } =
     resolveQueryParam(searchParams, "view", TASK_VIEWS, "today");
+  const shouldNavigateToView = useIdempotentControlledNavigation(activeTab);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -86,6 +88,7 @@ export default function StudyPlan() {
 
   const handleViewChange = (value: string) => {
     if (!TASK_VIEWS.includes(value as (typeof TASK_VIEWS)[number])) return;
+    if (!shouldNavigateToView(value as (typeof TASK_VIEWS)[number])) return;
     setSearchParams(
       (current) =>
         updateQueryParams(current, [

@@ -45,6 +45,7 @@ import {
   resolveQueryParam,
   updateQueryParams,
 } from "@/lib/navigation-query-state";
+import { useIdempotentControlledNavigation } from "@/hooks/use-idempotent-controlled-navigation";
 
 const SETTINGS_TABS = [
   "account",
@@ -142,6 +143,7 @@ export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { value: activeTab, needsNormalization: tabNeedsNormalization } =
     resolveQueryParam(searchParams, "tab", SETTINGS_TABS, "account");
+  const shouldNavigateToTab = useIdempotentControlledNavigation(activeTab);
   const { theme, setTheme } = useTheme();
   const { user, updateUser } = useAuth();
   const { prefs, updatePref, requestBrowserPermission } =
@@ -184,6 +186,7 @@ export default function Settings() {
     if (!SETTINGS_TABS.includes(value as (typeof SETTINGS_TABS)[number])) {
       return;
     }
+    if (!shouldNavigateToTab(value as (typeof SETTINGS_TABS)[number])) return;
     setSearchParams(
       (current) =>
         updateQueryParams(current, [

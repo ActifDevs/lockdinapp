@@ -208,15 +208,24 @@ describe("Settings navigation state", () => {
 
     await userEvent.click(screen.getByRole("tab", { name: "Alerts" }));
     expect(window.location.search).toBe("?keep=one&keep=two&tab=notifications");
-    expect(push).toHaveBeenCalled();
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(push.mock.calls.map(([, , url]) => String(url))).toEqual([
+      "/settings?keep=one&keep=two&tab=notifications",
+    ]);
 
     await userEvent.click(screen.getByRole("tab", { name: "Account" }));
     expect(window.location.search).toBe("?keep=one&keep=two");
+    expect(push).toHaveBeenCalledTimes(2);
+    expect(push.mock.calls.map(([, , url]) => String(url))).toEqual([
+      "/settings?keep=one&keep=two&tab=notifications",
+      "/settings?keep=one&keep=two",
+    ]);
   });
 
   it("renders Account and replace-normalizes an invalid tab", async () => {
     window.history.replaceState({}, "", "/settings?tab=garbage&keep=1");
     const replace = vi.spyOn(window.history, "replaceState");
+    const push = vi.spyOn(window.history, "pushState");
     renderPage();
 
     expect(screen.getByRole("tab", { name: "Account" })).toHaveAttribute(
@@ -224,7 +233,8 @@ describe("Settings navigation state", () => {
       "active",
     );
     await waitFor(() => expect(window.location.search).toBe("?keep=1"));
-    expect(replace).toHaveBeenCalled();
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("restores tab selection through browser Back and Forward", async () => {
@@ -240,6 +250,7 @@ describe("Settings navigation state", () => {
         "active",
       ),
     );
+    expect(window.location.search).toBe("?tab=subjects");
 
     await act(async () => window.history.forward());
     await waitFor(() =>
@@ -248,5 +259,6 @@ describe("Settings navigation state", () => {
         "active",
       ),
     );
+    expect(window.location.search).toBe("?tab=appearance");
   });
 });
