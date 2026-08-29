@@ -1,5 +1,6 @@
 export * from "./subjects";
 export * from "./syllabusVersions";
+export * from "./syllabusVersionExamSeries";
 export * from "./assessmentComponents";
 export * from "./syllabusUnits";
 export * from "./syllabusTopics";
