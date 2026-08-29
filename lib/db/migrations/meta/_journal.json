@@ -78,6 +78,13 @@
       "when": 1787998795377,
       "tag": "0010_preserve_existing_syllabus_version_pins",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788003568152,
+      "tag": "0011_open_sunfire",
+      "breakpoints": true
     }
   ]
 }

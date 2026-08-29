@@ -149,6 +149,24 @@ export async function verifyFinalSchema(
       };
     }
 
+    const lifecycle = await pool.query<{ column_name: string }>(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'syllabus_versions'
+        AND column_name IN (
+          'lifecycle',
+          'applicable_from_year',
+          'applicable_session_range'
+        )
+    `);
+    if (lifecycle.rows.length !== 3) {
+      return {
+        success: false,
+        error: "syllabus_versions lifecycle/applicability columns are incomplete.",
+      };
+    }
+
     return { success: true, serialSequence: sequence.rows[0].sequence };
   } catch {
     return { success: false, error: "Final schema verification query failed." };
