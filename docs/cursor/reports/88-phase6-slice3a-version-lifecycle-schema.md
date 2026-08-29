@@ -98,3 +98,15 @@ Importer, 6.3C1/C2, 6.3D, 6.4, hosted 0011, merge, `profiles.exam_session` model
 - **6.3C2:** NOT STARTED — exam-session-based new membership assignment
 - **6.3D:** NOT STARTED — frontend/session UX where required
 - **6.4:** NOT STARTED — pipeline release hardening / CI / operational closeout
+
+## Final merge-clearance verification
+
+Date: 2026-08-29. Implementation/correction SHA remains `f6d400fcabe47c080049ebf9b8a19846ab8829db`.
+
+**Prior 41/42:** `exam-dates.integration.test.ts` hashes committed `0011_open_sunfire.sql` (SHA-256) and requires `drizzle.__drizzle_migrations` count `12`, `created_at` `1788003568152`, and that hash. Ordinary `lockedinapp` on `:54322` had already applied the **pre-correction** 0011 body, so the journal hash stayed `56f32a45…` while the file became `eb790893…`. That database was **not** reset.
+
+**Clean dedicated proof (`lockdin-db-harness`):** official harness reconstruction PASS. Separate reconstruct then replayed the exam-dates journal assertion: count `12`, latest `1788003568152`, hash `eb7908939c34d47fef47ba48371a3c9dbca9dd3161c4d29271142cb8fbf8e681` — **PASS**. Exclusion predicate includes `lifecycle = 'published'`. Lifecycle proof **PASS**.
+
+**Full `pnpm test:integration` (42/42):** **not redirected**. `require-local-supabase.mjs` and route tests call `supabase status` with `cwd` = repo root (ordinary `lockedinapp` `:54321`/`:54322`), not `--workdir scripts/fixtures/db-harness`. No product or test-runner change in this pass. Classification of the journal failure vs corrected 0011: **RESOLVED** on the dedicated reconstruct. Full 42/42 on harness: **blocked by existing runner wiring**, not by a product defect.
+
+**Hosted pre-apply (read-only):** journal 11 rows, latest `1787998795377` / `a7f5ad2a…` (**0010**). Zero subjects with `>1` current version (9 versions, 9 current). `btree_gist` listed in `pg_available_extensions`, **not installed**. No hosted mutation.
