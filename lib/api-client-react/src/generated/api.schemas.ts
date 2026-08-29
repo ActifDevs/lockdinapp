@@ -43,6 +43,38 @@ export interface ProfileUpdate {
   examSession?: string;
 }
 
+export type ExamSittingSeries = typeof ExamSittingSeries[keyof typeof ExamSittingSeries];
+
+
+export const ExamSittingSeries = {
+  'Feb/Mar': 'Feb/Mar',
+  'May/June': 'May/June',
+  'Oct/Nov': 'Oct/Nov',
+} as const;
+
+/**
+ * Structured intended final exam sitting. Not used for version assignment in 6.3C2A.
+ */
+export interface IntendedExamSession {
+  /**
+     * @minimum 1000
+     * @maximum 9999
+     */
+  year: number;
+  series: ExamSittingSeries;
+}
+
+export interface SubjectSessionOverride {
+  /** @minimum 1 */
+  subjectId: number;
+  /**
+     * @minimum 1000
+     * @maximum 9999
+     */
+  year: number;
+  series: ExamSittingSeries;
+}
+
 export interface CompleteOnboardingInput {
   /**
      * @minLength 2
@@ -65,12 +97,14 @@ export interface CompleteOnboardingInput {
      * @maxLength 80
      */
   examSession: string;
+  intendedExamSession?: IntendedExamSession;
   /**
      * @minItems 1
      * @maxItems 5
      * @items.minimum 1
      */
   subjectIds: number[];
+  subjectSessionOverrides?: SubjectSessionOverride[];
 }
 
 export interface UserSubjectSelectionInput {
@@ -80,6 +114,8 @@ export interface UserSubjectSelectionInput {
      * @items.minimum 1
      */
   subjectIds: number[];
+  intendedExamSession?: IntendedExamSession;
+  subjectSessionOverrides?: SubjectSessionOverride[];
 }
 
 /**
@@ -104,6 +140,7 @@ export interface UserSubjectSyllabusVersion {
 export interface UserSubjectMembership {
   subject: SubjectReference;
   syllabusVersion: UserSubjectSyllabusVersion;
+  intendedExamSession: IntendedExamSession | null;
   createdAt: string;
   updatedAt: string;
 }

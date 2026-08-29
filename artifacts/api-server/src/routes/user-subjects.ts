@@ -16,6 +16,11 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/require-auth";
 import { createUserScopedSupabaseClient } from "../lib/supabase-user-client";
+import {
+  buildMembershipSessionRpcArgs,
+  hasStructuredSessionInput,
+  mapStoredIntendedExamSession,
+} from "../lib/intended-exam-session";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -24,6 +29,8 @@ type MembershipRow = {
   user_id: string;
   subject_id: number;
   syllabus_version_id: number;
+  intended_exam_year: number | null;
+  intended_exam_series: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -60,6 +67,10 @@ export function buildMembershipResponse(
         examBoard: version.examBoard,
         qualification: version.qualification,
       },
+      intendedExamSession: mapStoredIntendedExamSession(
+        membership.intended_exam_year,
+        membership.intended_exam_series,
+      ),
       createdAt: membership.created_at,
       updatedAt: membership.updated_at,
     };
@@ -74,13 +85,18 @@ class MembershipPinInvariantError extends Error {
 }
 
 const MEMBERSHIP_SELECT =
-  "user_id, subject_id, syllabus_version_id, created_at, updated_at";
+  "user_id, subject_id, syllabus_version_id, intended_exam_year, intended_exam_series, created_at, updated_at";
 
-function hasOwnershipField(body: unknown): boolean {
+function hasForbiddenMembershipField(body: unknown): boolean {
   if (!body || typeof body !== "object") return false;
-  return ["userId", "user_id", "ownerId", "owner_id"].some((key) =>
-    Object.prototype.hasOwnProperty.call(body, key),
-  );
+  return [
+    "userId",
+    "user_id",
+    "ownerId",
+    "owner_id",
+    "syllabusVersionId",
+    "syllabus_version_id",
+  ].some((key) => Object.prototype.hasOwnProperty.call(body, key));
 }
 
 async function listMemberships(
@@ -153,7 +169,7 @@ router.get("/user-subjects", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.put("/user-subjects", requireAuth, async (req, res): Promise<void> => {
-  if (hasOwnershipField(req.body)) {
+  if (hasForbiddenMembershipField(req.body)) {
     res.status(400).json({ error: "One or more fields are not allowed" });
     return;
   }
@@ -176,10 +192,30 @@ router.put("/user-subjects", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  const sessionArgs = buildMembershipSessionRpcArgs(
+    subjectIds,
+    body.data.intendedExamSession,
+    body.data.subjectSessionOverrides,
+  );
+  if (!sessionArgs.ok) {
+    res.status(400).json({ error: "Invalid subject selection" });
+    return;
+  }
+
   const client = createUserScopedSupabaseClient(req.accessToken!);
-  const { error } = await client.rpc("lockdin_replace_user_subjects", {
+  const replaceParams = {
     p_subject_ids: subjectIds,
-  });
+    ...(hasStructuredSessionInput(
+      body.data.intendedExamSession,
+      body.data.subjectSessionOverrides,
+    )
+      ? sessionArgs.args
+      : {}),
+  };
+  const { error } = await client.rpc(
+    "lockdin_replace_user_subjects",
+    replaceParams,
+  );
 
   if (error) {
     const message = error.message ?? "";

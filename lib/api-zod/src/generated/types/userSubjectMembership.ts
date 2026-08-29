@@ -5,12 +5,14 @@
  * A-Level Revision Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { IntendedExamSession } from './intendedExamSession';
 import type { SubjectReference } from './subjectReference';
 import type { UserSubjectSyllabusVersion } from './userSubjectSyllabusVersion';
 
 export interface UserSubjectMembership {
   subject: SubjectReference;
   syllabusVersion: UserSubjectSyllabusVersion;
+  intendedExamSession: IntendedExamSession | null;
   createdAt: string;
   updatedAt: string;
 }

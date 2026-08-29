@@ -948,6 +948,46 @@ components:
           maxLength: 80
       additionalProperties: false
 
+    ExamSittingSeries:
+      type: string
+      enum:
+        - Feb/Mar
+        - May/June
+        - Oct/Nov
+
+    IntendedExamSession:
+      type: object
+      description: Structured intended final exam sitting. Not used for version assignment in 6.3C2A.
+      properties:
+        year:
+          type: integer
+          minimum: 1000
+          maximum: 9999
+        series:
+          $ref: "#/components/schemas/ExamSittingSeries"
+      required:
+        - year
+        - series
+      additionalProperties: false
+
+    SubjectSessionOverride:
+      type: object
+      properties:
+        subjectId:
+          type: integer
+          minimum: 1
+        year:
+          type: integer
+          minimum: 1000
+          maximum: 9999
+        series:
+          $ref: "#/components/schemas/ExamSittingSeries"
+      required:
+        - subjectId
+        - year
+        - series
+      additionalProperties: false
+
     CompleteOnboardingInput:
       type: object
       properties:
@@ -968,6 +1008,8 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+        intendedExamSession:
+          $ref: "#/components/schemas/IntendedExamSession"
         subjectIds:
           type: array
           minItems: 1
@@ -976,6 +1018,10 @@ components:
           items:
             type: integer
             minimum: 1
+        subjectSessionOverrides:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubjectSessionOverride"
       required:
         - fullName
         - username
@@ -995,6 +1041,12 @@ components:
           items:
             type: integer
             minimum: 1
+        intendedExamSession:
+          $ref: "#/components/schemas/IntendedExamSession"
+        subjectSessionOverrides:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubjectSessionOverride"
       required:
         - subjectIds
       additionalProperties: false
@@ -1006,6 +1058,10 @@ components:
           $ref: "#/components/schemas/SubjectReference"
         syllabusVersion:
           $ref: "#/components/schemas/UserSubjectSyllabusVersion"
+        intendedExamSession:
+          allOf:
+            - $ref: "#/components/schemas/IntendedExamSession"
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1015,6 +1071,7 @@ components:
       required:
         - subject
         - syllabusVersion
+        - intendedExamSession
         - createdAt
         - updatedAt
 

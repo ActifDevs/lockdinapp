@@ -477,6 +477,11 @@ export const DeleteExamDateResponse = zod.void()
  * Returns only the caller's durable memberships with shared metadata-only subject references.
  * @summary List the authenticated user's selected subjects
  */
+export const listCurrentUserSubjectsResponseIntendedExamSessionOneYearMin = 1000;
+export const listCurrentUserSubjectsResponseIntendedExamSessionOneYearMax = 9999;
+
+
+
 export const ListCurrentUserSubjectsResponseItem = zod.object({
   "subject": zod.object({
   "id": zod.number(),
@@ -491,6 +496,10 @@ export const ListCurrentUserSubjectsResponseItem = zod.object({
   "examBoard": zod.string(),
   "qualification": zod.string()
 }),
+  "intendedExamSession": zod.object({
+  "year": zod.number().min(listCurrentUserSubjectsResponseIntendedExamSessionOneYearMin).max(listCurrentUserSubjectsResponseIntendedExamSessionOneYearMax),
+  "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
+}).describe('Structured intended final exam sitting. Not used for version assignment in 6.3C2A.').nullable(),
   "createdAt": zod.string().datetime({"offset":true}),
   "updatedAt": zod.string().datetime({"offset":true})
 })
@@ -505,11 +514,32 @@ export const ListCurrentUserSubjectsResponse = zod.array(ListCurrentUserSubjects
 
 export const replaceCurrentUserSubjectsBodySubjectIdsMax = 5;
 
+export const replaceCurrentUserSubjectsBodyIntendedExamSessionYearMin = 1000;
+export const replaceCurrentUserSubjectsBodyIntendedExamSessionYearMax = 9999;
+
+
+export const replaceCurrentUserSubjectsBodySubjectSessionOverridesItemYearMin = 1000;
+export const replaceCurrentUserSubjectsBodySubjectSessionOverridesItemYearMax = 9999;
+
 
 
 export const ReplaceCurrentUserSubjectsBody = zod.object({
-  "subjectIds": zod.array(zod.number().min(1)).min(1).max(replaceCurrentUserSubjectsBodySubjectIdsMax)
+  "subjectIds": zod.array(zod.number().min(1)).min(1).max(replaceCurrentUserSubjectsBodySubjectIdsMax),
+  "intendedExamSession": zod.object({
+  "year": zod.number().min(replaceCurrentUserSubjectsBodyIntendedExamSessionYearMin).max(replaceCurrentUserSubjectsBodyIntendedExamSessionYearMax),
+  "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
+}).optional().describe('Structured intended final exam sitting. Not used for version assignment in 6.3C2A.'),
+  "subjectSessionOverrides": zod.array(zod.object({
+  "subjectId": zod.number().min(1),
+  "year": zod.number().min(replaceCurrentUserSubjectsBodySubjectSessionOverridesItemYearMin).max(replaceCurrentUserSubjectsBodySubjectSessionOverridesItemYearMax),
+  "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
+})).optional()
 })
+
+export const replaceCurrentUserSubjectsResponseIntendedExamSessionOneYearMin = 1000;
+export const replaceCurrentUserSubjectsResponseIntendedExamSessionOneYearMax = 9999;
+
+
 
 export const ReplaceCurrentUserSubjectsResponseItem = zod.object({
   "subject": zod.object({
@@ -525,6 +555,10 @@ export const ReplaceCurrentUserSubjectsResponseItem = zod.object({
   "examBoard": zod.string(),
   "qualification": zod.string()
 }),
+  "intendedExamSession": zod.object({
+  "year": zod.number().min(replaceCurrentUserSubjectsResponseIntendedExamSessionOneYearMin).max(replaceCurrentUserSubjectsResponseIntendedExamSessionOneYearMax),
+  "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
+}).describe('Structured intended final exam sitting. Not used for version assignment in 6.3C2A.').nullable(),
   "createdAt": zod.string().datetime({"offset":true}),
   "updatedAt": zod.string().datetime({"offset":true})
 })
@@ -596,8 +630,15 @@ export const completeCurrentUserOnboardingBodyLevelMax = 80;
 
 export const completeCurrentUserOnboardingBodyExamSessionMax = 80;
 
+export const completeCurrentUserOnboardingBodyIntendedExamSessionYearMin = 1000;
+export const completeCurrentUserOnboardingBodyIntendedExamSessionYearMax = 9999;
+
 
 export const completeCurrentUserOnboardingBodySubjectIdsMax = 5;
+
+
+export const completeCurrentUserOnboardingBodySubjectSessionOverridesItemYearMin = 1000;
+export const completeCurrentUserOnboardingBodySubjectSessionOverridesItemYearMax = 9999;
 
 
 
@@ -606,7 +647,16 @@ export const CompleteCurrentUserOnboardingBody = zod.object({
   "username": zod.string().min(completeCurrentUserOnboardingBodyUsernameMin).max(completeCurrentUserOnboardingBodyUsernameMax).regex(completeCurrentUserOnboardingBodyUsernameRegExp),
   "level": zod.string().min(1).max(completeCurrentUserOnboardingBodyLevelMax),
   "examSession": zod.string().min(1).max(completeCurrentUserOnboardingBodyExamSessionMax),
-  "subjectIds": zod.array(zod.number().min(1)).min(1).max(completeCurrentUserOnboardingBodySubjectIdsMax)
+  "intendedExamSession": zod.object({
+  "year": zod.number().min(completeCurrentUserOnboardingBodyIntendedExamSessionYearMin).max(completeCurrentUserOnboardingBodyIntendedExamSessionYearMax),
+  "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
+}).optional().describe('Structured intended final exam sitting. Not used for version assignment in 6.3C2A.'),
+  "subjectIds": zod.array(zod.number().min(1)).min(1).max(completeCurrentUserOnboardingBodySubjectIdsMax),
+  "subjectSessionOverrides": zod.array(zod.object({
+  "subjectId": zod.number().min(1),
+  "year": zod.number().min(completeCurrentUserOnboardingBodySubjectSessionOverridesItemYearMin).max(completeCurrentUserOnboardingBodySubjectSessionOverridesItemYearMax),
+  "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
+})).optional()
 })
 
 export const CompleteCurrentUserOnboardingResponse = zod.object({

@@ -8,6 +8,10 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/require-auth";
 import { createUserScopedSupabaseClient } from "../lib/supabase-user-client";
+import {
+  buildMembershipSessionRpcArgs,
+  hasStructuredSessionInput,
+} from "../lib/intended-exam-session";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -168,6 +172,8 @@ router.post("/profile/complete-onboarding", requireAuth, async (req, res): Promi
       "onboardedAt",
       "onboarded_at",
       "email",
+      "syllabusVersionId",
+      "syllabus_version_id",
     ])
   ) {
     res.status(400).json({ error: "One or more fields are not allowed" });
@@ -225,14 +231,34 @@ router.post("/profile/complete-onboarding", requireAuth, async (req, res): Promi
     return;
   }
 
+  const sessionArgs = buildMembershipSessionRpcArgs(
+    subjectIds,
+    body.data.intendedExamSession,
+    body.data.subjectSessionOverrides,
+  );
+  if (!sessionArgs.ok) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
+
   const client = createUserScopedSupabaseClient(req.accessToken!);
-  const { data, error } = await client.rpc("lockdin_complete_onboarding", {
+  const onboardingParams = {
     p_full_name: fullName,
     p_username: usernameRaw,
     p_level: level,
     p_exam_session: examSession,
     p_subject_ids: subjectIds,
-  });
+    ...(hasStructuredSessionInput(
+      body.data.intendedExamSession,
+      body.data.subjectSessionOverrides,
+    )
+      ? sessionArgs.args
+      : {}),
+  };
+  const { data, error } = await client.rpc(
+    "lockdin_complete_onboarding",
+    onboardingParams,
+  );
 
   if (error) {
     const message = error.message ?? "";
