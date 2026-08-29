@@ -6,6 +6,7 @@ import { listUserTaskRows, mappedUserTasks } from "../lib/user-tasks";
 import { sendSupabaseError } from "../lib/supabase-errors";
 import { countUserPastPaperAttempts } from "../lib/past-paper-attempts";
 import { getUserSubjectProgress } from "../lib/user-subject-progress";
+import { REFERENCE_CONTEXT_UNAVAILABLE } from "../lib/resolve-reference-syllabus-version";
 
 const router: IRouter = Router();
 
@@ -23,6 +24,10 @@ router.get(
 
     const subjectProgress = await getUserSubjectProgress(client, userId);
     if (subjectProgress.error) {
+      if (subjectProgress.error.code === "PIN_INVARIANT") {
+        res.status(409).json({ error: REFERENCE_CONTEXT_UNAVAILABLE });
+        return;
+      }
       sendSupabaseError(
         res,
         subjectProgress.error,

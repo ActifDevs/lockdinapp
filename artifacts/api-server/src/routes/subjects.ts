@@ -1,12 +1,11 @@
 import { Router, type IRouter } from "express";
-import { and, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import {
   db,
   subjectsTable,
   syllabusUnitsTable,
   syllabusTopicsTable,
   syllabusLearningOutcomesTable,
-  syllabusVersionsTable,
   assessmentComponentsTable,
 } from "@workspace/db";
 import {
@@ -33,6 +32,13 @@ import {
   enrichPastPaperRows,
   listUserPastPaperRows,
 } from "../lib/past-paper-attempts";
+import { resolveReferenceSyllabusVersion } from "../lib/resolve-reference-syllabus-version";
+import { countDefaultTopicsBySubjectId } from "../lib/syllabus-topic-counts";
+import {
+  isReferenceLookupError,
+  sendReferenceLookupFailure,
+  versionIdFromResolution,
+} from "../lib/reference-context-http";
 
 const router: IRouter = Router();
 
@@ -59,18 +65,8 @@ const syllabusTopicReferenceColumns = {
 router.get("/subjects", async (_req, res): Promise<void> => {
   const subjects = await db.select().from(subjectsTable).orderBy(subjectsTable.id);
 
-  // Count-only projection: catalogue list needs topicsTotal, not topic rows.
-  // Avoid selecting legacy/shared progress columns that pre-Slice-2B code assumed.
-  const topicCounts = await db
-    .select({ subjectId: syllabusTopicsTable.subjectId })
-    .from(syllabusTopicsTable);
-  const topicsBySubjectId = new Map<number, number>();
-  for (const topic of topicCounts) {
-    topicsBySubjectId.set(
-      topic.subjectId,
-      (topicsBySubjectId.get(topic.subjectId) ?? 0) + 1,
-    );
-  }
+  // Catalogue topicsTotal is the DEFAULT (`is_current`) graph only.
+  const topicsBySubjectId = await countDefaultTopicsBySubjectId();
 
   const result = subjects.map((subject) =>
     catalogueEnrichment(subject, topicsBySubjectId.get(subject.id) ?? 0),
@@ -106,12 +102,13 @@ router.get("/subjects/:subjectId", async (req, res): Promise<void> => {
     return;
   }
 
-  const topics = await db
-    .select({ id: syllabusTopicsTable.id })
-    .from(syllabusTopicsTable)
-    .where(eq(syllabusTopicsTable.subjectId, subject.id));
+  const topicsBySubjectId = await countDefaultTopicsBySubjectId();
 
-  res.json(GetSubjectResponse.parse(catalogueEnrichment(subject, topics.length)));
+  res.json(
+    GetSubjectResponse.parse(
+      catalogueEnrichment(subject, topicsBySubjectId.get(subject.id) ?? 0),
+    ),
+  );
 });
 
 /**
@@ -134,11 +131,30 @@ router.get(
       return;
     }
 
-    const units = await db
-      .select()
-      .from(syllabusUnitsTable)
-      .where(eq(syllabusUnitsTable.subjectId, params.data.subjectId))
-      .orderBy(syllabusUnitsTable.orderIndex);
+    let resolution;
+    try {
+      resolution = await resolveReferenceSyllabusVersion(
+        params.data.subjectId,
+        req.userId,
+      );
+    } catch (error) {
+      if (isReferenceLookupError(error)) {
+        sendReferenceLookupFailure(res);
+        return;
+      }
+      throw error;
+    }
+
+    const versionId = versionIdFromResolution(res, resolution);
+    if (versionId === undefined) return;
+
+    const units = versionId
+      ? await db
+          .select()
+          .from(syllabusUnitsTable)
+          .where(eq(syllabusUnitsTable.syllabusVersionId, versionId))
+          .orderBy(syllabusUnitsTable.orderIndex)
+      : [];
 
     const unitIds = units.map((u) => u.id);
     const topics = unitIds.length
@@ -208,24 +224,34 @@ router.get(
   },
 );
 
-router.get("/subjects/:subjectId/assessment-components", async (req, res): Promise<void> => {
+router.get(
+  "/subjects/:subjectId/assessment-components",
+  optionalAuth,
+  async (req, res): Promise<void> => {
   const params = ListAssessmentComponentsParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
 
-  const [currentVersion] = await db
-    .select()
-    .from(syllabusVersionsTable)
-    .where(
-      and(
-        eq(syllabusVersionsTable.subjectId, params.data.subjectId),
-        eq(syllabusVersionsTable.isCurrent, true),
-      ),
+  let resolution;
+  try {
+    resolution = await resolveReferenceSyllabusVersion(
+      params.data.subjectId,
+      req.userId,
     );
+  } catch (error) {
+    if (isReferenceLookupError(error)) {
+      sendReferenceLookupFailure(res);
+      return;
+    }
+    throw error;
+  }
 
-  if (!currentVersion) {
+  const versionId = versionIdFromResolution(res, resolution);
+  if (versionId === undefined) return;
+
+  if (!versionId) {
     res.json(ListAssessmentComponentsResponse.parse([]));
     return;
   }
@@ -233,7 +259,7 @@ router.get("/subjects/:subjectId/assessment-components", async (req, res): Promi
   const components = await db
     .select()
     .from(assessmentComponentsTable)
-    .where(eq(assessmentComponentsTable.syllabusVersionId, currentVersion.id))
+    .where(eq(assessmentComponentsTable.syllabusVersionId, versionId))
     .orderBy(assessmentComponentsTable.orderIndex);
 
   res.json(

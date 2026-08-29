@@ -1,5 +1,7 @@
 import { inArray } from "drizzle-orm";
-import { db, subjectsTable, syllabusTopicsTable } from "@workspace/db";
+import { db, subjectsTable, syllabusVersionsTable } from "@workspace/db";
+import { listTopicIdsForSyllabusVersions } from "./syllabus-topic-counts";
+import { REFERENCE_CONTEXT_UNAVAILABLE } from "./resolve-reference-syllabus-version";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "./logger";
 import {
@@ -10,6 +12,7 @@ import {
 
 type MembershipRow = {
   subject_id: number;
+  syllabus_version_id: number;
 };
 
 type SubjectReferenceRow = {
@@ -46,6 +49,12 @@ type SupabaseError = {
 export type UserSubjectProgressResult =
   | { data: UserSubjectProgressSummary; error: null; context: null }
   | { data: null; error: SupabaseError; context: string };
+
+export const PIN_INVARIANT_PROGRESS_ERROR: SupabaseError = {
+  code: "PIN_INVARIANT",
+  message: REFERENCE_CONTEXT_UNAVAILABLE,
+  status: 409,
+};
 
 /** Pure aggregation shared by the API routes and unit tests. */
 export function aggregateUserSubjectProgress(
@@ -116,7 +125,7 @@ export async function getUserSubjectProgress(
 ): Promise<UserSubjectProgressResult> {
   const { data: membershipData, error: membershipError } = await client
     .from("user_subjects")
-    .select("subject_id")
+    .select("subject_id, syllabus_version_id")
     .eq("user_id", userId)
     .order("subject_id");
 
@@ -124,9 +133,8 @@ export async function getUserSubjectProgress(
     return { data: null, error: membershipError, context: "user_subjects" };
   }
 
-  const enrolledSubjectIds = ((membershipData ?? []) as MembershipRow[]).map(
-    (row) => row.subject_id,
-  );
+  const memberships = (membershipData ?? []) as MembershipRow[];
+  const enrolledSubjectIds = memberships.map((row) => row.subject_id);
   if (enrolledSubjectIds.length === 0) {
     return {
       data: { syllabusCompletion: [], overallSyllabusProgress: 0 },
@@ -135,7 +143,8 @@ export async function getUserSubjectProgress(
     };
   }
 
-  const [subjects, topics] = await Promise.all([
+  const versionIds = memberships.map((row) => row.syllabus_version_id);
+  const [subjects, versions, topics] = await Promise.all([
     db
       .select({
         id: subjectsTable.id,
@@ -146,12 +155,30 @@ export async function getUserSubjectProgress(
       .where(inArray(subjectsTable.id, enrolledSubjectIds)),
     db
       .select({
-        id: syllabusTopicsTable.id,
-        subjectId: syllabusTopicsTable.subjectId,
+        id: syllabusVersionsTable.id,
+        subjectId: syllabusVersionsTable.subjectId,
+        lifecycle: syllabusVersionsTable.lifecycle,
       })
-      .from(syllabusTopicsTable)
-      .where(inArray(syllabusTopicsTable.subjectId, enrolledSubjectIds)),
+      .from(syllabusVersionsTable)
+      .where(inArray(syllabusVersionsTable.id, versionIds)),
+    listTopicIdsForSyllabusVersions(versionIds),
   ]);
+
+  const versionById = new Map(versions.map((version) => [version.id, version]));
+  for (const membership of memberships) {
+    const version = versionById.get(membership.syllabus_version_id);
+    if (
+      !version ||
+      version.subjectId !== membership.subject_id ||
+      version.lifecycle === "draft"
+    ) {
+      return {
+        data: null,
+        error: PIN_INVARIANT_PROGRESS_ERROR,
+        context: "syllabus_pin",
+      };
+    }
+  }
 
   const { data: progressRows, error: progressError } =
     await listCallerTopicProgress(

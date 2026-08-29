@@ -15,6 +15,7 @@ import {
   listUserExamDateRows,
 } from "../lib/exam-dates";
 import { getUserSubjectProgress } from "../lib/user-subject-progress";
+import { REFERENCE_CONTEXT_UNAVAILABLE } from "../lib/resolve-reference-syllabus-version";
 
 const router: IRouter = Router();
 
@@ -48,6 +49,10 @@ router.get(
     ]);
 
     if (subjectProgress.error) {
+      if (subjectProgress.error.code === "PIN_INVARIANT") {
+        res.status(409).json({ error: REFERENCE_CONTEXT_UNAVAILABLE });
+        return;
+      }
       sendSupabaseError(
         res,
         subjectProgress.error,
