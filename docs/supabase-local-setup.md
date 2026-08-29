@@ -137,8 +137,8 @@ The harness uses `lib/db/bootstrap/pre-0000.sql`, a historical bootstrap artifac
 # Start local Supabase
 pnpm supabase:start
 
-# Run the disposable harness
-pnpm --filter @workspace/scripts db-harness
+# Run the disposable harness (requires explicit disposability authorization)
+LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1 pnpm --filter @workspace/scripts db-harness
 
 # Run DB integration tests against the prepared local DB
 pnpm --filter @workspace/scripts test:db
@@ -146,6 +146,8 @@ pnpm --filter @workspace/scripts test:db
 # Stop local Supabase when done
 pnpm supabase:stop
 ```
+
+**Important:** The harness performs destructive schema cleanup. The `LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1` environment variable is required to confirm you understand the target will be cleaned and is disposable.
 
 ### Safety guarantees
 

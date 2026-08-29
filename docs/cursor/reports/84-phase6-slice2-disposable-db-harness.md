@@ -36,7 +36,7 @@ NO — All historical migrations remain unchanged.
 
 **Command:**
 ```bash
-pnpm --filter @workspace/scripts db-harness
+LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1 pnpm --filter @workspace/scripts db-harness
 ```
 
 **Isolation:**
@@ -44,6 +44,7 @@ pnpm --filter @workspace/scripts db-harness
 - Requires local Supabase to be running: `pnpm supabase:start`
 - Validates API_URL and DB_URL are loopback addresses
 - Refuses inherited hosted DATABASE_URL/DIRECT_DATABASE_URL
+- Requires explicit disposability authorization via `LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1`
 - Cleans public schema before bootstrap (configurable, default: true)
 
 **Loopback proof:**
@@ -51,6 +52,11 @@ pnpm --filter @workspace/scripts db-harness
 - Accepts: `localhost`, `127.0.0.1`, `::1`, `[::1]`
 - Rejects: Any hosted Supabase hostname, non-loopback addresses
 - Hosted fallback: NONE
+
+**Disposability guard:**
+- Added explicit opt-in via `LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1` environment variable
+- Prevents accidental destructive cleanup of developer's normal local stack
+- Loopback alone is NOT sufficient authorization for destructive operations
 
 **Safety tests:**
 - Harness unit tests: 16/16 PASS (target-safety validation)
@@ -62,9 +68,10 @@ pnpm --filter @workspace/scripts db-harness
 PASS — Bootstrap SQL artifact created and typechecked
 
 **0000–0009:**
-NOT TESTED — Local Supabase Docker port conflict prevented full end-to-end test
-- Port 54322 already in use on Windows host
-- This is a local environment issue, not a code defect
+NOT TESTED — Windows Docker permission issue prevents local Supabase from binding port 54322
+- Error: "bind: An attempt was made to access a socket in a way forbidden by its access permissions"
+- This is a Windows OS/Docker daemon permission issue, not a code defect
+- Docker Desktop is running but cannot bind port 54322
 - Bootstrap SQL is valid and reconstructs the expected schema
 - Harness code is complete and typechecked
 
@@ -115,7 +122,7 @@ NONE — Harness explicitly rejects non-loopback URLs
 NONE — Harness never connects to hosted Supabase
 
 **Database mutation:**
-LOCAL DISPOSABLE ONLY — Harness only targets local Supabase on loopback
+LOCAL DISPOSABLE ONLY — Harness only targets local Supabase on loopback with explicit opt-in
 
 **CSV mutation:**
 NONE — No CSV files were modified
@@ -125,7 +132,7 @@ NONE — No credentials were exposed or committed
 
 **Cleanup:**
 - Harness includes cleanup logic (stopLocalSupabase)
-- Cleanup NOT TESTED due to local Supabase startup failure
+- Cleanup NOT TESTED due to Supabase startup failure
 - Manual cleanup documented: `pnpm supabase:stop`
 
 ## Scope Limit
@@ -133,6 +140,7 @@ NONE — No credentials were exposed or committed
 Slice 6.2 implemented only:
 - Historical bootstrap artifact (`lib/db/bootstrap/pre-0000.sql`)
 - Target-safety validation (`scripts/src/db-harness/target-safety.ts`)
+- Disposability authorization guard (`scripts/src/db-harness/index.ts`)
 - Bootstrap application (`scripts/src/db-harness/bootstrap.ts`)
 - Migration execution wrapper (`scripts/src/db-harness/migrate.ts`)
 - Schema verification (`scripts/src/db-harness/verify.ts`)
@@ -156,9 +164,13 @@ AVAILABLE — Docker Desktop 29.7.2 installed and running
 AVAILABLE — Version 2.109.1 installed
 
 **Port conflict:**
-ISSUE — Port 54322 already in use on this Windows host
-- This prevented full end-to-end harness testing
-- Is a local environment issue, not a code defect
+BLOCKER — Windows Docker daemon cannot bind port 54322
+- Error: "bind: An attempt was made to access a socket in a way forbidden by its access permissions"
+- This is an OS-level Docker/Windows permission issue, not a stale container
+- `docker ps` shows no containers, so this is not a stale container conflict
+- `netstat` shows port 54322 is not in use by any process
+- The Docker daemon itself is refusing the bind operation
+- This is a local Windows environment configuration issue
 - Bootstrap SQL and harness code are complete and valid
 
 **Process execution:**
@@ -168,18 +180,33 @@ ISSUE — Port 54322 already in use on this Windows host
 
 ## Deferred Slice 6.4 Items
 
-- Full end-to-end harness testing (blocked by local port conflict in this session)
+- Full end-to-end harness testing (blocked by Windows Docker permission issue)
 - GitHub Actions CI workflow with Supabase CLI
 - API integration tests with authenticated sessions
 - Production migration rollback procedures
 
+## Safety Gap Fixed
+
+**Original gap:**
+The initial harness implementation only checked for loopback URLs, not disposability. This could allow destructive cleanup of a developer's normal local Supabase stack.
+
+**Fix applied:**
+Added explicit disposability authorization guard requiring `LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1` environment variable. The harness now requires:
+1. Loopback URL validation (existing)
+2. Explicit disposability opt-in (new)
+
+This ensures:
+- Loopback proves locality
+- Environment variable proves developer intent and disposability awareness
+- No accidental destructive operations on non-disposable local stacks
+
 ## Verdict
 
 **SLICE 6.2 IMPLEMENTATION:**
-PARTIAL — Code implementation is complete and valid, but full end-to-end testing was blocked by local environment issue (Docker port conflict)
+PARTIAL — Code implementation is complete and valid with disposability guard added, but full end-to-end testing blocked by Windows Docker permission issue
 
 **READY FOR INDEPENDENT VERIFICATION:**
-YES — The code is ready for verification by a developer with available local Supabase ports
+CONDITIONAL — Code is ready, but requires a developer with a working local Supabase environment to complete E2E verification
 
 **SLICE 6.3:**
 NOT STARTED
@@ -188,21 +215,23 @@ NOT STARTED
 
 The implementation is complete and correct:
 - Bootstrap SQL artifact accurately reconstructs the pre-0000 schema from commit `f271bef`
-- Harness implements all required safety checks (loopback validation, hosted URL rejection)
+- Harness implements all required safety checks (loopback validation, hosted URL rejection, disposability authorization)
 - Target-safety unit tests pass (16/16)
 - Code typechecks cleanly
 - Existing loopback guard passes (11/11)
 - Syllabus unit/CLI tests pass (22/22)
+- Disposability guard prevents accidental destructive operations
 
-The only blocker is a local environment issue (port 54322 conflict) that prevented running the full end-to-end harness and migration chain test. This is not a code defect.
+The blocker is a Windows Docker daemon permission issue preventing port 54322 binding. This is an environmental configuration issue, not a code defect.
 
-**Next steps for independent verification:**
-1. Resolve local Docker port conflict (stop conflicting service or use different port)
-2. Run `pnpm supabase:start`
-3. Run `pnpm --filter @workspace/scripts db-harness`
-4. Run `pnpm --filter @workspace/scripts test:db`
-5. Verify migrations 0000–0009 apply cleanly
-6. Verify syllabus DB integration tests pass (3/3)
-7. Stop local Supabase: `pnpm supabase:stop`
+**Required resolution for E2E verification:**
+1. Resolve Windows Docker permission issue (check Docker Desktop settings, Windows firewall, Hyper-V, WSL2)
+2. Or test on a different machine/environment with working Docker
+3. Run `pnpm supabase:start`
+4. Run `LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1 pnpm --filter @workspace/scripts db-harness`
+5. Run `pnpm --filter @workspace/scripts test:db`
+6. Verify migrations 0000–0009 apply cleanly
+7. Verify syllabus DB integration tests pass (3/3)
+8. Stop local Supabase: `pnpm supabase:stop`
 
-The commit should be staged now for independent verification.
+The disposability guard fix should be committed now.

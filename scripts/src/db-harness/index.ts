@@ -25,6 +25,7 @@ import {
 interface HarnessConfig {
   requireCleanStart?: boolean;
   stopAfterCompletion?: boolean;
+  requireExplicitDisposabilityAuth?: boolean;
 }
 
 interface HarnessResult {
@@ -39,6 +40,7 @@ export async function runHarness(
   const {
     requireCleanStart = true,
     stopAfterCompletion = false,
+    requireExplicitDisposabilityAuth = true,
   } = config;
 
   const steps: HarnessResult["steps"] = [];
@@ -63,6 +65,39 @@ export async function runHarness(
   try {
     // Step 1: Verify execution context
     await step("Context verification", async () => {
+      const databaseUrl = process.env.DATABASE_URL;
+      const directDatabaseUrl = process.env.DIRECT_DATABASE_URL;
+
+      const safetyCheck = checkInheritedDbUrls(
+        databaseUrl,
+        directDatabaseUrl
+      );
+
+      if (!safetyCheck.isSafe) {
+        throw new Error(safetyCheck.error);
+      }
+
+      console.log("[db-harness] Context verification passed");
+    });
+
+    // Step 1.5: Verify disposability authorization
+    if (requireExplicitDisposabilityAuth) {
+      await step("Disposability authorization", async () => {
+        const allowDestructive = process.env.LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB;
+
+        if (allowDestructive !== "1") {
+          throw new Error(
+            "[db-harness] Disposability authorization required. " +
+            "This harness performs destructive schema cleanup on the local Supabase database. " +
+            "To proceed, set the environment variable:\n" +
+            "  LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1\n" +
+            "This confirms you understand the target will be cleaned and is disposable."
+          );
+        }
+
+        console.log("[db-harness] Disposability authorization confirmed");
+      });
+    }
       const databaseUrl = process.env.DATABASE_URL;
       const directDatabaseUrl = process.env.DIRECT_DATABASE_URL;
 
