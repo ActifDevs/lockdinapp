@@ -8,6 +8,7 @@ Timestamped technical snapshots documenting the project state at specific points
 
 | Checkpoint | Date & Time | Commit | Summary |
 |------------|-------------|--------|---------|
+| [2026-08-29_0016](./checkpoints/2026-08-29_0016/2026-08-29_0016_CURRENT_STATE.md) | 29 Aug 2026 00:16 | `0d2f1f4` | Phase 5 closed — frontend state reconciliation and final serverless/history cutover fixes production verified |
 | [2026-08-24_1705](./checkpoints/2026-08-24_1705/2026-08-24_1705_CURRENT_STATE.md) | 24 Aug 2026 17:05 | `f76fc21` | Phase 4 API Hardening Complete & Production Deployed — global fail-secure auth policy & request correlation IDs |
 | [2026-08-19_1734](./checkpoints/2026-08-19_1734/2026-08-19_1734_CURRENT_STATE.md) | 19 Aug 2026 17:34 | `428d9fd` | Phase 3 Complete & Production Deployed — multi-tenancy snapshot on main branch |
 | [2026-08-17_0832](./checkpoints/2026-08-17_0832/2026-08-17_0832_CURRENT_STATE.md) | 17 Aug 2026 08:32 | `0f34c77` | Phase 3 multi-tenancy final closeout — implementation and hosted E2E complete on integration branch; main merge pending |
