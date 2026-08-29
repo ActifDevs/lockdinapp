@@ -448,7 +448,6 @@ describe("two-user local Supabase exam-date ownership", () => {
       "0009_dear_mathemanic.sql",
     );
     const migration = readFileSync(migrationPath, "utf8");
-    const expectedHash = createHash("sha256").update(migration).digest("hex");
     expect(migration).toContain("LOCK TABLE public.exam_dates");
     expect(migration).toContain("exam_dates_not_empty");
     expect(migration).toContain("ERRCODE = '55000'");
@@ -456,15 +455,26 @@ describe("two-user local Supabase exam-date ownership", () => {
     expect(migration).not.toContain("FOR UPDATE");
     expect(migration).not.toContain("GRANT UPDATE");
 
+    const migration0010Path = path.join(
+      repoRoot,
+      "lib",
+      "db",
+      "migrations",
+      "0010_preserve_existing_syllabus_version_pins.sql",
+    );
+    const expectedLatestHash = createHash("sha256")
+      .update(readFileSync(migration0010Path))
+      .digest("hex");
+
     const journal = await db.execute(sql`
       select count(*)::int as count, max(created_at)::text as latest,
         (array_agg(hash order by created_at desc))[1] as latest_hash
       from drizzle.__drizzle_migrations
     `);
     expect(journal.rows[0]).toEqual({
-      count: 10,
-      latest: "1786547274449",
-      latest_hash: expectedHash,
+      count: 11,
+      latest: "1787998795377",
+      latest_hash: expectedLatestHash,
     });
   });
 });

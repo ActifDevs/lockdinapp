@@ -564,6 +564,140 @@ describe("profile and atomic onboarding (local)", () => {
     ).toBe(true);
   });
 
+  it("preserves existing syllabus version pins on replace while pinning new subjects to current", async () => {
+    const user = await mkUser("pin-preserve", "Pin Preserve");
+    const keptSubject = subjectIds[0]!;
+    const droppedSubject = subjectIds[1]!;
+    const newSubject = subjectIds[2]!;
+    let extraVersionId: number | null = null;
+    let originalVersionId: number | null = null;
+
+    try {
+      const onboard = await request(app)
+        .post("/api/profile/complete-onboarding")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({
+          fullName: "Pin Preserve",
+          username: `pin_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`,
+          level: "AS Level (Year 12)",
+          examSession: "May/June 2027",
+          subjectIds: [keptSubject, droppedSubject],
+        });
+      expect(onboard.status).toBe(200);
+
+      const before = await db.execute(sql`
+        select membership.subject_id, membership.syllabus_version_id, version.is_current
+        from public.user_subjects membership
+        join public.syllabus_versions version
+          on version.id = membership.syllabus_version_id
+        where membership.user_id = ${user.id}
+        order by membership.subject_id
+      `);
+      expect(before.rows).toHaveLength(2);
+      expect(before.rows.every((row) => row.is_current === true)).toBe(true);
+      originalVersionId = Number(
+        before.rows.find((row) => Number(row.subject_id) === keptSubject)!
+          .syllabus_version_id,
+      );
+
+      const originalMeta = await db.execute(sql`
+        select exam_board, qualification
+        from public.syllabus_versions
+        where id = ${originalVersionId}
+      `);
+      const examBoard = String(originalMeta.rows[0].exam_board);
+      const qualification = String(originalMeta.rows[0].qualification);
+
+      const inserted = await db.execute(sql`
+        insert into public.syllabus_versions (
+          subject_id, exam_board, qualification, label, is_current, source_file
+        )
+        values (
+          ${keptSubject},
+          ${examBoard},
+          ${qualification},
+          'Successor syllabus (test)',
+          false,
+          ${`pin-preserve-test-${crypto.randomUUID()}.csv`}
+        )
+        returning id
+      `);
+      extraVersionId = Number(inserted.rows[0].id);
+
+      await db.execute(sql`
+        update public.syllabus_versions
+        set is_current = false
+        where id = ${originalVersionId}
+      `);
+      await db.execute(sql`
+        update public.syllabus_versions
+        set is_current = true
+        where id = ${extraVersionId}
+      `);
+
+      const replaced = await request(app)
+        .put("/api/user-subjects")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({ subjectIds: [keptSubject, newSubject] });
+      expect(replaced.status).toBe(200);
+      expect(
+        replaced.body.map((item: { subject: { id: number } }) => item.subject.id),
+      ).toEqual([keptSubject, newSubject].sort((a, b) => a - b));
+
+      const after = await db.execute(sql`
+        select membership.subject_id, membership.syllabus_version_id
+        from public.user_subjects membership
+        where membership.user_id = ${user.id}
+        order by membership.subject_id
+      `);
+      expect(after.rows.map((row) => Number(row.subject_id))).toEqual(
+        [keptSubject, newSubject].sort((a, b) => a - b),
+      );
+      expect(
+        Number(
+          after.rows.find((row) => Number(row.subject_id) === keptSubject)!
+            .syllabus_version_id,
+        ),
+      ).toBe(originalVersionId);
+      expect(after.rows.some((row) => Number(row.subject_id) === droppedSubject)).toBe(
+        false,
+      );
+
+      const newPin = await db.execute(sql`
+        select membership.syllabus_version_id, version.is_current, version.id
+        from public.user_subjects membership
+        join public.syllabus_versions version
+          on version.id = membership.syllabus_version_id
+        where membership.user_id = ${user.id}
+          and membership.subject_id = ${newSubject}
+      `);
+      expect(newPin.rows).toHaveLength(1);
+      expect(newPin.rows[0].is_current).toBe(true);
+      expect(Number(newPin.rows[0].syllabus_version_id)).not.toBe(
+        extraVersionId,
+      );
+    } finally {
+      if (originalVersionId != null) {
+        await db.execute(sql`
+          update public.syllabus_versions
+          set is_current = true
+          where id = ${originalVersionId}
+        `);
+      }
+      if (extraVersionId != null) {
+        await db.execute(sql`
+          update public.syllabus_versions
+          set is_current = false
+          where id = ${extraVersionId}
+        `);
+        await db.execute(sql`
+          delete from public.syllabus_versions where id = ${extraVersionId}
+        `);
+      }
+      await admin.auth.admin.deleteUser(user.id);
+    }
+  });
+
   it("allows owner SELECT but denies all direct Data API membership writes", async () => {
     const userA = createClient(env.url, env.publishableKey, {
       global: { headers: { Authorization: `Bearer ${tokenA}` } },
@@ -788,7 +922,7 @@ describe("profile and atomic onboarding (local)", () => {
     const journal = await db.execute(sql`
       select count(*)::int as n from drizzle.__drizzle_migrations
     `);
-    expect(Number(journal.rows[0].n)).toBe(10);
+    expect(Number(journal.rows[0].n)).toBe(11);
   });
 
   it("function privileges and definition are correct", async () => {
@@ -839,5 +973,18 @@ describe("profile and atomic onboarding (local)", () => {
     expect(replaceGrantees).toContain("authenticated");
     expect(replaceGrantees).not.toContain("PUBLIC");
     expect(replaceGrantees).not.toContain("anon");
+
+    const replaceBody = await db.execute(sql`
+      select pg_get_functiondef(p.oid) as def
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'lockdin_replace_user_subjects'
+    `);
+    expect(String(replaceBody.rows[0].def)).toContain(
+      "ON CONFLICT (user_id, subject_id) DO NOTHING",
+    );
+    expect(String(replaceBody.rows[0].def)).not.toContain(
+      "SET syllabus_version_id = EXCLUDED.syllabus_version_id",
+    );
   });
 });
