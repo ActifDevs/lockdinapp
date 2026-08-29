@@ -15,6 +15,8 @@ describe("user-subject membership response", () => {
           user_id: "02444f79-c2bb-4596-ae99-d5d6877f1001",
           subject_id: 1,
           syllabus_version_id: 10,
+          intended_exam_year: null,
+          intended_exam_series: null,
           created_at: "2026-08-01T00:00:00.000Z",
           updated_at: "2026-08-02T00:00:00.000Z",
         },
@@ -50,5 +52,6 @@ describe("user-subject membership response", () => {
     expect(membership.subject).not.toHaveProperty("topicsCompleted");
     expect(membership.subject).not.toHaveProperty("upcomingTasksCount");
     expect(membership.subject).not.toHaveProperty("recentPaperScore");
+    expect(membership.intendedExamSession).toBeNull();
   });
 });

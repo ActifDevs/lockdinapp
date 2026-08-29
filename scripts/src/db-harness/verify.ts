@@ -217,6 +217,46 @@ export async function verifyFinalSchema(
       };
     }
 
+    const membershipSession = await pool.query<{ column_name: string }>(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_subjects'
+        AND column_name IN ('intended_exam_year', 'intended_exam_series')
+    `);
+    if (membershipSession.rows.length !== 2) {
+      return {
+        success: false,
+        error: "user_subjects intended session columns are incomplete.",
+      };
+    }
+
+    const resolverExecute = await pool.query<{
+      authenticated_execute: boolean;
+      anon_execute: boolean;
+    }>(`
+      SELECT
+        has_function_privilege(
+          'authenticated',
+          'public.lockdin_resolve_applicable_syllabus_version(integer, integer, public.exam_sitting_series)',
+          'EXECUTE'
+        ) AS authenticated_execute,
+        has_function_privilege(
+          'anon',
+          'public.lockdin_resolve_applicable_syllabus_version(integer, integer, public.exam_sitting_series)',
+          'EXECUTE'
+        ) AS anon_execute
+    `);
+    if (
+      resolverExecute.rows[0]?.authenticated_execute ||
+      resolverExecute.rows[0]?.anon_execute
+    ) {
+      return {
+        success: false,
+        error: "Applicability resolver is executable by anon or authenticated.",
+      };
+    }
+
     return { success: true, serialSequence: sequence.rows[0].sequence };
   } catch {
     return { success: false, error: "Final schema verification query failed." };
@@ -229,7 +269,7 @@ export async function verifySyntheticFixturesRemoved(
   const result = await pool.query<{ count: string }>(`
     SELECT count(*)::text AS count
     FROM public.subjects
-    WHERE code IN ('TEST9998', 'TEST9997', 'TEST6301', 'TEST6302')
+    WHERE code IN ('TEST9998', 'TEST9997', 'TEST6301', 'TEST6302', 'C2A01', 'C2A02')
   `);
   if (result.rows[0]?.count !== "0") {
     throw new Error("[db-harness] Synthetic syllabus fixture cleanup failed.");
