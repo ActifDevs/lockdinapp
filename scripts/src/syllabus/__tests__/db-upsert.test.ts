@@ -17,7 +17,7 @@ import {
   syllabusTopicsTable,
   syllabusLearningOutcomesTable,
 } from "@workspace/db";
-import { upsertSyllabus } from "../db-upsert.js";
+import { importSyllabusRevision } from "../db-upsert.js";
 import type { NormalizedSyllabus } from "../normalize.js";
 
 const IDEMPOTENCY_CODE = "TEST9998";
@@ -88,20 +88,14 @@ describe("upsertSyllabus (integration)", () => {
   it("is idempotent: re-running the same syllabus a second time creates zero new rows", async () => {
     const syllabus = baseSyllabus({});
 
-    const first = await upsertSyllabus(syllabus);
+    const first = await importSyllabusRevision(syllabus, "test-rev");
     expect(first.subject).toBe("created");
-    expect(first.units.created).toBe(1);
-    expect(first.topics.created).toBe(1);
-    expect(first.learningOutcomes.created).toBe(1);
-    expect(first.components.created).toBe(1);
-    expect(first.relationships.created).toBe(1);
+    expect(first.operation).toBe("draft-created");
+    expect(first.units).toBe(1);
 
-    const second = await upsertSyllabus(syllabus);
+    const second = await importSyllabusRevision(syllabus, "test-rev");
     expect(second.subject).toBe("existing");
-    expect(second.units).toMatchObject({ created: 0, updated: 0, unchanged: 1 });
-    expect(second.topics).toMatchObject({ created: 0, updated: 0, unchanged: 1 });
-    expect(second.learningOutcomes).toMatchObject({ created: 0, updated: 0, unchanged: 1 });
-    expect(second.components).toMatchObject({ created: 0, updated: 0, unchanged: 1 });
+    expect(second.operation).toBe("already-imported");
 
     // Confirm no duplicate rows exist at the database level, not just in the returned counts.
     const [subject] = await db.select().from(subjectsTable).where(eq(subjectsTable.code, IDEMPOTENCY_CODE));
@@ -117,7 +111,7 @@ describe("upsertSyllabus (integration)", () => {
   });
 
   it("updates changed fields (e.g. weighting) in place rather than creating duplicate rows", async () => {
-    await upsertSyllabus(baseSyllabus({}));
+    await importSyllabusRevision(baseSyllabus({}), "test-rev");
 
     const updated = baseSyllabus({
       components: [
@@ -132,8 +126,8 @@ describe("upsertSyllabus (integration)", () => {
         },
       ],
     });
-    const result = await upsertSyllabus(updated);
-    expect(result.components).toMatchObject({ created: 0, updated: 1, unchanged: 0 });
+    const result = await importSyllabusRevision(updated, "test-rev");
+    expect(result.operation).toBe("draft-rebuilt");
 
     const [subject] = await db.select().from(subjectsTable).where(eq(subjectsTable.code, IDEMPOTENCY_CODE));
     const [version] = await db.select().from(syllabusVersionsTable).where(eq(syllabusVersionsTable.subjectId, subject.id));
@@ -163,7 +157,7 @@ describe("upsertSyllabus (integration)", () => {
       components: [],
     });
 
-    await expect(upsertSyllabus(broken)).rejects.toThrow();
+    await expect(importSyllabusRevision(broken, "test-rev")).rejects.toThrow();
 
     // The subject row created earlier in the same transaction must not have survived.
     const [subject] = await db.select().from(subjectsTable).where(eq(subjectsTable.code, ROLLBACK_CODE));

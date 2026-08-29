@@ -167,6 +167,56 @@ export async function verifyFinalSchema(
       };
     }
 
+    const identityIndexes = await pool.query<{ indexname: string; indisunique: boolean }>(`
+      SELECT i.relname AS indexname, ix.indisunique
+      FROM pg_index ix
+      JOIN pg_class i ON i.oid = ix.indexrelid
+      JOIN pg_class t ON t.oid = ix.indrelid
+      JOIN pg_namespace n ON n.oid = t.relnamespace
+      WHERE n.nspname = 'public'
+        AND t.relname = 'syllabus_versions'
+        AND i.relname IN (
+          'syllabus_versions_logical_revision_per_subject',
+          'syllabus_versions_content_sha256_idx',
+          'syllabus_versions_subject_source_idx',
+          'syllabus_versions_content_sha256_per_subject',
+          'syllabus_versions_subject_source_unique'
+        )
+    `);
+    const byName = new Map(
+      identityIndexes.rows.map((row) => [row.indexname, row.indisunique]),
+    );
+    if (byName.get("syllabus_versions_logical_revision_per_subject") !== true) {
+      return {
+        success: false,
+        error: "logical_revision_key uniqueness is missing.",
+      };
+    }
+    if (byName.get("syllabus_versions_content_sha256_idx") !== false) {
+      return {
+        success: false,
+        error: "content_sha256 lookup index is missing or still unique.",
+      };
+    }
+    if (byName.get("syllabus_versions_subject_source_idx") !== false) {
+      return {
+        success: false,
+        error: "source_file lookup index is missing or still unique.",
+      };
+    }
+    const droppedUnique = await pool.query<{ present: boolean }>(`
+      SELECT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'syllabus_versions_subject_source_unique'
+      ) AS present
+    `);
+    if (droppedUnique.rows[0]?.present) {
+      return {
+        success: false,
+        error: "source_file uniqueness constraint was not dropped.",
+      };
+    }
+
     return { success: true, serialSequence: sequence.rows[0].sequence };
   } catch {
     return { success: false, error: "Final schema verification query failed." };
@@ -179,7 +229,7 @@ export async function verifySyntheticFixturesRemoved(
   const result = await pool.query<{ count: string }>(`
     SELECT count(*)::text AS count
     FROM public.subjects
-    WHERE code IN ('TEST9998', 'TEST9997')
+    WHERE code IN ('TEST9998', 'TEST9997', 'TEST6301', 'TEST6302')
   `);
   if (result.rows[0]?.count !== "0") {
     throw new Error("[db-harness] Synthetic syllabus fixture cleanup failed.");

@@ -85,6 +85,13 @@
       "when": 1788003568152,
       "tag": "0011_open_sunfire",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788010369454,
+      "tag": "0012_ordinary_penance",
+      "breakpoints": true
     }
   ]
 }
