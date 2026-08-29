@@ -3,16 +3,35 @@ import { fileURLToPath } from "node:url";
 import { SYLLABUS_IMPORT_MANIFEST } from "./manifest.js";
 import { parseAndValidateCsv } from "./parse-csv.js";
 import { normalizeSyllabus } from "./normalize.js";
-import type { UpsertCounts } from "./db-upsert.js";
+import { hashNormalizedSyllabus } from "./canonical-graph.js";
+import { SyllabusOperatorError } from "./errors.js";
+import type { ImportResult } from "./db-upsert.js";
+import type { AdoptResult } from "./adopt.js";
+import type { PublishResult } from "./publish.js";
 import type { NormalizedSyllabus } from "./normalize.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CSV_DIR = path.resolve(__dirname, "../../../data/syllabi/raw");
 
-type Mode = "validate" | "import";
+type Mode = "validate" | "import" | "adopt" | "publish";
 
 export type SyllabusImporter = {
-  upsertSyllabus(syllabus: NormalizedSyllabus): Promise<UpsertCounts>;
+  importSyllabusRevision(
+    syllabus: NormalizedSyllabus,
+    logicalRevisionKey: string,
+  ): Promise<ImportResult>;
+  adoptLegacyIdentity(options: {
+    subjectCode: string;
+    sourceFile: string;
+    logicalRevisionKey: string;
+    syllabus: NormalizedSyllabus;
+  }): Promise<AdoptResult>;
+  publishSyllabusRevision(options: {
+    subjectCode: string;
+    logicalRevisionKey: string;
+    makeDefault: boolean;
+    retireRevisionKey?: string;
+  }): Promise<PublishResult>;
   close(): Promise<void>;
 };
 
@@ -27,12 +46,27 @@ function parseArgs(args: string[]): {
   mode: Mode;
   dryRun: boolean;
   files: string[] | null;
+  revision: string | null;
+  makeDefault: boolean;
+  retireRevision: string | null;
 } {
   const modeArg = args.find((a) => a.startsWith("--mode="))?.split("=")[1];
   const dryRun = args.includes("--dry-run");
   const filesArg = args.find((a) => a.startsWith("--files="))?.split("=")[1];
-  const mode: Mode = modeArg === "import" ? "import" : "validate";
-  return { mode, dryRun, files: filesArg ? filesArg.split(",") : null };
+  const revisionArg = args.find((a) => a.startsWith("--revision="))?.split("=")[1];
+  const retireArg = args.find((a) => a.startsWith("--retire-revision="))?.split("=")[1];
+  const allowed: Mode[] = ["validate", "import", "adopt", "publish"];
+  const mode: Mode = allowed.includes(modeArg as Mode)
+    ? (modeArg as Mode)
+    : "validate";
+  return {
+    mode,
+    dryRun,
+    files: filesArg ? filesArg.split(",") : null,
+    revision: revisionArg?.trim() || null,
+    makeDefault: args.includes("--make-default"),
+    retireRevision: retireArg?.trim() || null,
+  };
 }
 
 function countOutcomes(
@@ -64,14 +98,19 @@ function countRelationships(
 }
 
 async function loadDatabaseImporter(): Promise<SyllabusImporter> {
-  const [{ upsertSyllabus }, { getPool }] = await Promise.all([
-    import("./db-upsert.js"),
-    import("@workspace/db"),
-  ]);
+  const [{ importSyllabusRevision }, { adoptLegacyIdentity }, { publishSyllabusRevision }, { getPool }] =
+    await Promise.all([
+      import("./db-upsert.js"),
+      import("./adopt.js"),
+      import("./publish.js"),
+      import("@workspace/db"),
+    ]);
   const pool = getPool();
 
   return {
-    upsertSyllabus,
+    importSyllabusRevision,
+    adoptLegacyIdentity,
+    publishSyllabusRevision,
     close: () => pool.end(),
   };
 }
@@ -85,12 +124,21 @@ export async function runSyllabusCli(
   args: string[],
   options: RunSyllabusCliOptions = {},
 ): Promise<number> {
-  const { mode, dryRun, files } = parseArgs(args);
+  const { mode, dryRun, files, revision, makeDefault, retireRevision } =
+    parseArgs(args);
   const output = options.output ?? console;
   const loadImporter = options.loadImporter ?? loadDatabaseImporter;
   const entries = files
     ? SYLLABUS_IMPORT_MANIFEST.filter((e) => files.includes(e.subjectCode))
     : SYLLABUS_IMPORT_MANIFEST;
+
+  const needsDb = (mode === "import" && !dryRun) || mode === "adopt" || mode === "publish";
+  if (needsDb && !revision) {
+    throw new SyllabusOperatorError(
+      "missing_logical_revision_key",
+      "logical revision key is required (--revision=); do not infer it from the filename",
+    );
+  }
 
   output.log(
     `Syllabus ${mode}${mode === "import" && dryRun ? " (dry run — zero database writes)" : ""}`,
@@ -136,18 +184,22 @@ export async function runSyllabusCli(
     const topicsCount = countTopics(normalized.units);
     const outcomesCount = countOutcomes(normalized.units);
     const relationshipsCount = countRelationships(normalized.units);
+    const contentSha256 = hashNormalizedSyllabus(normalized);
+    const revisionLabel = revision ?? "(unset)";
 
     if (mode === "validate") {
       results.push(
         `${entry.csvFile.padEnd(35)} OK — ${result.rows.length} rows, ${result.warnings.length} warning(s) ` +
+          `revision=${revisionLabel} sha256=${contentSha256.slice(0, 12)}… ` +
           `(would produce ${normalized.units.length} units / ${topicsCount} topics / ${outcomesCount} outcomes / ${normalized.components.length} components / ${relationshipsCount} relationships)`,
       );
       continue;
     }
 
-    if (dryRun) {
+    if (mode === "import" && dryRun) {
       results.push(
-        `${entry.csvFile.padEnd(35)} DRY RUN — would upsert ${normalized.units.length} units / ${topicsCount} topics / ` +
+        `${entry.csvFile.padEnd(35)} DRY RUN — revision=${revisionLabel} sha256=${contentSha256} ` +
+          `would import ${normalized.units.length} units / ${topicsCount} topics / ` +
           `${outcomesCount} learning outcomes / ${normalized.components.length} components / ${relationshipsCount} relationships`,
       );
       continue;
@@ -157,7 +209,7 @@ export async function runSyllabusCli(
   }
 
   const rows: string[] = [];
-  if (mode === "import" && !dryRun) {
+  if (needsDb) {
     const importer = await loadImporter();
     try {
       for (const result of results) {
@@ -168,19 +220,46 @@ export async function runSyllabusCli(
 
         const { entry, normalized } = result;
         try {
-          const counts = await importer.upsertSyllabus(normalized);
-          rows.push(
-            `${entry.csvFile.padEnd(35)} IMPORTED — subject:${counts.subject} version:${counts.version} ` +
-              `units[+${counts.units.created}/~${counts.units.updated}/=${counts.units.unchanged}] ` +
-              `topics[+${counts.topics.created}/~${counts.topics.updated}/=${counts.topics.unchanged}] ` +
-              `outcomes[+${counts.learningOutcomes.created}/~${counts.learningOutcomes.updated}/=${counts.learningOutcomes.unchanged}] ` +
-              `components[+${counts.components.created}/~${counts.components.updated}/=${counts.components.unchanged}] ` +
-              `relationships[+${counts.relationships.created}]`,
-          );
+          if (mode === "import") {
+            const counts = await importer.importSyllabusRevision(
+              normalized,
+              revision!,
+            );
+            rows.push(
+              `${entry.csvFile.padEnd(35)} ${counts.operation.toUpperCase()} — subject:${counts.subject} ` +
+                `sha256=${counts.contentSha256.slice(0, 12)}… ` +
+                `units=${counts.units} topics=${counts.topics} outcomes=${counts.learningOutcomes} ` +
+                `components=${counts.components} relationships=${counts.relationships}`,
+            );
+          } else if (mode === "adopt") {
+            const adopted = await importer.adoptLegacyIdentity({
+              subjectCode: entry.subjectCode,
+              sourceFile: entry.csvFile,
+              logicalRevisionKey: revision!,
+              syllabus: normalized,
+            });
+            rows.push(
+              `${entry.csvFile.padEnd(35)} ${adopted.operation.toUpperCase()} — key=${adopted.logicalRevisionKey} sha256=${adopted.contentSha256.slice(0, 12)}…`,
+            );
+          } else {
+            const published = await importer.publishSyllabusRevision({
+              subjectCode: entry.subjectCode,
+              logicalRevisionKey: revision!,
+              makeDefault,
+              retireRevisionKey: retireRevision ?? undefined,
+            });
+            rows.push(
+              `${entry.csvFile.padEnd(35)} PUBLISHED — default=${published.isCurrent} retired=${published.retiredRevisionKey ?? "none"}`,
+            );
+          }
         } catch (err) {
           anyFailed = true;
+          const message =
+            err instanceof SyllabusOperatorError
+              ? `${err.code}: ${err.message}`
+              : (err as Error).message;
           rows.push(
-            `${entry.csvFile.padEnd(35)} IMPORT FAILED — ${(err as Error).message} (transaction rolled back, no partial data)`,
+            `${entry.csvFile.padEnd(35)} ${mode.toUpperCase()} FAILED — ${message}`,
           );
         }
       }
@@ -202,7 +281,7 @@ async function main(): Promise<void> {
   try {
     process.exitCode = await runSyllabusCli(process.argv.slice(2));
   } catch (err) {
-    console.error(err);
+    console.error(err instanceof Error ? err.message : err);
     process.exitCode = 1;
   }
 }

@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   db,
   subjectsTable,
@@ -9,69 +9,264 @@ import {
   syllabusLearningOutcomesTable,
   learningOutcomeComponentsTable,
 } from "@workspace/db";
+import { hashCanonicalGraph, hashNormalizedSyllabus } from "./canonical-graph.js";
+import { loadCanonicalGraphForVersion } from "./db-graph.js";
+import { SyllabusOperatorError } from "./errors.js";
 import type { NormalizedSyllabus } from "./normalize.js";
 
-export type UpsertCounts = {
+export type ImportOperation =
+  | "draft-created"
+  | "draft-rebuilt"
+  | "already-imported"
+  | "provenance-updated";
+
+export type ImportResult = {
+  operation: ImportOperation;
   subject: "created" | "existing";
-  version: "created" | "updated" | "unchanged";
-  units: { created: number; updated: number; unchanged: number };
-  topics: { created: number; updated: number; unchanged: number };
-  learningOutcomes: { created: number; updated: number; unchanged: number };
-  components: { created: number; updated: number; unchanged: number };
-  relationships: { created: number };
+  contentSha256: string;
+  units: number;
+  topics: number;
+  learningOutcomes: number;
+  components: number;
+  relationships: number;
 };
 
-function bump(bucket: { created: number; updated: number; unchanged: number }, kind: "created" | "updated" | "unchanged") {
-  bucket[kind] += 1;
+/** @deprecated counts shape kept for CLI mocks during 6.3B */
+export type UpsertCounts = ImportResult;
+
+const TERMINAL = new Set(["published", "retired", "archived"]);
+
+async function lockSubject(
+  tx: { execute: typeof db.execute },
+  subjectId: number,
+): Promise<void> {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(872314, ${subjectId})`);
 }
 
-/**
- * Upserts one subject's full normalized syllabus inside a single transaction: if
- * anything fails, nothing for this subject is left partially written. Every write is
- * keyed by a deterministic natural key (subject code; (subjectId, sourceFile);
- * (versionId, paperCode, level); (versionId, title); (unitId, title); (topicId,
- * outcome)) so re-running this function against the same CSV is a no-op beyond
- * touching `imported_at`.
- *
- * Performance note: existing rows for the whole version are loaded with one bulk
- * SELECT per table and diffed in memory, and new rows are written with one bulk
- * multi-row INSERT per table — a naive per-row SELECT-then-INSERT loop was measured
- * to take minutes per file against a hosted Postgres instance (network round-trip
- * bound), which this avoids.
- *
- * Per-user progress lives in `topic_progress` and is never written here.
- * This function only upserts shared reference fields (titles, order, subject).
- */
-export async function upsertSyllabus(syllabus: NormalizedSyllabus): Promise<UpsertCounts> {
-  return db.transaction(async (tx) => {
-    const counts: UpsertCounts = {
-      subject: "existing",
-      version: "unchanged",
-      units: { created: 0, updated: 0, unchanged: 0 },
-      topics: { created: 0, updated: 0, unchanged: 0 },
-      learningOutcomes: { created: 0, updated: 0, unchanged: 0 },
-      components: { created: 0, updated: 0, unchanged: 0 },
-      relationships: { created: 0 },
-    };
+function graphCounts(syllabus: NormalizedSyllabus) {
+  const units = syllabus.units.length;
+  const topics = syllabus.units.reduce((sum, unit) => sum + unit.topics.length, 0);
+  const learningOutcomes = syllabus.units.reduce(
+    (sum, unit) =>
+      sum + unit.topics.reduce((inner, topic) => inner + topic.learningOutcomes.length, 0),
+    0,
+  );
+  const relationships = syllabus.units.reduce(
+    (sum, unit) =>
+      sum +
+      unit.topics.reduce(
+        (inner, topic) =>
+          inner +
+          topic.learningOutcomes.reduce(
+            (acc, outcome) => acc + outcome.occurrences.length,
+            0,
+          ),
+        0,
+      ),
+    0,
+  );
+  return {
+    units,
+    topics,
+    learningOutcomes,
+    components: syllabus.components.length,
+    relationships,
+  };
+}
 
-    // ---- subject ----
-    let [subject] = await tx.select().from(subjectsTable).where(eq(subjectsTable.code, syllabus.subjectCode));
+async function insertCompleteGraph(
+  tx: any,
+  subjectId: number,
+  versionId: number,
+  syllabus: NormalizedSyllabus,
+): Promise<void> {
+  const componentIdByKey = new Map<string, number>();
+  if (syllabus.components.length > 0) {
+    const inserted = await tx
+      .insert(assessmentComponentsTable)
+      .values(
+        syllabus.components.map((component) => ({
+          syllabusVersionId: versionId,
+          paperCode: component.paperCode,
+          level: component.level,
+          componentName: component.componentName,
+          durationMinutes: component.durationMinutes,
+          totalMarks: component.totalMarks,
+          weightingPercent: component.weightingPercent,
+          orderIndex: component.orderIndex,
+        })),
+      )
+      .returning();
+    for (const row of inserted) {
+      componentIdByKey.set(`${row.paperCode}|${row.level}`, row.id);
+    }
+  }
+
+  const unitIdByTitle = new Map<string, number>();
+  if (syllabus.units.length > 0) {
+    const inserted = await tx
+      .insert(syllabusUnitsTable)
+      .values(
+        syllabus.units.map((unit) => ({
+          subjectId,
+          syllabusVersionId: versionId,
+          title: unit.title,
+          orderIndex: unit.orderIndex,
+        })),
+      )
+      .returning();
+    for (const row of inserted) unitIdByTitle.set(row.title, row.id);
+  }
+
+  const topicIdByUnitAndTitle = new Map<string, number>();
+  const topicsToInsert: {
+    unitId: number;
+    subjectId: number;
+    title: string;
+    orderIndex: number;
+    key: string;
+  }[] = [];
+  for (const unit of syllabus.units) {
+    const unitId = unitIdByTitle.get(unit.title)!;
+    for (const topic of unit.topics) {
+      const key = `${unitId}|${topic.title}`;
+      topicsToInsert.push({
+        unitId,
+        subjectId,
+        title: topic.title,
+        orderIndex: topic.orderIndex,
+        key,
+      });
+    }
+  }
+  if (topicsToInsert.length > 0) {
+    const inserted = await tx
+      .insert(syllabusTopicsTable)
+      .values(
+        topicsToInsert.map(({ key: _key, ...rest }) => rest),
+      )
+      .returning();
+    inserted.forEach((row: { id: number }, index: number) => {
+      topicIdByUnitAndTitle.set(topicsToInsert[index]!.key, row.id);
+    });
+  }
+
+  const outcomeIdByKey = new Map<string, number>();
+  const outcomesToInsert: {
+    topicId: number;
+    outcome: string;
+    orderIndex: number;
+    key: string;
+  }[] = [];
+  const occurrencesByOutcomeKey = new Map<
+    string,
+    { componentKey: string | null; level: string }[]
+  >();
+
+  for (const unit of syllabus.units) {
+    const unitId = unitIdByTitle.get(unit.title)!;
+    for (const topic of unit.topics) {
+      const topicId = topicIdByUnitAndTitle.get(`${unitId}|${topic.title}`)!;
+      for (const outcome of topic.learningOutcomes) {
+        const key = `${topicId}|${outcome.outcome}`;
+        occurrencesByOutcomeKey.set(key, outcome.occurrences);
+        outcomesToInsert.push({
+          topicId,
+          outcome: outcome.outcome,
+          orderIndex: outcome.orderIndex,
+          key,
+        });
+      }
+    }
+  }
+  if (outcomesToInsert.length > 0) {
+    const inserted = await tx
+      .insert(syllabusLearningOutcomesTable)
+      .values(outcomesToInsert.map(({ key: _key, ...rest }) => rest))
+      .returning();
+    inserted.forEach((row: { id: number }, index: number) => {
+      outcomeIdByKey.set(outcomesToInsert[index]!.key, row.id);
+    });
+  }
+
+  const junctionRows: {
+    learningOutcomeId: number;
+    componentId: number | null;
+    level: string;
+  }[] = [];
+  for (const [key, occurrences] of occurrencesByOutcomeKey) {
+    const learningOutcomeId = outcomeIdByKey.get(key)!;
+    for (const occurrence of occurrences) {
+      junctionRows.push({
+        learningOutcomeId,
+        componentId: occurrence.componentKey
+          ? (componentIdByKey.get(occurrence.componentKey) ?? null)
+          : null,
+        level: occurrence.level,
+      });
+    }
+  }
+  if (junctionRows.length > 0) {
+    await tx.insert(learningOutcomeComponentsTable).values(junctionRows);
+  }
+}
+
+async function deleteVersionGraph(tx: any, versionId: number): Promise<void> {
+  await tx
+    .delete(syllabusUnitsTable)
+    .where(eq(syllabusUnitsTable.syllabusVersionId, versionId));
+  await tx
+    .delete(assessmentComponentsTable)
+    .where(eq(assessmentComponentsTable.syllabusVersionId, versionId));
+}
+
+export async function importSyllabusRevision(
+  syllabus: NormalizedSyllabus,
+  logicalRevisionKey: string,
+): Promise<ImportResult> {
+  const trimmedKey = logicalRevisionKey.trim();
+  if (!trimmedKey) {
+    throw new SyllabusOperatorError(
+      "missing_logical_revision_key",
+      "logical revision key is required for Model D import; do not infer it from the filename",
+    );
+  }
+
+  const contentSha256 = hashNormalizedSyllabus(syllabus);
+  const counts = graphCounts(syllabus);
+
+  return db.transaction(async (tx) => {
+    let subjectStatus: "created" | "existing" = "existing";
+    let [subject] = await tx
+      .select()
+      .from(subjectsTable)
+      .where(eq(subjectsTable.code, syllabus.subjectCode));
     if (!subject) {
       [subject] = await tx
         .insert(subjectsTable)
-        .values({ code: syllabus.subjectCode, name: syllabus.subjectName, color: syllabus.color })
+        .values({
+          code: syllabus.subjectCode,
+          name: syllabus.subjectName,
+          color: syllabus.color,
+        })
         .returning();
-      counts.subject = "created";
+      subjectStatus = "created";
     }
 
-    // ---- syllabus version ----
-    let [version] = await tx
+    await lockSubject(tx as { execute: typeof db.execute }, subject.id);
+
+    const [version] = await tx
       .select()
       .from(syllabusVersionsTable)
-      .where(and(eq(syllabusVersionsTable.subjectId, subject.id), eq(syllabusVersionsTable.sourceFile, syllabus.csvFile)));
+      .where(
+        and(
+          eq(syllabusVersionsTable.subjectId, subject.id),
+          eq(syllabusVersionsTable.logicalRevisionKey, trimmedKey),
+        ),
+      );
 
     if (!version) {
-      [version] = await tx
+      const [created] = await tx
         .insert(syllabusVersionsTable)
         .values({
           subjectId: subject.id,
@@ -80,260 +275,96 @@ export async function upsertSyllabus(syllabus: NormalizedSyllabus): Promise<Upse
           label: syllabus.versionLabel,
           validFrom: syllabus.validFrom,
           validTo: syllabus.validTo,
-          isCurrent: syllabus.isCurrent,
+          isCurrent: false,
           sourceFile: syllabus.csvFile,
+          lifecycle: "draft",
+          logicalRevisionKey: trimmedKey,
         })
         .returning();
-      counts.version = "created";
-    } else {
-      const changed =
-        version.examBoard !== syllabus.examBoard ||
-        version.qualification !== syllabus.qualification ||
-        version.label !== syllabus.versionLabel ||
-        version.validFrom !== syllabus.validFrom ||
-        version.validTo !== syllabus.validTo ||
-        version.isCurrent !== syllabus.isCurrent;
-      if (changed) {
-        [version] = await tx
+      await insertCompleteGraph(tx, subject.id, created.id, syllabus);
+      await tx
+        .update(syllabusVersionsTable)
+        .set({ contentSha256 })
+        .where(eq(syllabusVersionsTable.id, created.id));
+      return {
+        operation: "draft-created",
+        subject: subjectStatus,
+        contentSha256,
+        ...counts,
+      };
+    }
+
+    if (version.contentSha256 === contentSha256) {
+      if (version.sourceFile !== syllabus.csvFile) {
+        await tx
           .update(syllabusVersionsTable)
-          .set({
-            examBoard: syllabus.examBoard,
-            qualification: syllabus.qualification,
-            label: syllabus.versionLabel,
-            validFrom: syllabus.validFrom,
-            validTo: syllabus.validTo,
-            isCurrent: syllabus.isCurrent,
-            importedAt: new Date(),
-          })
-          .where(eq(syllabusVersionsTable.id, version.id))
-          .returning();
-        counts.version = "updated";
+          .set({ sourceFile: syllabus.csvFile })
+          .where(eq(syllabusVersionsTable.id, version.id));
+        return {
+          operation: "provenance-updated",
+          subject: subjectStatus,
+          contentSha256,
+          ...counts,
+        };
       }
+      return {
+        operation: "already-imported",
+        subject: subjectStatus,
+        contentSha256,
+        ...counts,
+      };
     }
 
-    // ================= assessment components (bulk) =================
-    const existingComponents = await tx
-      .select()
-      .from(assessmentComponentsTable)
-      .where(eq(assessmentComponentsTable.syllabusVersionId, version.id));
-    const existingComponentByKey = new Map(existingComponents.map((c) => [`${c.paperCode}|${c.level}`, c]));
-
-    const componentIdByKey = new Map<string, number>();
-    const componentsToInsert: (typeof assessmentComponentsTable.$inferInsert)[] = [];
-    const componentUpdates: { id: number; values: Partial<typeof assessmentComponentsTable.$inferInsert> }[] = [];
-
-    for (const component of syllabus.components) {
-      const key = `${component.paperCode}|${component.level}`;
-      const existing = existingComponentByKey.get(key);
-      if (!existing) {
-        componentsToInsert.push({
-          syllabusVersionId: version.id,
-          paperCode: component.paperCode,
-          level: component.level,
-          componentName: component.componentName,
-          durationMinutes: component.durationMinutes,
-          totalMarks: component.totalMarks,
-          weightingPercent: component.weightingPercent,
-          orderIndex: component.orderIndex,
-        });
-      } else {
-        const changed =
-          existing.componentName !== component.componentName ||
-          existing.durationMinutes !== component.durationMinutes ||
-          existing.totalMarks !== component.totalMarks ||
-          existing.weightingPercent !== component.weightingPercent ||
-          existing.orderIndex !== component.orderIndex;
-        if (changed) {
-          componentUpdates.push({
-            id: existing.id,
-            values: {
-              componentName: component.componentName,
-              durationMinutes: component.durationMinutes,
-              totalMarks: component.totalMarks,
-              weightingPercent: component.weightingPercent,
-              orderIndex: component.orderIndex,
-            },
-          });
-          bump(counts.components, "updated");
-        } else {
-          bump(counts.components, "unchanged");
-        }
-        componentIdByKey.set(key, existing.id);
-      }
+    if (TERMINAL.has(version.lifecycle)) {
+      throw new SyllabusOperatorError(
+        "published_content_mismatch",
+        `logical revision "${trimmedKey}" is ${version.lifecycle}; its graph is immutable. Provide a new logical_revision_key for the replacement snapshot`,
+      );
     }
 
-    if (componentsToInsert.length > 0) {
-      const inserted = await tx.insert(assessmentComponentsTable).values(componentsToInsert).returning();
-      for (const row of inserted) {
-        componentIdByKey.set(`${row.paperCode}|${row.level}`, row.id);
-        bump(counts.components, "created");
-      }
-    }
-    for (const update of componentUpdates) {
-      await tx.update(assessmentComponentsTable).set(update.values).where(eq(assessmentComponentsTable.id, update.id));
+    if (version.lifecycle !== "draft") {
+      throw new SyllabusOperatorError(
+        "published_content_mismatch",
+        `logical revision "${trimmedKey}" cannot be rebuilt in lifecycle ${version.lifecycle}`,
+      );
     }
 
-    // ================= units (bulk) =================
-    const existingUnits = await tx.select().from(syllabusUnitsTable).where(eq(syllabusUnitsTable.syllabusVersionId, version.id));
-    const existingUnitByTitle = new Map(existingUnits.map((u) => [u.title, u]));
+    await deleteVersionGraph(tx, version.id);
+    await insertCompleteGraph(tx, subject.id, version.id, syllabus);
+    await tx
+      .update(syllabusVersionsTable)
+      .set({
+        examBoard: syllabus.examBoard,
+        qualification: syllabus.qualification,
+        label: syllabus.versionLabel,
+        validFrom: syllabus.validFrom,
+        validTo: syllabus.validTo,
+        sourceFile: syllabus.csvFile,
+        contentSha256,
+      })
+      .where(eq(syllabusVersionsTable.id, version.id));
 
-    const unitIdByTitle = new Map<string, number>();
-    const unitsToInsert: (typeof syllabusUnitsTable.$inferInsert)[] = [];
-    const unitUpdates: { id: number; orderIndex: number }[] = [];
-
-    for (const unit of syllabus.units) {
-      const existing = existingUnitByTitle.get(unit.title);
-      if (!existing) {
-        unitsToInsert.push({ subjectId: subject.id, syllabusVersionId: version.id, title: unit.title, orderIndex: unit.orderIndex });
-      } else {
-        unitIdByTitle.set(unit.title, existing.id);
-        if (existing.orderIndex !== unit.orderIndex || existing.subjectId !== subject.id) {
-          unitUpdates.push({ id: existing.id, orderIndex: unit.orderIndex });
-          bump(counts.units, "updated");
-        } else {
-          bump(counts.units, "unchanged");
-        }
-      }
-    }
-    if (unitsToInsert.length > 0) {
-      const inserted = await tx.insert(syllabusUnitsTable).values(unitsToInsert).returning();
-      for (const row of inserted) {
-        unitIdByTitle.set(row.title, row.id);
-        bump(counts.units, "created");
-      }
-    }
-    for (const update of unitUpdates) {
-      await tx.update(syllabusUnitsTable).set({ orderIndex: update.orderIndex, subjectId: subject.id }).where(eq(syllabusUnitsTable.id, update.id));
-    }
-
-    // ================= topics (bulk) =================
-    const allUnitIds = [...unitIdByTitle.values()];
-    // Project reference columns only — hosted DB may lack legacy status/notes.
-    const topicReferenceColumns = {
-      id: syllabusTopicsTable.id,
-      unitId: syllabusTopicsTable.unitId,
-      subjectId: syllabusTopicsTable.subjectId,
-      title: syllabusTopicsTable.title,
-      orderIndex: syllabusTopicsTable.orderIndex,
-    } as const;
-    const existingTopics =
-      allUnitIds.length > 0
-        ? await tx
-            .select(topicReferenceColumns)
-            .from(syllabusTopicsTable)
-            .where(inArray(syllabusTopicsTable.unitId, allUnitIds))
-        : [];
-    const existingTopicByUnitAndTitle = new Map(existingTopics.map((t) => [`${t.unitId}|${t.title}`, t]));
-
-    const topicIdByUnitAndTitle = new Map<string, number>();
-    const topicsToInsert: (typeof syllabusTopicsTable.$inferInsert & { __key: string })[] = [];
-    const topicUpdates: { id: number; orderIndex: number }[] = [];
-
-    for (const unit of syllabus.units) {
-      const unitId = unitIdByTitle.get(unit.title)!;
-      for (const topic of unit.topics) {
-        const key = `${unitId}|${topic.title}`;
-        const existing = existingTopicByUnitAndTitle.get(key);
-        if (!existing) {
-          topicsToInsert.push({ unitId, subjectId: subject.id, title: topic.title, orderIndex: topic.orderIndex, __key: key } as any);
-        } else {
-          topicIdByUnitAndTitle.set(key, existing.id);
-          // Shared reference fields only — per-user progress is in topic_progress.
-          if (existing.orderIndex !== topic.orderIndex || existing.subjectId !== subject.id) {
-            topicUpdates.push({ id: existing.id, orderIndex: topic.orderIndex });
-            bump(counts.topics, "updated");
-          } else {
-            bump(counts.topics, "unchanged");
-          }
-        }
-      }
-    }
-    if (topicsToInsert.length > 0) {
-      const toInsert = topicsToInsert.map(({ __key, ...rest }) => rest);
-      const inserted = await tx
-        .insert(syllabusTopicsTable)
-        .values(toInsert)
-        .returning(topicReferenceColumns);
-      inserted.forEach((row, idx) => {
-        topicIdByUnitAndTitle.set(topicsToInsert[idx].__key, row.id);
-        bump(counts.topics, "created");
-      });
-    }
-    for (const update of topicUpdates) {
-      await tx.update(syllabusTopicsTable).set({ orderIndex: update.orderIndex, subjectId: subject.id }).where(eq(syllabusTopicsTable.id, update.id));
-    }
-
-    // ================= learning outcomes (bulk) =================
-    const allTopicIds = [...topicIdByUnitAndTitle.values()];
-    const existingOutcomes =
-      allTopicIds.length > 0 ? await tx.select().from(syllabusLearningOutcomesTable).where(inArray(syllabusLearningOutcomesTable.topicId, allTopicIds)) : [];
-    const existingOutcomeByTopicAndText = new Map(existingOutcomes.map((o) => [`${o.topicId}|${o.outcome}`, o]));
-
-    const outcomeIdByTopicAndText = new Map<string, number>();
-    const outcomesToInsert: (typeof syllabusLearningOutcomesTable.$inferInsert & { __key: string })[] = [];
-    const outcomeUpdates: { id: number; orderIndex: number }[] = [];
-
-    // Track, per learning-outcome key, which (componentKey, level) occurrences it needs —
-    // built alongside so the junction table can be recomputed after IDs are known.
-    const occurrencesByOutcomeKey = new Map<string, { componentKey: string | null; level: string }[]>();
-
-    for (const unit of syllabus.units) {
-      const unitId = unitIdByTitle.get(unit.title)!;
-      for (const topic of unit.topics) {
-        const topicId = topicIdByUnitAndTitle.get(`${unitId}|${topic.title}`)!;
-        for (const lo of topic.learningOutcomes) {
-          const key = `${topicId}|${lo.outcome}`;
-          occurrencesByOutcomeKey.set(key, lo.occurrences);
-
-          const existing = existingOutcomeByTopicAndText.get(key);
-          if (!existing) {
-            outcomesToInsert.push({ topicId, outcome: lo.outcome, orderIndex: lo.orderIndex, __key: key } as any);
-          } else {
-            outcomeIdByTopicAndText.set(key, existing.id);
-            if (existing.orderIndex !== lo.orderIndex) {
-              outcomeUpdates.push({ id: existing.id, orderIndex: lo.orderIndex });
-              bump(counts.learningOutcomes, "updated");
-            } else {
-              bump(counts.learningOutcomes, "unchanged");
-            }
-          }
-        }
-      }
-    }
-    if (outcomesToInsert.length > 0) {
-      const toInsert = outcomesToInsert.map(({ __key, ...rest }) => rest);
-      const inserted = await tx.insert(syllabusLearningOutcomesTable).values(toInsert).returning();
-      inserted.forEach((row, idx) => {
-        outcomeIdByTopicAndText.set(outcomesToInsert[idx].__key, row.id);
-        bump(counts.learningOutcomes, "created");
-      });
-    }
-    for (const update of outcomeUpdates) {
-      await tx.update(syllabusLearningOutcomesTable).set({ orderIndex: update.orderIndex }).where(eq(syllabusLearningOutcomesTable.id, update.id));
-    }
-
-    // ================= relationships: recompute for this version's outcomes =================
-    const allLearningOutcomeIds = [...outcomeIdByTopicAndText.values()];
-    const junctionRowsToInsert: { learningOutcomeId: number; componentId: number | null; level: string }[] = [];
-    for (const [key, occurrences] of occurrencesByOutcomeKey) {
-      const loId = outcomeIdByTopicAndText.get(key)!;
-      for (const occurrence of occurrences) {
-        junctionRowsToInsert.push({
-          learningOutcomeId: loId,
-          componentId: occurrence.componentKey ? componentIdByKey.get(occurrence.componentKey) ?? null : null,
-          level: occurrence.level,
-        });
-      }
-    }
-
-    if (allLearningOutcomeIds.length > 0) {
-      await tx.delete(learningOutcomeComponentsTable).where(inArray(learningOutcomeComponentsTable.learningOutcomeId, allLearningOutcomeIds));
-    }
-    if (junctionRowsToInsert.length > 0) {
-      await tx.insert(learningOutcomeComponentsTable).values(junctionRowsToInsert);
-      counts.relationships.created = junctionRowsToInsert.length;
-    }
-
-    return counts;
+    return {
+      operation: "draft-rebuilt",
+      subject: subjectStatus,
+      contentSha256,
+      ...counts,
+    };
   });
 }
+
+/** Backward-compatible name used by existing tests; requires logicalRevisionKey on the object. */
+export async function upsertSyllabus(
+  syllabus: NormalizedSyllabus & { logicalRevisionKey?: string },
+): Promise<ImportResult> {
+  const key = syllabus.logicalRevisionKey;
+  if (!key) {
+    throw new SyllabusOperatorError(
+      "missing_logical_revision_key",
+      "logical revision key is required for Model D import; do not infer it from the filename",
+    );
+  }
+  return importSyllabusRevision(syllabus, key);
+}
+
+export { hashCanonicalGraph, loadCanonicalGraphForVersion };
