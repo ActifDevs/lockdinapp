@@ -1052,44 +1052,24 @@
     "secondGraph": false,
     "identityAdopted": false,
     "applicabilityPopulated": false,
+    "userSubjectsTotal": 12,
+    "userSubjectsPinNotNull": 12,
+    "userSubjectsPinNull": 0,
+    "validSameSubjectPins": 12,
+    "subjectVersionMismatches": 0,
+    "missingReferencedVersions": 0,
     "pinAggregatesBySubjectCode": {
-      "9231": {
-        "memberships": 1,
-        "withVersionPin": 0
-      },
-      "9489": {
-        "memberships": 1,
-        "withVersionPin": 1
-      },
-      "9609": {
-        "memberships": 1,
-        "withVersionPin": 0
-      },
-      "9618": {
-        "memberships": 1,
-        "withVersionPin": 0
-      },
-      "9700": {
-        "memberships": 1,
-        "withVersionPin": 1
-      },
-      "9701": {
-        "memberships": 3,
-        "withVersionPin": 3
-      },
-      "9702": {
-        "memberships": 3,
-        "withVersionPin": 3
-      },
-      "9708": {
-        "memberships": 1,
-        "withVersionPin": 1
-      },
-      "9709": {
-        "memberships": 3,
-        "withVersionPin": 3
-      }
+      "9231": { "memberships": 0, "withVersionPin": 0 },
+      "9489": { "memberships": 1, "withVersionPin": 1 },
+      "9609": { "memberships": 0, "withVersionPin": 0 },
+      "9618": { "memberships": 0, "withVersionPin": 0 },
+      "9700": { "memberships": 1, "withVersionPin": 1 },
+      "9701": { "memberships": 3, "withVersionPin": 3 },
+      "9702": { "memberships": 3, "withVersionPin": 3 },
+      "9708": { "memberships": 1, "withVersionPin": 1 },
+      "9709": { "memberships": 3, "withVersionPin": 3 }
     },
-    "note": "Aggregates only. No user identifiers."
+    "previousIncorrect15of13": "Report 98 first draft used subjects LEFT JOIN user_subjects with count(*). That counted one phantom row for each of 9231, 9609, and 9618 (zero memberships). Real total is 12, all pinned. The '13' was a mis-sum of those mixed aggregates.",
+    "note": "Aggregates only. No user identifiers. Reconciled 2026-08-29."
   }
 }

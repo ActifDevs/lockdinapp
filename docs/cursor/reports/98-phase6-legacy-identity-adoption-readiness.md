@@ -28,7 +28,9 @@ Authorized Session pooler; project ref check passed. `BEGIN READ ONLY` for inven
 
 Nine subjects, **one** `published` + `is_current` version each. `logical_revision_key` NULL. `content_sha256` NULL. `source_file` matches the manifest CSV. Applicability NULL. No second graph.
 
-Membership aggregates (no user ids): 15 `user_subjects` rows; 13 have a version pin. Pins were not changed.
+Membership aggregates (no user ids): **12** `user_subjects` rows; **12** have a valid same-subject `syllabus_version_id`. Hosted `syllabus_version_id` is **NOT NULL**. Null pins: **0**. Subject/version mismatches: **0**. Missing referenced versions: **0**.
+
+Report 98 originally said “15 rows; 13 have a version pin.” That was wrong. The 15 came from `subjects LEFT JOIN user_subjects` with `count(*)`: 9231, 9609, and 9618 have **zero** memberships, but the left join still produced one null-extended row each (`count(*) = 1`, `count(pin) = 0`). Real memberships are 12. The “13” was a further mis-sum of those mixed aggregates (the non-null pin filter on the same left join is 12, not 13). Pins were not changed.
 
 ## Graph verification
 

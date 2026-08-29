@@ -10,7 +10,7 @@ It is not an import source. It must not be applied to hosted `syllabus_versions`
 - Schema version **3** records the owner identity policy: `logical_revision_key` is `{subjectCode}-rNNN` (internal snapshot). Cambridge edition stays in this artifact. Year-span and year-span-plus-official-version key proposals are superseded, not erased.
 - Schema version **2** added the forensic edition-identification pass. Previous `matchStatus` values remain as `previousMatchStatus`.
 
-Companion reports: 97 (edition identification), 98 (legacy adoption readiness).
+Companion reports: 97 (edition identification), 98 (legacy adoption readiness; membership count corrected to 12/12 valid pins).
 
 ## Status vocabulary
 
