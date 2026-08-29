@@ -37,6 +37,13 @@ describe("global API authentication policy", () => {
     app.get("/api/subjects/:subjectId/syllabus", optionalAuth, (req, res) => {
       res.json({ userId: req.userId ?? null });
     });
+    app.get(
+      "/api/subjects/:subjectId/assessment-components",
+      optionalAuth,
+      (req, res) => {
+        res.json({ userId: req.userId ?? null });
+      },
+    );
     app.get("/api/route-level-guard", requireAuth, (_req, res) => {
       res.status(204).send();
     });
@@ -54,7 +61,6 @@ describe("global API authentication policy", () => {
     "/healthz/db",
     "/subjects",
     "/subjects/1",
-    "/subjects/1/assessment-components",
   ])("allows anonymous GET %s", async (path) => {
     const response = await request(app).get(`/api${path}`);
 
@@ -88,6 +94,25 @@ describe("global API authentication policy", () => {
     expect(valid.status).toBe(200);
     expect(valid.body).toEqual({ userId: USER_ID });
     expect(getClaims).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats assessment-components as optional auth", async () => {
+    const anonymous = await request(app).get(
+      "/api/subjects/1/assessment-components",
+    );
+    expect(anonymous.status).toBe(200);
+    expect(anonymous.body).toEqual({ userId: null });
+    expect(getClaims).not.toHaveBeenCalled();
+
+    getClaims.mockResolvedValueOnce({
+      data: { claims: { sub: USER_ID } },
+      error: null,
+    });
+    const valid = await request(app)
+      .get("/api/subjects/1/assessment-components")
+      .set("Authorization", "Bearer valid-token");
+    expect(valid.status).toBe(200);
+    expect(valid.body).toEqual({ userId: USER_ID });
   });
 
   it.each([

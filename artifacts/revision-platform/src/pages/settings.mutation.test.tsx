@@ -26,6 +26,10 @@ vi.mock("@workspace/api-client-react", () => ({
   getListCurrentUserSubjectsQueryKey: () => ["/api/user-subjects"],
   getGetDashboardSummaryQueryKey: () => ["/api/dashboard/summary"],
   getGetProgressOverviewQueryKey: () => ["/api/progress/overview"],
+  getGetSubjectSyllabusQueryKey: (id: number) => [`/api/subjects/${id}/syllabus`],
+  getListAssessmentComponentsQueryKey: (id: number) => [
+    `/api/subjects/${id}/assessment-components`,
+  ],
   useListSubjects: api.subjects,
   useListCurrentUserSubjects: api.memberships,
   useReplaceCurrentUserSubjects: api.replace,

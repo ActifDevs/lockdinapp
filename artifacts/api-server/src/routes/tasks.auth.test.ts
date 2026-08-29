@@ -35,6 +35,10 @@ vi.mock("../lib/logger.js", () => ({
   logger: { info: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock("../lib/pin-reference-writes.js", () => ({
+  assertTopicOnCallerPin: vi.fn().mockResolvedValue({ ok: true }),
+}));
+
 describe("tasks auth contract", () => {
   let app: express.Express;
 

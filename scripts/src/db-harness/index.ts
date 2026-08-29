@@ -27,6 +27,7 @@ import {
   checkInheritedDbUrls,
 } from "./target-safety.js";
 import { proveSyllabusVersionLifecycle } from "./version-lifecycle-proof.js";
+import { provePinAwareReferenceContext } from "./pin-aware-reference-proof.js";
 import { verifyFinalSchema, verifySyntheticFixturesRemoved } from "./verify.js";
 
 interface HarnessStep {
@@ -142,6 +143,9 @@ export async function runHarness(): Promise<HarnessResult> {
     );
     await step("Prove syllabus version lifecycle constraints", () =>
       proveSyllabusVersionLifecycle(pool!),
+    );
+    await step("Prove pin-aware multi-version reference isolation", () =>
+      provePinAwareReferenceContext(pool!),
     );
     await step("Run syllabus DB integration", () =>
       executeSyllabusDbTests(verifiedStatus.dbUrl),

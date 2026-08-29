@@ -51,6 +51,14 @@ describe("Slice 5 frontend reconciliation contracts", () => {
     );
     expect(text).toContain("getGetDashboardSummaryQueryKey()");
     expect(text).toContain("getGetProgressOverviewQueryKey()");
+    expect(text).toContain("getGetSubjectSyllabusQueryKey");
+    expect(text).toContain("getListAssessmentComponentsQueryKey");
     expect(text).not.toContain("queryClient.clear()");
+  });
+
+  it("account switch clears pin-sensitive query cache", () => {
+    const text = source("../components/auth-provider.tsx");
+    expect(text).toContain("previousUserId !== nextUserId");
+    expect(text).toMatch(/queryClient\.clear\(\)/);
   });
 });

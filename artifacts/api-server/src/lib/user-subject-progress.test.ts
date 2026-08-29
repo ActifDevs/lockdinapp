@@ -5,6 +5,7 @@ vi.mock("@workspace/db", () => ({
   db: {},
   subjectsTable: {},
   syllabusTopicsTable: {},
+  syllabusVersionsTable: {},
 }));
 
 describe("aggregateUserSubjectProgress", () => {
@@ -41,6 +42,15 @@ describe("aggregateUserSubjectProgress", () => {
       },
     ]);
     expect(result.overallSyllabusProgress).toBe(67);
+  });
+
+  it("ignores completed progress outside the current topic universe", () => {
+    const result = aggregateUserSubjectProgress([1], subjects, topics, [
+      { topic_id: 11, status: "completed", notes: null },
+      { topic_id: 999, status: "completed", notes: null },
+    ]);
+    expect(result.syllabusCompletion[0]?.syllabusProgress).toBe(50);
+    expect(result.overallSyllabusProgress).toBe(50);
   });
 
   it("returns zero for a membership with no syllabus topics", () => {
