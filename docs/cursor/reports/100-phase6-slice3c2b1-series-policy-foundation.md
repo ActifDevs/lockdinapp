@@ -58,11 +58,12 @@ NULL session pair + existing pin remains valid. C1 pin-aware reads unchanged. C2
 ## Tests
 
 - Scripts / frontend / libs typecheck: PASS
-- API unit: 136 passed; 1 existing auth-policy case (`DELETE /exam-dates/1`) returned 405 instead of 401 (method not routed). Unrelated to 0014.
+- API unit: **137/137 PASS** on both `964dab8` (isolated worktree) and `82a7d38` (feature), same Node `v24.15.0` / pnpm `11.17.0` / `pnpm --filter @workspace/api-server test`
+- Earlier C2B1 implementation pass recorded `136/137` (`anonymous DELETE /exam-dates/1` expected 401, received 405). That result did **not** reproduce. C2B1 `git diff` vs base is empty under `artifacts/api-server`. Runtime still has `router.delete("/exam-dates/:examDateId", requireAuth, …)`. OpenAPI `deleteExamDate` remains present with 401 and 404. Generated client `deleteExamDate` remains present. The 405 was not proven as a C2B1 regression and was not proven as a standing main failure.
 - Frontend: 212 PASS
 - Syllabus unit: 36 PASS
 - Harness target-safety: 20 PASS
-- Disposable `lockdin-db-harness` pre-0000 → 0014 including series-policy proof: PASS
+- Disposable `lockdin-db-harness` pre-0000 → 0014 including series-policy proof: PASS (implementation SHA `82a7d38`; not re-run after this report wording only)
 - Stock API integration: NOT CLAIMED
 
 ## Deployment compatibility
