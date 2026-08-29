@@ -12,7 +12,7 @@
     "syllabus:publish": "tsx ./src/syllabus/cli.ts --mode=publish",
     "syllabus:cleanup-placeholders": "tsx ./src/syllabus/cleanup-placeholder-syllabus.ts",
     "test": "vitest run",
-    "test:unit": "vitest run src/syllabus/__tests__/parse-csv.test.ts src/syllabus/__tests__/normalize.test.ts src/syllabus/__tests__/cli.test.ts src/syllabus/__tests__/content-hash.test.ts",
+    "test:unit": "vitest run src/syllabus/__tests__/parse-csv.test.ts src/syllabus/__tests__/normalize.test.ts src/syllabus/__tests__/cli.test.ts src/syllabus/__tests__/cli-publish.test.ts src/syllabus/__tests__/content-hash.test.ts",
     "test:db": "vitest run src/syllabus/__tests__/db-upsert.test.ts src/syllabus/__tests__/db-model-d.test.ts",
     "db-harness": "tsx ./src/db-harness/index.ts",
     "test:harness": "vitest run src/db-harness/__tests__/target-safety.test.ts"

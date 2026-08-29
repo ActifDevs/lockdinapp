@@ -269,6 +269,18 @@ describe("legacy adoption", () => {
       }),
     ).rejects.toThrow(/already assigned/);
   });
+
+  it("rejects adopting a draft that already holds the requested key", async () => {
+    await importSyllabusRevision(syllabus(), "tmp");
+    await expect(
+      adoptLegacyIdentity({
+        subjectCode: CODE,
+        sourceFile: "model-d.csv",
+        logicalRevisionKey: "tmp",
+        syllabus: syllabus(),
+      }),
+    ).rejects.toThrow(/draft/);
+  });
 });
 
 describe("source removal across versions", () => {
@@ -313,6 +325,68 @@ describe("source removal across versions", () => {
 });
 
 describe("publication", () => {
+  it("publishes a fingerprint-matching draft as DEFAULT", async () => {
+    await importSyllabusRevision(syllabus(), "rev-a");
+    const published = await publishSyllabusRevision({
+      subjectCode: CODE,
+      logicalRevisionKey: "rev-a",
+      makeDefault: true,
+    });
+    expect(published.isCurrent).toBe(true);
+  });
+
+  it("rejects first publication without --make-default", async () => {
+    await importSyllabusRevision(syllabus(), "rev-a");
+    await expect(
+      publishSyllabusRevision({
+        subjectCode: CODE,
+        logicalRevisionKey: "rev-a",
+        makeDefault: false,
+      }),
+    ).rejects.toThrow(/exactly one DEFAULT/);
+    const [version] = await db
+      .select()
+      .from(syllabusVersionsTable)
+      .where(eq(syllabusVersionsTable.logicalRevisionKey, "rev-a"));
+    expect(version.lifecycle).toBe("draft");
+    expect(version.isCurrent).toBe(false);
+  });
+
+  it("rejects publication when the stored graph fingerprint no longer matches", async () => {
+    await importSyllabusRevision(syllabus(), "rev-a");
+    const [version] = await db
+      .select()
+      .from(syllabusVersionsTable)
+      .where(eq(syllabusVersionsTable.logicalRevisionKey, "rev-a"));
+    await db.execute(sql`
+      UPDATE public.syllabus_units SET order_index = order_index + 50 WHERE syllabus_version_id = ${version.id}
+    `);
+    await expect(
+      publishSyllabusRevision({
+        subjectCode: CODE,
+        logicalRevisionKey: "rev-a",
+        makeDefault: true,
+      }),
+    ).rejects.toThrow(/fingerprint/);
+    const [after] = await db
+      .select()
+      .from(syllabusVersionsTable)
+      .where(eq(syllabusVersionsTable.id, version.id));
+    expect(after.lifecycle).toBe("draft");
+  });
+
+  it("rejects publication when a junction is mutated after import", async () => {
+    await importSyllabusRevision(syllabus(), "rev-a");
+    await db.execute(sql`DELETE FROM public.learning_outcome_components`);
+    await expect(
+      publishSyllabusRevision({
+        subjectCode: CODE,
+        logicalRevisionKey: "rev-a",
+        makeDefault: true,
+      }),
+    ).rejects.toThrow(/fingerprint/);
+  });
+
   it("publishes a draft as DEFAULT and rejects a second null-window publish", async () => {
     await importSyllabusRevision(syllabus(), "rev-a");
     const published = await publishSyllabusRevision({
@@ -328,7 +402,7 @@ describe("publication", () => {
         logicalRevisionKey: "rev-b",
         makeDefault: true,
       }),
-    ).rejects.toThrow(/null applicability/);
+    ).rejects.toThrow(/applicability/);
   });
 
   it("retires overlapping published A when publishing B as DEFAULT", async () => {
@@ -417,6 +491,150 @@ describe("publication", () => {
     const published = versions.filter((row) => row.lifecycle === "published");
     expect(published).toHaveLength(2);
     expect(published.filter((row) => row.isCurrent)).toHaveLength(1);
+  });
+
+  it("rejects known-window B while NULL A remains published, and allows retiring A", async () => {
+    await importSyllabusRevision(syllabus(), "rev-a");
+    await publishSyllabusRevision({
+      subjectCode: CODE,
+      logicalRevisionKey: "rev-a",
+      makeDefault: true,
+    });
+    await importSyllabusRevision(syllabus({ csvFile: "b.csv" }), "rev-b");
+    const [b] = await db
+      .select()
+      .from(syllabusVersionsTable)
+      .where(eq(syllabusVersionsTable.logicalRevisionKey, "rev-b"));
+    await db.execute(sql`
+      UPDATE public.syllabus_versions
+      SET applicable_from_year = 2025, applicable_from_series = 'Feb/Mar',
+          applicable_to_year = 2027, applicable_to_series = 'Oct/Nov'
+      WHERE id = ${b.id}
+    `);
+    await expect(
+      publishSyllabusRevision({
+        subjectCode: CODE,
+        logicalRevisionKey: "rev-b",
+        makeDefault: true,
+      }),
+    ).rejects.toThrow(/applicability/);
+    const replaced = await publishSyllabusRevision({
+      subjectCode: CODE,
+      logicalRevisionKey: "rev-b",
+      makeDefault: true,
+      retireRevisionKey: "rev-a",
+    });
+    expect(replaced.retiredRevisionKey).toBe("rev-a");
+  });
+
+  it("rejects NULL B while known A remains published, and allows retiring A", async () => {
+    await importSyllabusRevision(syllabus(), "rev-a");
+    await publishSyllabusRevision({
+      subjectCode: CODE,
+      logicalRevisionKey: "rev-a",
+      makeDefault: true,
+    });
+    const [a] = await db
+      .select()
+      .from(syllabusVersionsTable)
+      .where(eq(syllabusVersionsTable.logicalRevisionKey, "rev-a"));
+    await db.execute(sql`
+      UPDATE public.syllabus_versions
+      SET applicable_from_year = 2022, applicable_from_series = 'Feb/Mar',
+          applicable_to_year = 2024, applicable_to_series = 'Oct/Nov'
+      WHERE id = ${a.id}
+    `);
+    await importSyllabusRevision(syllabus({ csvFile: "b.csv" }), "rev-b");
+    await expect(
+      publishSyllabusRevision({
+        subjectCode: CODE,
+        logicalRevisionKey: "rev-b",
+        makeDefault: true,
+      }),
+    ).rejects.toThrow(/applicability/);
+    await publishSyllabusRevision({
+      subjectCode: CODE,
+      logicalRevisionKey: "rev-b",
+      makeDefault: true,
+      retireRevisionKey: "rev-a",
+    });
+    const remaining = await db.select().from(syllabusVersionsTable);
+    expect(remaining.filter((row) => row.lifecycle === "published")).toHaveLength(1);
+    expect(remaining.filter((row) => row.isCurrent)).toHaveLength(1);
+  });
+
+  it("keeps A as DEFAULT when publishing non-overlapping B without --make-default", async () => {
+    await importSyllabusRevision(syllabus(), "rev-a");
+    await publishSyllabusRevision({
+      subjectCode: CODE,
+      logicalRevisionKey: "rev-a",
+      makeDefault: true,
+    });
+    const [a] = await db
+      .select()
+      .from(syllabusVersionsTable)
+      .where(eq(syllabusVersionsTable.logicalRevisionKey, "rev-a"));
+    await db.execute(sql`
+      UPDATE public.syllabus_versions
+      SET applicable_from_year = 2022, applicable_from_series = 'Feb/Mar',
+          applicable_to_year = 2024, applicable_to_series = 'Oct/Nov'
+      WHERE id = ${a.id}
+    `);
+    await importSyllabusRevision(syllabus({ csvFile: "b.csv" }), "rev-b");
+    const [b] = await db
+      .select()
+      .from(syllabusVersionsTable)
+      .where(eq(syllabusVersionsTable.logicalRevisionKey, "rev-b"));
+    await db.execute(sql`
+      UPDATE public.syllabus_versions
+      SET applicable_from_year = 2025, applicable_from_series = 'Feb/Mar',
+          applicable_to_year = 2027, applicable_to_series = 'Oct/Nov'
+      WHERE id = ${b.id}
+    `);
+    await publishSyllabusRevision({
+      subjectCode: CODE,
+      logicalRevisionKey: "rev-b",
+      makeDefault: false,
+    });
+    const [afterA] = await db
+      .select()
+      .from(syllabusVersionsTable)
+      .where(eq(syllabusVersionsTable.logicalRevisionKey, "rev-a"));
+    const [afterB] = await db
+      .select()
+      .from(syllabusVersionsTable)
+      .where(eq(syllabusVersionsTable.logicalRevisionKey, "rev-b"));
+    expect(afterA.isCurrent).toBe(true);
+    expect(afterB.lifecycle).toBe("published");
+    expect(afterB.isCurrent).toBe(false);
+  });
+
+  it("rejects retiring the DEFAULT without --make-default", async () => {
+    await importSyllabusRevision(syllabus(), "rev-a");
+    await publishSyllabusRevision({
+      subjectCode: CODE,
+      logicalRevisionKey: "rev-a",
+      makeDefault: true,
+    });
+    await importSyllabusRevision(syllabus({ csvFile: "b.csv" }), "rev-b");
+    const [b] = await db
+      .select()
+      .from(syllabusVersionsTable)
+      .where(eq(syllabusVersionsTable.logicalRevisionKey, "rev-b"));
+    await db.execute(sql`
+      UPDATE public.syllabus_versions
+      SET applicable_from_year = 2025, applicable_from_series = 'Feb/Mar',
+          applicable_to_year = 2027, applicable_to_series = 'Oct/Nov'
+      WHERE id = ${b.id}
+    `);
+    await expect(
+      publishSyllabusRevision({
+        subjectCode: CODE,
+        logicalRevisionKey: "rev-b",
+        makeDefault: false,
+        retireRevisionKey: "rev-a",
+      }),
+    ).rejects.toThrow(/exactly one DEFAULT/);
   });
 });
 

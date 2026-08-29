@@ -1,7 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db, subjectsTable, syllabusVersionsTable } from "@workspace/db";
-import { SyllabusOperatorError } from "./errors.js";
+import { hashCanonicalGraph } from "./canonical-graph.js";
 import { loadCanonicalGraphForVersion } from "./db-graph.js";
+import { SyllabusOperatorError } from "./errors.js";
 
 export type PublishResult = {
   operation: "published";
@@ -10,6 +11,8 @@ export type PublishResult = {
   isCurrent: boolean;
   retiredRevisionKey: string | null;
 };
+
+type VersionRow = typeof syllabusVersionsTable.$inferSelect;
 
 function windowIsNull(version: {
   applicableFromYear: number | null;
@@ -79,14 +82,44 @@ export async function publishSyllabusRevision(options: {
         "draft graph is empty; refuse to publish",
       );
     }
+    const recomputed = hashCanonicalGraph(graph);
+    if (recomputed !== draft.contentSha256) {
+      throw new SyllabusOperatorError(
+        "draft_graph_fingerprint_mismatch",
+        "draft DB graph fingerprint does not match stored content_sha256; refuse to publish",
+      );
+    }
 
     const published = versions.filter((version) => version.lifecycle === "published");
-    const draftHasNullWindow = windowIsNull(draft);
-    const publishedNull = published.filter((version) => windowIsNull(version));
-    if (draftHasNullWindow && publishedNull.length > 0) {
+    let retire: VersionRow | undefined;
+    if (options.retireRevisionKey) {
+      retire = versions.find(
+        (version) => version.logicalRevisionKey === options.retireRevisionKey,
+      );
+      if (!retire || retire.lifecycle !== "published") {
+        throw new SyllabusOperatorError(
+          "publication_overlap",
+          "retire revision must name an existing published version",
+        );
+      }
+    }
+
+    const remainingPublished = published.filter((version) => version.id !== retire?.id);
+    const finalPublished: Array<Pick<VersionRow, "id" | "applicableFromYear" | "applicableSessionRange" | "isCurrent" | "logicalRevisionKey">> =
+      [
+        ...remainingPublished,
+        {
+          ...draft,
+          applicableFromYear: draft.applicableFromYear,
+          applicableSessionRange: draft.applicableSessionRange,
+          isCurrent: options.makeDefault,
+        },
+      ];
+
+    if (finalPublished.length > 1 && finalPublished.some((version) => windowIsNull(version))) {
       throw new SyllabusOperatorError(
         "ambiguous_null_applicability",
-        "a published version already has null applicability; refuse a second null-window published version",
+        "multiple published versions are allowed only when every published applicability window is known and non-null; retire the ambiguous version or supply windows",
       );
     }
 
@@ -102,31 +135,28 @@ export async function publishSyllabusRevision(options: {
           AND id <> ${draft.id}
       `);
       overlappingIds = (overlapQuery.rows as { id: number }[]).map((row) => row.id);
+      if (retire) {
+        overlappingIds = overlappingIds.filter((id) => id !== retire.id);
+      }
+    }
+    if (overlappingIds.length > 0) {
+      throw new SyllabusOperatorError(
+        "publication_overlap",
+        "publishing this draft would overlap a remaining published applicability window; pass --retire-revision for the conflicting published key",
+      );
+    }
+
+    const remainingDefaults = remainingPublished.filter((version) => version.isCurrent);
+    const finalDefaultCount = options.makeDefault ? 1 : remainingDefaults.length;
+    if (finalPublished.length > 0 && finalDefaultCount !== 1) {
+      throw new SyllabusOperatorError(
+        "missing_published_default",
+        "publishing would leave published versions without exactly one DEFAULT; pass --make-default",
+      );
     }
 
     let retiredRevisionKey: string | null = null;
-    if (overlappingIds.length > 0) {
-      if (!options.retireRevisionKey) {
-        throw new SyllabusOperatorError(
-          "publication_overlap",
-          "publishing this draft would overlap a published applicability window; pass --retire-revision for the conflicting published key",
-        );
-      }
-      const retire = versions.find(
-        (version) => version.logicalRevisionKey === options.retireRevisionKey,
-      );
-      if (!retire || !overlappingIds.includes(retire.id)) {
-        throw new SyllabusOperatorError(
-          "publication_overlap",
-          "retire revision is not the overlapping published version",
-        );
-      }
-      if (retire.isCurrent && !options.makeDefault) {
-        throw new SyllabusOperatorError(
-          "publication_overlap",
-          "retiring the DEFAULT version requires --make-default on the replacement",
-        );
-      }
+    if (retire) {
       await tx
         .update(syllabusVersionsTable)
         .set({

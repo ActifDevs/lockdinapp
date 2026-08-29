@@ -133,11 +133,26 @@ export async function runSyllabusCli(
     : SYLLABUS_IMPORT_MANIFEST;
 
   const needsDb = (mode === "import" && !dryRun) || mode === "adopt" || mode === "publish";
-  if (needsDb && !revision) {
-    throw new SyllabusOperatorError(
-      "missing_logical_revision_key",
-      "logical revision key is required (--revision=); do not infer it from the filename",
-    );
+  if (needsDb) {
+    if (!revision) {
+      throw new SyllabusOperatorError(
+        "missing_logical_revision_key",
+        "logical revision key is required (--revision=); do not infer it from the filename",
+      );
+    }
+    if (!files || files.length !== 1) {
+      throw new SyllabusOperatorError(
+        "subject_scope",
+        "import, adopt, and publish require exactly one subject via --files=<subject-code>",
+      );
+    }
+    const selected = SYLLABUS_IMPORT_MANIFEST.find((entry) => entry.subjectCode === files[0]);
+    if (!selected) {
+      throw new SyllabusOperatorError(
+        "subject_scope",
+        `unknown subject code "${files[0]}"`,
+      );
+    }
   }
 
   output.log(
@@ -146,6 +161,35 @@ export async function runSyllabusCli(
   output.log(
     `Manifest entries: ${entries.length} / ${SYLLABUS_IMPORT_MANIFEST.length}\n`,
   );
+
+  if (mode === "publish") {
+    const importer = await loadImporter();
+    try {
+      const published = await importer.publishSyllabusRevision({
+        subjectCode: files![0]!,
+        logicalRevisionKey: revision!,
+        makeDefault,
+        retireRevisionKey: retireRevision ?? undefined,
+      });
+      output.log("\n--- RESULTS ---");
+      output.log(
+        `${files![0]!.padEnd(35)} PUBLISHED — default=${published.isCurrent} retired=${published.retiredRevisionKey ?? "none"}`,
+      );
+      output.log("\nOverall: OK");
+      return 0;
+    } catch (err) {
+      const message =
+        err instanceof SyllabusOperatorError
+          ? `${err.code}: ${err.message}`
+          : (err as Error).message;
+      output.log("\n--- RESULTS ---");
+      output.log(`${files![0]!.padEnd(35)} PUBLISH FAILED — ${message}`);
+      output.log("\nOverall: FAILED");
+      return 1;
+    } finally {
+      await importer.close();
+    }
+  }
 
   let anyFailed = false;
   const results: Array<string | PreparedEntry> = [];
@@ -240,16 +284,6 @@ export async function runSyllabusCli(
             });
             rows.push(
               `${entry.csvFile.padEnd(35)} ${adopted.operation.toUpperCase()} — key=${adopted.logicalRevisionKey} sha256=${adopted.contentSha256.slice(0, 12)}…`,
-            );
-          } else {
-            const published = await importer.publishSyllabusRevision({
-              subjectCode: entry.subjectCode,
-              logicalRevisionKey: revision!,
-              makeDefault,
-              retireRevisionKey: retireRevision ?? undefined,
-            });
-            rows.push(
-              `${entry.csvFile.padEnd(35)} PUBLISHED — default=${published.isCurrent} retired=${published.retiredRevisionKey ?? "none"}`,
             );
           }
         } catch (err) {

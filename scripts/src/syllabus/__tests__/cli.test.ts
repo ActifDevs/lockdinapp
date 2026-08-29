@@ -182,4 +182,97 @@ describe("syllabus CLI database isolation", () => {
     expect(importSyllabusRevision).toHaveBeenCalledOnce();
     expect(close).toHaveBeenCalledOnce();
   });
+
+  it("rejects real import without exactly one --files subject before loading the importer", async () => {
+    clearDatabaseEnvironment();
+    const loadImporter = vi.fn<() => Promise<SyllabusImporter>>();
+    await expect(
+      runSyllabusCli(["--mode=import", "--revision=9702-test"], {
+        loadImporter,
+        output: captureOutput().output,
+      }),
+    ).rejects.toThrow(/exactly one subject/);
+    expect(loadImporter).not.toHaveBeenCalled();
+  });
+
+  it("rejects real import with two subjects before loading the importer", async () => {
+    const loadImporter = vi.fn<() => Promise<SyllabusImporter>>();
+    await expect(
+      runSyllabusCli(
+        ["--mode=import", "--files=9702,9701", "--revision=9702-test"],
+        { loadImporter, output: captureOutput().output },
+      ),
+    ).rejects.toThrow(/exactly one subject/);
+    expect(loadImporter).not.toHaveBeenCalled();
+  });
+
+  it("rejects adopt and publish without a single known subject", async () => {
+    const loadImporter = vi.fn<() => Promise<SyllabusImporter>>();
+    await expect(
+      runSyllabusCli(["--mode=adopt", "--revision=x"], {
+        loadImporter,
+        output: captureOutput().output,
+      }),
+    ).rejects.toThrow(/exactly one subject/);
+    await expect(
+      runSyllabusCli(["--mode=publish", "--files=9702,9701", "--revision=x"], {
+        loadImporter,
+        output: captureOutput().output,
+      }),
+    ).rejects.toThrow(/exactly one subject/);
+    await expect(
+      runSyllabusCli(["--mode=publish", "--files=0000", "--revision=x"], {
+        loadImporter,
+        output: captureOutput().output,
+      }),
+    ).rejects.toThrow(/unknown subject/);
+    expect(loadImporter).not.toHaveBeenCalled();
+  });
+
+  it("publishes without parsing CSV", async () => {
+    const publishSyllabusRevision = vi.fn().mockResolvedValue({
+      operation: "published",
+      versionId: 1,
+      logicalRevisionKey: "9702-test",
+      isCurrent: true,
+      retiredRevisionKey: null,
+    });
+    const close = vi.fn().mockResolvedValue(undefined);
+    const loadImporter = vi.fn().mockResolvedValue({
+      importSyllabusRevision: vi.fn(),
+      adoptLegacyIdentity: vi.fn(),
+      publishSyllabusRevision,
+      close,
+    });
+    const captured = captureOutput();
+    const exitCode = await runSyllabusCli(
+      ["--mode=publish", "--files=9702", "--revision=9702-test", "--make-default"],
+      { loadImporter, output: captured.output },
+    );
+    expect(exitCode).toBe(0);
+    expect(publishSyllabusRevision).toHaveBeenCalledOnce();
+    expect(publishSyllabusRevision).toHaveBeenCalledWith({
+      subjectCode: "9702",
+      logicalRevisionKey: "9702-test",
+      makeDefault: true,
+      retireRevisionKey: undefined,
+    });
+    expect(captured.logs).toContainEqual(expect.stringContaining("PUBLISHED"));
+  });
+
+  it("validates and dry-runs the full manifest without a database", async () => {
+    clearDatabaseEnvironment();
+    const loadImporter = vi.fn<() => Promise<SyllabusImporter>>();
+    const validate = await runSyllabusCli(["--mode=validate"], {
+      loadImporter,
+      output: captureOutput().output,
+    });
+    const dryRun = await runSyllabusCli(["--mode=import", "--dry-run"], {
+      loadImporter,
+      output: captureOutput().output,
+    });
+    expect(validate).toBe(0);
+    expect(dryRun).toBe(0);
+    expect(loadImporter).not.toHaveBeenCalled();
+  });
 });

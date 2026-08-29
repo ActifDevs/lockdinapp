@@ -55,6 +55,12 @@ export async function adoptLegacyIdentity(options: {
       );
 
     if (existingByKey) {
+      if (existingByKey.lifecycle === "draft") {
+        throw new SyllabusOperatorError(
+          "legacy_identity_requires_adoption",
+          "logical revision is a draft; legacy adoption targets a published snapshot, not a draft",
+        );
+      }
       if (
         existingByKey.contentSha256 === sourceHash &&
         existingByKey.logicalRevisionKey === logicalRevisionKey
