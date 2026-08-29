@@ -26,6 +26,7 @@ import {
   assertDestructiveTarget,
   checkInheritedDbUrls,
 } from "./target-safety.js";
+import { proveSyllabusVersionLifecycle } from "./version-lifecycle-proof.js";
 import { verifyFinalSchema, verifySyntheticFixturesRemoved } from "./verify.js";
 
 interface HarnessStep {
@@ -125,10 +126,10 @@ export async function runHarness(): Promise<HarnessResult> {
         throw new Error("[db-harness] Executed bootstrap state is invalid.");
       }
     });
-    await step("Execute committed migrations 0000-0009", () =>
+    await step("Execute committed migrations 0000-0011", () =>
       executeMigrations(verifiedStatus.dbUrl),
     );
-    await step("Verify Drizzle journal 0000-0009", async () => {
+    await step("Verify Drizzle journal 0000-0011", async () => {
       const result = await verifyMigrationJournal(pool!);
       if (!result.success) throw new Error(result.error);
     });
@@ -138,6 +139,9 @@ export async function runHarness(): Promise<HarnessResult> {
         const result = await verifyFinalSchema(pool!);
         if (!result.success) throw new Error(result.error);
       },
+    );
+    await step("Prove syllabus version lifecycle constraints", () =>
+      proveSyllabusVersionLifecycle(pool!),
     );
     await step("Run syllabus DB integration 3/3", () =>
       executeSyllabusDbTests(verifiedStatus.dbUrl),

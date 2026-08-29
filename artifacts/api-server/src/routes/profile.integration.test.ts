@@ -677,6 +677,13 @@ describe("profile and atomic onboarding (local)", () => {
         extraVersionId,
       );
     } finally {
+      if (extraVersionId != null) {
+        await db.execute(sql`
+          update public.syllabus_versions
+          set is_current = false
+          where id = ${extraVersionId}
+        `);
+      }
       if (originalVersionId != null) {
         await db.execute(sql`
           update public.syllabus_versions
@@ -685,11 +692,6 @@ describe("profile and atomic onboarding (local)", () => {
         `);
       }
       if (extraVersionId != null) {
-        await db.execute(sql`
-          update public.syllabus_versions
-          set is_current = false
-          where id = ${extraVersionId}
-        `);
         await db.execute(sql`
           delete from public.syllabus_versions where id = ${extraVersionId}
         `);
@@ -922,7 +924,7 @@ describe("profile and atomic onboarding (local)", () => {
     const journal = await db.execute(sql`
       select count(*)::int as n from drizzle.__drizzle_migrations
     `);
-    expect(Number(journal.rows[0].n)).toBe(11);
+    expect(Number(journal.rows[0].n)).toBe(12);
   });
 
   it("function privileges and definition are correct", async () => {

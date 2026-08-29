@@ -14,6 +14,8 @@ export const EXPECTED_MIGRATIONS = [
   ["0007_eager_squadron_supreme", 1786302770787],
   ["0008_uneven_mojo", 1786394449630],
   ["0009_dear_mathemanic", 1786547274449],
+  ["0010_preserve_existing_syllabus_version_pins", 1787998795377],
+  ["0011_open_sunfire", 1788003568152],
 ] as const;
 
 function databaseEnvironment(databaseUrl: string): NodeJS.ProcessEnv {
@@ -103,7 +105,7 @@ export async function verifyMigrationJournal(
           expected: [...expected],
           actual,
           error:
-            "Migration journal does not exactly match committed 0000-0009.",
+            "Migration journal does not exactly match committed 0000-0011.",
         };
   } catch {
     return {
