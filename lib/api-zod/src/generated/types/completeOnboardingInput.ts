@@ -5,6 +5,8 @@
  * A-Level Revision Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { IntendedExamSession } from './intendedExamSession';
+import type { SubjectSessionOverride } from './subjectSessionOverride';
 
 export interface CompleteOnboardingInput {
   /**
@@ -28,10 +30,12 @@ export interface CompleteOnboardingInput {
      * @maxLength 80
      */
   examSession: string;
+  intendedExamSession?: IntendedExamSession;
   /**
      * @minItems 1
      * @maxItems 5
      * @items.minimum 1
      */
   subjectIds: number[];
+  subjectSessionOverrides?: SubjectSessionOverride[];
 }

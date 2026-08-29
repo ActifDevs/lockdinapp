@@ -73,6 +73,19 @@ describe("user-subject membership auth and validation", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
+  it("rejects client-supplied syllabus version ids", async () => {
+    authenticate();
+    const response = await request(app)
+      .put("/api/user-subjects")
+      .set("Authorization", "Bearer good-token")
+      .send({
+        subjectIds: [1],
+        syllabusVersionId: 99,
+      });
+    expect(response.status).toBe(400);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["zero", []],
     ["six", [1, 2, 3, 4, 5, 6]],
