@@ -126,10 +126,10 @@ export async function runHarness(): Promise<HarnessResult> {
         throw new Error("[db-harness] Executed bootstrap state is invalid.");
       }
     });
-    await step("Execute committed migrations 0000-0011", () =>
+    await step("Execute committed migrations 0000-0012", () =>
       executeMigrations(verifiedStatus.dbUrl),
     );
-    await step("Verify Drizzle journal 0000-0011", async () => {
+    await step("Verify Drizzle journal 0000-0012", async () => {
       const result = await verifyMigrationJournal(pool!);
       if (!result.success) throw new Error(result.error);
     });
@@ -143,7 +143,7 @@ export async function runHarness(): Promise<HarnessResult> {
     await step("Prove syllabus version lifecycle constraints", () =>
       proveSyllabusVersionLifecycle(pool!),
     );
-    await step("Run syllabus DB integration 3/3", () =>
+    await step("Run syllabus DB integration", () =>
       executeSyllabusDbTests(verifiedStatus.dbUrl),
     );
     await step("Verify synthetic fixture cleanup", () =>

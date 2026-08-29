@@ -455,15 +455,15 @@ describe("two-user local Supabase exam-date ownership", () => {
     expect(migration).not.toContain("FOR UPDATE");
     expect(migration).not.toContain("GRANT UPDATE");
 
-    const migration0011Path = path.join(
+    const migration0012Path = path.join(
       repoRoot,
       "lib",
       "db",
       "migrations",
-      "0011_open_sunfire.sql",
+      "0012_ordinary_penance.sql",
     );
     const expectedLatestHash = createHash("sha256")
-      .update(readFileSync(migration0011Path))
+      .update(readFileSync(migration0012Path))
       .digest("hex");
 
     const journal = await db.execute(sql`
@@ -472,8 +472,8 @@ describe("two-user local Supabase exam-date ownership", () => {
       from drizzle.__drizzle_migrations
     `);
     expect(journal.rows[0]).toEqual({
-      count: 12,
-      latest: "1788003568152",
+      count: 13,
+      latest: "1788010369454",
       latest_hash: expectedLatestHash,
     });
   });

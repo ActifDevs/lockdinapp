@@ -581,7 +581,7 @@ describe("two-user local Supabase past-paper ownership and year", () => {
       from drizzle.__drizzle_migrations
     `);
     expect(journal.rows[0]).toEqual({
-      count: 12,
+      count: 13,
       has_0008: true,
     });
   });

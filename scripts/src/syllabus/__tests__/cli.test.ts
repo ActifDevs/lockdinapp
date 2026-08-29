@@ -1,15 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runSyllabusCli, type SyllabusImporter } from "../cli.js";
-import type { UpsertCounts } from "../db-upsert.js";
+import type { ImportResult } from "../db-upsert.js";
 
-const SUCCESS_COUNTS: UpsertCounts = {
+const SUCCESS_COUNTS: ImportResult = {
+  operation: "draft-created",
   subject: "existing",
-  version: "unchanged",
-  units: { created: 0, updated: 0, unchanged: 27 },
-  topics: { created: 0, updated: 0, unchanged: 81 },
-  learningOutcomes: { created: 0, updated: 0, unchanged: 373 },
-  components: { created: 0, updated: 0, unchanged: 5 },
-  relationships: { created: 518 },
+  contentSha256: "abc",
+  units: 27,
+  topics: 81,
+  learningOutcomes: 373,
+  components: 5,
+  relationships: 518,
 };
 
 function captureOutput() {
@@ -86,7 +87,7 @@ describe("syllabus CLI database isolation", () => {
     const captured = captureOutput();
 
     await expect(
-      runSyllabusCli(["--mode=import", "--files=9702"], {
+      runSyllabusCli(["--mode=import", "--files=9702", "--revision=9702-test"], {
         output: captured.output,
       }),
     ).rejects.toThrow(
@@ -96,70 +97,89 @@ describe("syllabus CLI database isolation", () => {
 
   it("closes the real-import resource once after a successful import", async () => {
     clearDatabaseEnvironment();
-    const upsertSyllabus = vi.fn().mockResolvedValue(SUCCESS_COUNTS);
+    const importSyllabusRevision = vi.fn().mockResolvedValue(SUCCESS_COUNTS);
     const close = vi.fn().mockResolvedValue(undefined);
-    const loadImporter = vi.fn().mockResolvedValue({ upsertSyllabus, close });
+    const loadImporter = vi.fn().mockResolvedValue({
+      importSyllabusRevision,
+      adoptLegacyIdentity: vi.fn(),
+      publishSyllabusRevision: vi.fn(),
+      close,
+    });
     const captured = captureOutput();
 
-    const exitCode = await runSyllabusCli(["--mode=import", "--files=9702"], {
-      loadImporter,
-      output: captured.output,
-    });
+    const exitCode = await runSyllabusCli(
+      ["--mode=import", "--files=9702", "--revision=9702-test"],
+      {
+        loadImporter,
+        output: captured.output,
+      },
+    );
 
     expect(exitCode).toBe(0);
     expect(loadImporter).toHaveBeenCalledOnce();
-    expect(upsertSyllabus).toHaveBeenCalledOnce();
+    expect(importSyllabusRevision).toHaveBeenCalledOnce();
     expect(close).toHaveBeenCalledOnce();
-    expect(upsertSyllabus.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(importSyllabusRevision.mock.invocationCallOrder[0]).toBeLessThan(
       close.mock.invocationCallOrder[0],
     );
     expect(captured.logs).toContainEqual(
-      expect.stringContaining("9702_physics.csv                    IMPORTED"),
+      expect.stringContaining("9702_physics.csv                    DRAFT-CREATED"),
     );
   });
 
   it("closes the real-import resource after a subject transaction failure", async () => {
     clearDatabaseEnvironment();
-    const upsertSyllabus = vi
+    const importSyllabusRevision = vi
       .fn()
       .mockRejectedValue(new Error("database write failed"));
     const close = vi.fn().mockResolvedValue(undefined);
-    const loadImporter = vi.fn().mockResolvedValue({ upsertSyllabus, close });
+    const loadImporter = vi.fn().mockResolvedValue({
+      importSyllabusRevision,
+      adoptLegacyIdentity: vi.fn(),
+      publishSyllabusRevision: vi.fn(),
+      close,
+    });
     const captured = captureOutput();
 
-    const exitCode = await runSyllabusCli(["--mode=import", "--files=9702"], {
-      loadImporter,
-      output: captured.output,
-    });
+    const exitCode = await runSyllabusCli(
+      ["--mode=import", "--files=9702", "--revision=9702-test"],
+      {
+        loadImporter,
+        output: captured.output,
+      },
+    );
 
     expect(exitCode).toBe(1);
-    expect(upsertSyllabus).toHaveBeenCalledOnce();
+    expect(importSyllabusRevision).toHaveBeenCalledOnce();
     expect(close).toHaveBeenCalledOnce();
     expect(captured.logs).toContainEqual(
-      expect.stringContaining(
-        "IMPORT FAILED — database write failed (transaction rolled back, no partial data)",
-      ),
+      expect.stringContaining("IMPORT FAILED — database write failed"),
     );
     expect(captured.logs).toContain("\nOverall: FAILED");
   });
 
   it("does not swallow a real-import cleanup failure", async () => {
     clearDatabaseEnvironment();
-    const upsertSyllabus = vi.fn().mockResolvedValue(SUCCESS_COUNTS);
+    const importSyllabusRevision = vi.fn().mockResolvedValue(SUCCESS_COUNTS);
     const close = vi
       .fn()
       .mockRejectedValue(new Error("database cleanup failed"));
-    const loadImporter = vi.fn().mockResolvedValue({ upsertSyllabus, close });
+    const loadImporter = vi.fn().mockResolvedValue({
+      importSyllabusRevision,
+      adoptLegacyIdentity: vi.fn(),
+      publishSyllabusRevision: vi.fn(),
+      close,
+    });
     const captured = captureOutput();
 
     await expect(
-      runSyllabusCli(["--mode=import", "--files=9702"], {
+      runSyllabusCli(["--mode=import", "--files=9702", "--revision=9702-test"], {
         loadImporter,
         output: captured.output,
       }),
     ).rejects.toThrow("database cleanup failed");
 
-    expect(upsertSyllabus).toHaveBeenCalledOnce();
+    expect(importSyllabusRevision).toHaveBeenCalledOnce();
     expect(close).toHaveBeenCalledOnce();
   });
 });

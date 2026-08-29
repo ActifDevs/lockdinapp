@@ -924,7 +924,7 @@ describe("profile and atomic onboarding (local)", () => {
     const journal = await db.execute(sql`
       select count(*)::int as n from drizzle.__drizzle_migrations
     `);
-    expect(Number(journal.rows[0].n)).toBe(12);
+    expect(Number(journal.rows[0].n)).toBe(13);
   });
 
   it("function privileges and definition are correct", async () => {

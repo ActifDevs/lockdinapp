@@ -16,6 +16,7 @@ export const EXPECTED_MIGRATIONS = [
   ["0009_dear_mathemanic", 1786547274449],
   ["0010_preserve_existing_syllabus_version_pins", 1787998795377],
   ["0011_open_sunfire", 1788003568152],
+  ["0012_ordinary_penance", 1788010369454],
 ] as const;
 
 function databaseEnvironment(databaseUrl: string): NodeJS.ProcessEnv {
@@ -55,6 +56,7 @@ export function executeSyllabusDbTests(databaseUrl: string): void {
         join(REPO_ROOT, "scripts/node_modules/vitest/vitest.mjs"),
         "run",
         "src/syllabus/__tests__/db-upsert.test.ts",
+        "src/syllabus/__tests__/db-model-d.test.ts",
       ],
       {
         cwd: join(REPO_ROOT, "scripts"),
@@ -105,7 +107,7 @@ export async function verifyMigrationJournal(
           expected: [...expected],
           actual,
           error:
-            "Migration journal does not exactly match committed 0000-0011.",
+            "Migration journal does not exactly match committed 0000-0012.",
         };
   } catch {
     return {
