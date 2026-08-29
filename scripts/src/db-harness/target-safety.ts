@@ -1,51 +1,15 @@
-/**
- * Target safety validation for disposable DB harness.
- * Reuses loopback validation logic from require-local-supabase.mjs.
- */
+/** Fail-closed target validation for the destructive database harness. */
 
-const LOOPBACK_HOSTNAMES = new Set([
-  "localhost",
-  "127.0.0.1",
-  "::1",
-  "[::1]",
-]);
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
 export function isLoopbackUrl(value: string): boolean {
-  if (typeof value !== "string" || value.trim() === "") {
-    return false;
-  }
+  if (typeof value !== "string" || value.trim() === "") return false;
 
   try {
-    const parsed = new URL(value);
-    return LOOPBACK_HOSTNAMES.has(parsed.hostname.toLowerCase());
+    return LOOPBACK_HOSTNAMES.has(new URL(value).hostname.toLowerCase());
   } catch {
     return false;
   }
-}
-
-export function assertLoopbackUrl(name: string, value: string): void {
-  if (!isLoopbackUrl(value)) {
-    throw new Error(
-      `[db-harness] ${name} must use an exact loopback hostname (localhost, 127.0.0.1, ::1). ` +
-      `Received: ${value.replace(/:[^:@]*@/, ':****@')}`
-    );
-  }
-}
-
-export function assertNotHostedUrl(name: string, value: string): void {
-  if (!value) {
-    return; // unset is safe
-  }
-
-  if (isLoopbackUrl(value)) {
-    return; // loopback is safe
-  }
-
-  throw new Error(
-    `[db-harness] ${name} appears to be a hosted/non-loopback URL. ` +
-    `The disposable harness only targets local Supabase. ` +
-    `Received: ${value.replace(/:[^:@]*@/, ':****@')}`
-  );
 }
 
 export interface SafetyCheckResult {
@@ -55,29 +19,68 @@ export interface SafetyCheckResult {
 
 export function checkInheritedDbUrls(
   databaseUrl: string | undefined,
-  directDatabaseUrl: string | undefined
+  directDatabaseUrl: string | undefined,
 ): SafetyCheckResult {
-  const errors: string[] = [];
+  const hasUnsafeUrl =
+    Boolean(databaseUrl && !isLoopbackUrl(databaseUrl)) ||
+    Boolean(directDatabaseUrl && !isLoopbackUrl(directDatabaseUrl));
 
-  if (databaseUrl) {
-    if (!isLoopbackUrl(databaseUrl)) {
-      errors.push("DATABASE_URL is set to a non-loopback URL");
-    }
-  }
-
-  if (directDatabaseUrl) {
-    if (!isLoopbackUrl(directDatabaseUrl)) {
-      errors.push("DIRECT_DATABASE_URL is set to a non-loopback URL");
-    }
-  }
-
-  if (errors.length > 0) {
+  if (hasUnsafeUrl) {
     return {
       isSafe: false,
-      error: `[db-harness] Inherited DB URLs are not safe: ${errors.join("; ")}. ` +
-        `Clear these variables or ensure they point to a local loopback address.`
+      error:
+        "[db-harness] Target safety rejected: inherited database endpoint is not loopback.",
     };
   }
 
   return { isSafe: true };
+}
+
+export interface DestructiveTargetInput {
+  apiUrl: string;
+  dbUrl: string;
+  runningProjectId: string;
+  expectedProjectId: string;
+  destructiveAuthorization: string | undefined;
+}
+
+/**
+ * Destructive work is allowed only when locality, positive running identity,
+ * and explicit operator authorization are all independently proven.
+ */
+export function checkDestructiveTarget(
+  input: DestructiveTargetInput,
+): SafetyCheckResult {
+  if (!isLoopbackUrl(input.apiUrl) || !isLoopbackUrl(input.dbUrl)) {
+    return {
+      isSafe: false,
+      error: "[db-harness] Target safety rejected: endpoint is not loopback.",
+    };
+  }
+
+  if (
+    input.expectedProjectId.length === 0 ||
+    input.runningProjectId !== input.expectedProjectId
+  ) {
+    return {
+      isSafe: false,
+      error:
+        "[db-harness] Target safety rejected: dedicated project identity mismatch.",
+    };
+  }
+
+  if (input.destructiveAuthorization !== "1") {
+    return {
+      isSafe: false,
+      error:
+        "[db-harness] Target safety rejected: explicit destructive authorization is absent.",
+    };
+  }
+
+  return { isSafe: true };
+}
+
+export function assertDestructiveTarget(input: DestructiveTargetInput): void {
+  const result = checkDestructiveTarget(input);
+  if (!result.isSafe) throw new Error(result.error);
 }

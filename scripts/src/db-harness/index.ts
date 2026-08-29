@@ -1,333 +1,240 @@
-/**
- * Disposable DB harness for Phase 6 Slice 2.
- *
- * Establishes a clean local Supabase environment, applies historical pre-0000
- * bootstrap, runs migrations 0000–0009, and verifies the full chain.
- */
+/** Dedicated disposable Supabase proof for Phase 6 Slice 2. */
 
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
+import { applyBootstrap, verifyBootstrapPrerequisites } from "./bootstrap.js";
+import { ensureCleanPublicSchema } from "./cleanup.js";
 import {
+  executeMigrations,
+  executeSyllabusDbTests,
+  verifyMigrationJournal,
+} from "./migrate.js";
+import {
+  HARNESS_API_PORT,
+  HARNESS_DB_PORT,
+  HARNESS_PROJECT_ID,
+  assertDedicatedPortsAvailable,
+  assertDedicatedStackDisposed,
+  getLocalStackStatus,
+  getRunningProjectIdentity,
+  startDedicatedStack,
+  stopDedicatedStack,
+  verifyDedicatedConfig,
+} from "./stack.js";
+import {
+  assertDestructiveTarget,
   checkInheritedDbUrls,
-  assertLoopbackUrl,
-  assertNotHostedUrl,
 } from "./target-safety.js";
-import {
-  applyBootstrap,
-  verifyBootstrapPrerequisites,
-} from "./bootstrap.js";
-import { executeMigrations, verifyMigrationJournal } from "./migrate.js";
-import { verifyFinalSchema } from "./verify.js";
-import {
-  stopLocalSupabase,
-  ensureCleanPublicSchema,
-} from "./cleanup.js";
+import { verifyFinalSchema, verifySyntheticFixturesRemoved } from "./verify.js";
 
-interface HarnessConfig {
-  requireCleanStart?: boolean;
-  stopAfterCompletion?: boolean;
-  requireExplicitDisposabilityAuth?: boolean;
-}
-
-interface HarnessResult {
+interface HarnessStep {
+  name: string;
   success: boolean;
-  steps: { name: string; success: boolean; error?: string }[];
   error?: string;
 }
 
-export async function runHarness(
-  config: HarnessConfig = {}
-): Promise<HarnessResult> {
-  const {
-    requireCleanStart = true,
-    stopAfterCompletion = false,
-    requireExplicitDisposabilityAuth = true,
-  } = config;
+export interface HarnessResult {
+  success: boolean;
+  steps: HarnessStep[];
+  error?: string;
+  projectId: string;
+  startedStack: boolean;
+  cleanupVerified: boolean;
+}
 
-  const steps: HarnessResult["steps"] = [];
+export async function runHarness(): Promise<HarnessResult> {
+  const steps: HarnessStep[] = [];
+  const inheritedDatabaseUrl = process.env.DATABASE_URL;
+  const inheritedDirectDatabaseUrl = process.env.DIRECT_DATABASE_URL;
+  let pool: Pool | undefined;
+  let ownsStack = false;
+  let destructiveTargetVerified = false;
+  let cleanupVerified = false;
+  let failure: string | undefined;
 
-  async function step(
-    name: string,
-    fn: () => Promise<void>
-  ): Promise<void> {
+  async function step(name: string, operation: () => void | Promise<void>) {
     try {
-      await fn();
+      await operation();
       steps.push({ name, success: true });
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      steps.push({ name, success: false, error: errorMessage });
+      const message = error instanceof Error ? error.message : String(error);
+      steps.push({ name, success: false, error: message });
       throw error;
     }
   }
 
-  const cleanupStack: Array<() => Promise<void>> = [];
-
   try {
-    // Step 1: Verify execution context
-    await step("Context verification", async () => {
-      const databaseUrl = process.env.DATABASE_URL;
-      const directDatabaseUrl = process.env.DIRECT_DATABASE_URL;
-
-      const safetyCheck = checkInheritedDbUrls(
-        databaseUrl,
-        directDatabaseUrl
+    await step("Inherited target safety", () => {
+      const result = checkInheritedDbUrls(
+        inheritedDatabaseUrl,
+        inheritedDirectDatabaseUrl,
       );
-
-      if (!safetyCheck.isSafe) {
-        throw new Error(safetyCheck.error);
-      }
-
-      console.log("[db-harness] Context verification passed");
+      if (!result.isSafe) throw new Error(result.error);
     });
 
-    // Step 1.5: Verify disposability authorization
-    if (requireExplicitDisposabilityAuth) {
-      await step("Disposability authorization", async () => {
-        const allowDestructive = process.env.LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB;
+    await step("Dedicated configuration", verifyDedicatedConfig);
 
-        if (allowDestructive !== "1") {
-          throw new Error(
-            "[db-harness] Disposability authorization required. " +
-            "This harness performs destructive schema cleanup on the local Supabase database. " +
-            "To proceed, set the environment variable:\n" +
-            "  LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1\n" +
-            "This confirms you understand the target will be cleaned and is disposable."
-          );
-        }
-
-        console.log("[db-harness] Disposability authorization confirmed");
-      });
+    let status = getLocalStackStatus();
+    if (!status) {
+      await step("Dedicated port availability", assertDedicatedPortsAvailable);
+      ownsStack = true;
+      await step("Start dedicated Supabase stack", startDedicatedStack);
+      status = getLocalStackStatus();
+    } else {
+      steps.push({ name: "Reuse dedicated Supabase stack", success: true });
     }
-      const databaseUrl = process.env.DATABASE_URL;
-      const directDatabaseUrl = process.env.DIRECT_DATABASE_URL;
 
-      const safetyCheck = checkInheritedDbUrls(
-        databaseUrl,
-        directDatabaseUrl
-      );
+    if (!status) {
+      throw new Error("[db-harness] Dedicated Supabase status is unavailable.");
+    }
 
-      if (!safetyCheck.isSafe) {
-        throw new Error(safetyCheck.error);
-      }
+    const verifiedStatus = status;
+    const runningProjectId = getRunningProjectIdentity();
 
-      console.log("[db-harness] Context verification passed");
-    });
-
-    // Step 2: Check local Supabase status
-    let localDbUrl: string = "";
-    let localApiUrl: string = "";
-
-    await step("Local Supabase check", async () => {
-      const { execFileSync } = await import("node:child_process");
-      const { fileURLToPath } = await import("node:url");
-      const { dirname, join } = await import("node:path");
-
-      const __dirname = dirname(fileURLToPath(import.meta.url));
-      const repoRoot = join(__dirname, "../../../..");
-      const supabaseCliScript = join(
-        repoRoot,
-        "node_modules",
-        "supabase",
-        "dist",
-        "supabase.js"
-      );
-
-      let raw: string;
-      try {
-        raw = execFileSync(
-          process.execPath,
-          [supabaseCliScript, "status", "-o", "json"],
-          {
-            cwd: repoRoot,
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"],
-          }
-        ) as string;
-      } catch {
+    await step("Dedicated destructive target guard", () => {
+      const apiPort = Number(new URL(verifiedStatus.apiUrl).port);
+      const dbPort = Number(new URL(verifiedStatus.dbUrl).port);
+      if (apiPort !== HARNESS_API_PORT || dbPort !== HARNESS_DB_PORT) {
         throw new Error(
-          "[db-harness] Local Supabase is not running. Start it with `pnpm supabase:start`"
+          "[db-harness] Target safety rejected: dedicated endpoint port mismatch.",
         );
       }
+      assertDestructiveTarget({
+        apiUrl: verifiedStatus.apiUrl,
+        dbUrl: verifiedStatus.dbUrl,
+        runningProjectId,
+        expectedProjectId: HARNESS_PROJECT_ID,
+        destructiveAuthorization:
+          process.env.LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB,
+      });
+      destructiveTargetVerified = true;
+    });
 
-      let status;
-      try {
-        status = JSON.parse(raw);
-      } catch {
-        throw new Error(
-          "[db-harness] Could not parse `supabase status -o json` output"
-        );
+    process.env.DATABASE_URL = verifiedStatus.dbUrl;
+    process.env.DIRECT_DATABASE_URL = verifiedStatus.dbUrl;
+    pool = new Pool({ connectionString: verifiedStatus.dbUrl });
+
+    await step("Clean pre-0000 public schema", () =>
+      ensureCleanPublicSchema(pool!),
+    );
+    await step("Execute pre-0000 bootstrap", () => applyBootstrap(pool!));
+    await step("Verify pre-0000 bootstrap state", async () => {
+      const result = await verifyBootstrapPrerequisites(pool!);
+      if (!result.success) {
+        throw new Error("[db-harness] Executed bootstrap state is invalid.");
       }
-
-      localApiUrl = status.API_URL || "";
-      localDbUrl = status.DB_URL || "";
-
-      assertLoopbackUrl("API_URL", localApiUrl);
-      assertLoopbackUrl("DB_URL", localDbUrl);
-
-      console.log("[db-harness] Local Supabase verified on loopback");
     });
-
-    // Step 3: Clear inherited DB variables and set local
-    await step("Environment configuration", async () => {
-      delete process.env.DATABASE_URL;
-      delete process.env.DIRECT_DATABASE_URL;
-
-      // Use direct connection for migrations (not transaction pooler)
-      process.env.DIRECT_DATABASE_URL = localDbUrl;
-      process.env.DATABASE_URL = localDbUrl;
-
-      console.log("[db-harness] Environment configured for local DB");
+    await step("Execute committed migrations 0000-0009", () =>
+      executeMigrations(verifiedStatus.dbUrl),
+    );
+    await step("Verify Drizzle journal 0000-0009", async () => {
+      const result = await verifyMigrationJournal(pool!);
+      if (!result.success) throw new Error(result.error);
     });
-
-    // Step 4: Ensure clean public schema if required
-    const pool = new Pool({ connectionString: localDbUrl });
-
-    cleanupStack.push(async () => {
-      await pool.end();
-    });
-
-    if (requireCleanStart) {
-      await step("Clean public schema", async () => {
+    await step(
+      "Verify final schema, auth relationships, RLS, and serial",
+      async () => {
+        const result = await verifyFinalSchema(pool!);
+        if (!result.success) throw new Error(result.error);
+      },
+    );
+    await step("Run syllabus DB integration 3/3", () =>
+      executeSyllabusDbTests(verifiedStatus.dbUrl),
+    );
+    await step("Verify synthetic fixture cleanup", () =>
+      verifySyntheticFixturesRemoved(pool!),
+    );
+  } catch (error) {
+    failure = error instanceof Error ? error.message : String(error);
+  } finally {
+    if (pool && destructiveTargetVerified) {
+      try {
         await ensureCleanPublicSchema(pool);
-        console.log("[db-harness] Public schema cleaned");
+        steps.push({ name: "Dispose test application schema", success: true });
+      } catch {
+        const message = "[db-harness] Test application schema cleanup failed.";
+        steps.push({
+          name: "Dispose test application schema",
+          success: false,
+          error: message,
+        });
+        failure ??= message;
+      }
+    }
+
+    if (pool) {
+      await pool.end().catch(() => {
+        failure ??= "[db-harness] Database connection cleanup failed.";
       });
     }
 
-    // Step 5: Apply historical pre-0000 bootstrap
-    await step("Apply pre-0000 bootstrap", async () => {
-      await applyBootstrap(pool);
-      console.log("[db-harness] Pre-0000 bootstrap applied");
-    });
+    if (inheritedDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = inheritedDatabaseUrl;
+    if (inheritedDirectDatabaseUrl === undefined) {
+      delete process.env.DIRECT_DATABASE_URL;
+    } else {
+      process.env.DIRECT_DATABASE_URL = inheritedDirectDatabaseUrl;
+    }
 
-    // Step 6: Verify bootstrap prerequisites
-    await step("Verify bootstrap prerequisites", async () => {
-      const verification = await verifyBootstrapPrerequisites(pool);
-      if (!verification.success) {
-        throw new Error(
-          `Bootstrap verification failed: ${verification.error}`
-        );
-      }
-      console.log("[db-harness] Bootstrap prerequisites verified");
-    });
-
-    // Step 7: Execute Drizzle migrations
-    await step("Execute migrations 0000–0009", async () => {
-      const { execFileSync } = await import("node:child_process");
-      const { dirname, join } = await import("node:path");
-      const { fileURLToPath } = await import("node:url");
-
-      const __dirname = dirname(fileURLToPath(import.meta.url));
-      const repoRoot = join(__dirname, "../../../..");
-
+    if (ownsStack) {
       try {
-        // Use pnpm - available in PATH or via node_modules/.bin
-        const pnpmCmd = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-
-        execFileSync(pnpmCmd, ["--filter", "@workspace/db", "migrate"], {
-          cwd: repoRoot,
-          stdio: ["ignore", "pipe", "pipe"],
-          shell: process.platform === "win32", // Windows requires shell for .cmd
+        stopDedicatedStack();
+        assertDedicatedStackDisposed();
+        cleanupVerified = true;
+        steps.push({
+          name: "Stop and remove owned dedicated stack",
+          success: true,
         });
       } catch (error) {
-        throw new Error(
-          `Migration execution failed: ${error instanceof Error ? error.message : String(error)}`
-        );
+        const message = error instanceof Error ? error.message : String(error);
+        steps.push({
+          name: "Stop and remove owned dedicated stack",
+          success: false,
+          error: message,
+        });
+        failure ??= message;
       }
-      console.log("[db-harness] Migrations 0000–0009 applied");
-    });
-
-    // Step 8: Verify migration journal
-    await step("Verify migration journal", async () => {
-      const verification = await verifyMigrationJournal(pool);
-      if (!verification.success) {
-        throw new Error(`Journal verification failed: ${verification.error}`);
-      }
-      console.log("[db-harness] Migration journal verified (0000–0009)");
-    });
-
-    // Step 9: Verify final schema
-    await step("Verify final schema", async () => {
-      const verification = await verifyFinalSchema(pool);
-      if (!verification.success) {
-        throw new Error(`Schema verification failed: ${verification.error}`);
-      }
-      console.log("[db-harness] Final schema verified");
-    });
-
-    return { success: true, steps };
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
-    return { success: false, steps, error: errorMessage };
-  } finally {
-    // Cleanup: close pool
-    for (const cleanupFn of cleanupStack) {
-      try {
-        await cleanupFn();
-      } catch (cleanupError) {
-        console.error(
-          "[db-harness] Cleanup error:",
-          cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
-        );
-      }
-    }
-
-    // Stop Supabase if requested
-    if (stopAfterCompletion) {
-      try {
-        const result = await stopLocalSupabase();
-        if (result.success) {
-          console.log("[db-harness] Local Supabase stopped");
-        } else {
-          console.warn(
-            "[db-harness] Failed to stop local Supabase:",
-            result.error
-          );
-          if (result.manualInstructions) {
-            console.log(result.manualInstructions);
-          }
-        }
-      } catch (cleanupError) {
-        console.error(
-          "[db-harness] Cleanup error during Supabase stop:",
-          cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
-        );
-      }
+    } else if (destructiveTargetVerified) {
+      cleanupVerified = true;
+      steps.push({
+        name: "Preserve unowned dedicated infrastructure",
+        success: true,
+      });
     }
   }
+
+  return {
+    success: failure === undefined,
+    steps,
+    error: failure,
+    projectId: HARNESS_PROJECT_ID,
+    startedStack: ownsStack,
+    cleanupVerified,
+  };
 }
 
-// CLI entry point
-async function main() {
-  const result = await runHarness({
-    requireCleanStart: true,
-    stopAfterCompletion: false, // don't auto-stop, let developer control
-  });
+async function main(): Promise<void> {
+  const result = await runHarness();
+  for (const harnessStep of result.steps) {
+    const marker = harnessStep.success ? "PASS" : "FAIL";
+    console.log(`[db-harness] ${marker}: ${harnessStep.name}`);
+  }
 
   if (!result.success) {
-    console.error("\n[db-harness] FAILED");
-    console.error("Error:", result.error);
-    console.error("\nFailed steps:");
-    for (const step of result.steps) {
-      if (!step.success) {
-        console.error(`  - ${step.name}: ${step.error}`);
-      }
-    }
-    process.exit(1);
+    console.error(`[db-harness] FAILED: ${result.error}`);
+    process.exitCode = 1;
+    return;
   }
 
-  console.log("\n[db-harness] SUCCESS");
-  console.log("All steps completed:");
-  for (const step of result.steps) {
-    console.log(`  ✓ ${step.name}`);
-  }
-  console.log("\nLocal Supabase is ready for DB integration tests.");
-  console.log("Run: pnpm --filter @workspace/scripts test:db");
+  console.log(
+    `[db-harness] SUCCESS: ${result.projectId}; cleanup contract verified=${result.cleanupVerified}`,
+  );
 }
 
-if (process.argv[1]?.includes("db-harness")) {
-  main().catch((error) => {
-    console.error("[db-harness] Unhandled error:", error);
-    process.exit(1);
-  });
+if (
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === resolve(process.argv[1])
+) {
+  await main();
 }

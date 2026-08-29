@@ -97,16 +97,18 @@ data. Always verify the target before running a real import.
 
 ## Separation checklist
 
-| Action | Affects hosted project? |
-|--------|-------------------------|
-| `pnpm supabase:start` / `stop` / `status` | No — local Docker only |
-| `supabase login` / `link` | Links **your** CLI to hosted metadata; does not migrate or import by itself |
-| `pnpm --filter @workspace/db migrate` | Yes, if `DIRECT_DATABASE_URL` (or its compatible `DATABASE_URL` fallback) points at hosted |
-| Syllabus `syllabus:import` | Yes, if `DATABASE_URL` points at hosted |
+| Action                                    | Affects hosted project?                                                                    |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `pnpm supabase:start` / `stop` / `status` | No — local Docker only                                                                     |
+| `supabase login` / `link`                 | Links **your** CLI to hosted metadata; does not migrate or import by itself                |
+| `pnpm --filter @workspace/db migrate`     | Yes, if `DIRECT_DATABASE_URL` (or its compatible `DATABASE_URL` fallback) points at hosted |
+| Syllabus `syllabus:import`                | Yes, if `DATABASE_URL` points at hosted                                                    |
 
 ## 6. Disposable DB harness (Phase 6 Slice 2)
 
-The repository includes a disposable database harness for proving the complete migration chain from a blank local Supabase instance. This enables safe local DB integration testing without touching hosted data.
+The repository includes a self-owned disposable Supabase harness for proving the
+complete migration chain from a blank local database without using the normal
+development stack.
 
 ### Purpose
 
@@ -119,8 +121,8 @@ The repository includes a disposable database harness for proving the complete m
 ### Prerequisites
 
 - Docker Desktop running
-- Local Supabase stack already started: `pnpm supabase:start`
 - No inherited `DATABASE_URL` or `DIRECT_DATABASE_URL` pointing to hosted Supabase
+- Repository dependencies installed, including Supabase CLI 2.109.1
 
 ### Bootstrap artifact
 
@@ -134,42 +136,45 @@ The harness uses `lib/db/bootstrap/pre-0000.sql`, a historical bootstrap artifac
 ### Usage
 
 ```bash
-# Start local Supabase
-pnpm supabase:start
-
-# Run the disposable harness (requires explicit disposability authorization)
+# The harness starts, tests, and removes its own dedicated stack.
 LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1 pnpm --filter @workspace/scripts db-harness
-
-# Run DB integration tests against the prepared local DB
-pnpm --filter @workspace/scripts test:db
-
-# Stop local Supabase when done
-pnpm supabase:stop
 ```
 
-**Important:** The harness performs destructive schema cleanup. The `LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1` environment variable is required to confirm you understand the target will be cleaned and is disposable.
+On PowerShell, set the variable for the current process before invoking the
+command. The harness performs destructive cleanup only after verifying all
+three required conditions: loopback endpoints, the exact running project label
+`lockdin-db-harness`, and explicit authorization.
 
 ### Safety guarantees
 
 - **Local-only target**: Harness rejects any inherited hosted Supabase URLs
 - **Loopback validation**: Validates API_URL and DB_URL are loopback addresses (localhost, 127.0.0.1, ::1)
+- **Positive identity**: Reads the running database container's
+  `com.supabase.cli.project` label and requires `lockdin-db-harness`
+- **Separate workdir**: Uses `scripts/fixtures/db-harness`; it does not rewrite
+  or run from the normal `supabase/config.toml`
+- **Dedicated ports**: API `55421`, database `55422`; normal ports are not used
+- **Explicit authorization**: Requires
+  `LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1` in addition to locality and identity
 - **No hosted fallback**: Never falls back to hosted Supabase if local is unavailable
-- **Clean start**: By default, clears the public schema before applying bootstrap
-- **No production access**: Cannot connect to Production; requires verified local provenance
+- **Scoped ownership**: Never calls `stop --all` and never stops `lockedinapp`
 
 ### Lifecycle
 
-1. Verify execution context (reject inherited hosted URLs)
-2. Check local Supabase status
-3. Validate API_URL and DB_URL are loopback
-4. Clear inherited DB variables; set verified local variables
-5. Clean public schema (optional, default: true)
-6. Apply historical pre-0000 bootstrap SQL
-7. Verify bootstrap prerequisites (tables, columns, historical differences)
-8. Execute Drizzle migrations 0000–0009
-9. Verify migration journal contains exactly 0000–0009
-10. Verify final schema and security objects (RLS, sequences, FKs)
-11. Local Supabase remains running for follow-up DB integration tests
+1. Reject inherited non-loopback database targets.
+2. Verify the dedicated config identity and ports.
+3. Reuse only an already-running dedicated identity, or verify ports and start
+   the dedicated stack while recording ownership.
+4. Read actual status endpoints and the Docker project label.
+5. Require loopback, exact dedicated identity, and explicit authorization.
+6. Reset only the disposable `public` schema and execute the pre-0000 bootstrap.
+7. Execute the committed Drizzle migrations 0000–0009.
+8. Verify the exact journal, final tables, `auth.users` relationships, RLS
+   policies, and serial ownership.
+9. Run the syllabus database integration suite and verify fixture removal.
+10. Dispose the application schema. If the harness started the stack, stop it
+    with project-scoped `--no-backup` cleanup and verify no Docker or CLI state
+    remains.
 
 ### Important distinctions
 
@@ -182,11 +187,14 @@ pnpm supabase:stop
 
 If the harness fails:
 
-- **"Local Supabase is not running"**: Run `pnpm supabase:start` first
-- **"Inherited DB URLs are not safe"**: Clear `DATABASE_URL` and `DIRECT_DATABASE_URL` from your environment
-- **"Bootstrap verification failed"**: Check that `lib/db/bootstrap/pre-0000.sql` was not modified
-- **"Migration execution failed"**: Check that `lib/db/migrations/` contains files 0000–0009
-- **"Journal verification failed"**: Drizzle journal may be corrupted; reset local Supabase with `pnpm supabase:stop && pnpm supabase:start`
+- **Inherited endpoint is not loopback**: Clear hosted `DATABASE_URL` and
+  `DIRECT_DATABASE_URL` values before retrying.
+- **Dedicated identity mismatch**: Do not bypass the guard. Inspect the
+  dedicated workdir and Docker project label.
+- **Dedicated port availability failed**: Do not stop unrelated processes;
+  identify the listener before changing the test-only port set.
+- **Dedicated stack cleanup failed**: Run the credential-free manual cleanup
+  command printed by the harness. It is scoped to `lockdin-db-harness`.
 
 ## PostgreSQL major version
 
