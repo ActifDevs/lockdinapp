@@ -193,4 +193,4 @@ Hosted remains **one graph per subject**. This Preview catalogue pass is single-
 
 ## Final verdict
 
-6.3C1 **implementation PASS** on the feature branch. Merge and hosted second graph **not performed**. Owner review required before merge.
+6.3C1 **implementation PASS**. Final Preview merge clearance **PASS** (public smoke + hosted read-only). Merge and hosted second graph **not performed**. Owner merge authorization required.
