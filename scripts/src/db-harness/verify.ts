@@ -1,0 +1,169 @@
+import { Pool } from "pg";
+
+const SHARED_TABLES = [
+  "subjects",
+  "syllabus_versions",
+  "syllabus_units",
+  "syllabus_topics",
+  "syllabus_learning_outcomes",
+  "assessment_components",
+  "learning_outcome_components",
+];
+
+const USER_TABLES = [
+  "profiles",
+  "user_subjects",
+  "topic_progress",
+  "tasks",
+  "past_paper_attempts",
+  "exam_dates",
+];
+
+const EXPECTED_AUTH_FOREIGN_KEYS = [
+  ["profiles", "id"],
+  ["user_subjects", "user_id"],
+  ["topic_progress", "user_id"],
+  ["tasks", "user_id"],
+  ["past_paper_attempts", "user_id"],
+  ["exam_dates", "user_id"],
+] as const;
+
+const EXPECTED_POLICIES = [
+  "profiles_select_own",
+  "profiles_update_own",
+  "user_subjects_select_own",
+  "topic_progress_select_own",
+  "tasks_select_own",
+  "tasks_insert_own",
+  "tasks_update_own",
+  "tasks_delete_own",
+  "past_paper_attempts_select_own",
+  "past_paper_attempts_insert_own",
+  "past_paper_attempts_delete_own",
+  "exam_dates_select_own",
+  "exam_dates_insert_own",
+  "exam_dates_delete_own",
+];
+
+export interface SchemaVerificationResult {
+  success: boolean;
+  error?: string;
+  serialSequence?: string;
+}
+
+export async function verifyFinalSchema(
+  pool: Pool,
+): Promise<SchemaVerificationResult> {
+  try {
+    const tables = await pool.query<{ tablename: string }>(`
+      SELECT tablename
+      FROM pg_tables
+      WHERE schemaname = 'public'
+    `);
+    const actualTables = new Set(tables.rows.map((row) => row.tablename));
+    const missingTables = [...SHARED_TABLES, ...USER_TABLES].filter(
+      (table) => !actualTables.has(table),
+    );
+    if (missingTables.length > 0) {
+      return {
+        success: false,
+        error: "Final application tables are incomplete.",
+      };
+    }
+
+    const rls = await pool.query<{ relname: string; relrowsecurity: boolean }>(
+      `
+      SELECT c.relname, c.relrowsecurity
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relname = ANY($1::text[])
+    `,
+      [USER_TABLES],
+    );
+    if (
+      rls.rows.length !== USER_TABLES.length ||
+      rls.rows.some((row) => !row.relrowsecurity)
+    ) {
+      return {
+        success: false,
+        error: "Required user-table RLS is incomplete.",
+      };
+    }
+
+    const policies = await pool.query<{ policyname: string }>(
+      `
+      SELECT policyname
+      FROM pg_policies
+      WHERE schemaname = 'public' AND policyname = ANY($1::text[])
+    `,
+      [EXPECTED_POLICIES],
+    );
+    const policyNames = new Set(policies.rows.map((row) => row.policyname));
+    if (EXPECTED_POLICIES.some((policy) => !policyNames.has(policy))) {
+      return { success: false, error: "Required RLS policies are incomplete." };
+    }
+
+    for (const [table, column] of EXPECTED_AUTH_FOREIGN_KEYS) {
+      const foreignKey = await pool.query<{ present: boolean }>(
+        `
+        SELECT EXISTS (
+          SELECT 1
+          FROM pg_constraint constraint_record
+          JOIN pg_class source_table ON source_table.oid = constraint_record.conrelid
+          JOIN pg_namespace source_schema ON source_schema.oid = source_table.relnamespace
+          JOIN pg_class target_table ON target_table.oid = constraint_record.confrelid
+          JOIN pg_namespace target_schema ON target_schema.oid = target_table.relnamespace
+          JOIN unnest(constraint_record.conkey) WITH ORDINALITY AS source_key(attnum, ordinality)
+            ON true
+          JOIN pg_attribute source_column
+            ON source_column.attrelid = source_table.oid
+           AND source_column.attnum = source_key.attnum
+          WHERE constraint_record.contype = 'f'
+            AND source_schema.nspname = 'public'
+            AND source_table.relname = $1
+            AND source_column.attname = $2
+            AND target_schema.nspname = 'auth'
+            AND target_table.relname = 'users'
+        ) AS present
+      `,
+        [table, column],
+      );
+      if (!foreignKey.rows[0]?.present) {
+        return {
+          success: false,
+          error: "Required auth.users relationships are incomplete.",
+        };
+      }
+    }
+
+    const sequence = await pool.query<{ sequence: string | null }>(`
+      SELECT pg_get_serial_sequence(
+        'public.past_paper_attempts',
+        'id'
+      ) AS sequence
+    `);
+    if (!sequence.rows[0]?.sequence) {
+      return {
+        success: false,
+        error: "past_paper_attempts serial ownership is missing.",
+      };
+    }
+
+    return { success: true, serialSequence: sequence.rows[0].sequence };
+  } catch {
+    return { success: false, error: "Final schema verification query failed." };
+  }
+}
+
+export async function verifySyntheticFixturesRemoved(
+  pool: Pool,
+): Promise<void> {
+  const result = await pool.query<{ count: string }>(`
+    SELECT count(*)::text AS count
+    FROM public.subjects
+    WHERE code IN ('TEST9998', 'TEST9997')
+  `);
+  if (result.rows[0]?.count !== "0") {
+    throw new Error("[db-harness] Synthetic syllabus fixture cleanup failed.");
+  }
+}
