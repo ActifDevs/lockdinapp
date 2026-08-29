@@ -29,6 +29,7 @@ import {
 import { proveSyllabusVersionLifecycle } from "./version-lifecycle-proof.js";
 import { provePinAwareReferenceContext } from "./pin-aware-reference-proof.js";
 import { proveSessionFoundation } from "./session-foundation-proof.js";
+import { proveSeriesPolicyFoundation } from "./series-policy-proof.js";
 import { verifyFinalSchema, verifySyntheticFixturesRemoved } from "./verify.js";
 
 interface HarnessStep {
@@ -128,10 +129,10 @@ export async function runHarness(): Promise<HarnessResult> {
         throw new Error("[db-harness] Executed bootstrap state is invalid.");
       }
     });
-    await step("Execute committed migrations 0000-0013", () =>
+    await step("Execute committed migrations 0000-0014", () =>
       executeMigrations(verifiedStatus.dbUrl),
     );
-    await step("Verify Drizzle journal 0000-0013", async () => {
+    await step("Verify Drizzle journal 0000-0014", async () => {
       const result = await verifyMigrationJournal(pool!);
       if (!result.success) throw new Error(result.error);
     });
@@ -150,6 +151,9 @@ export async function runHarness(): Promise<HarnessResult> {
     );
     await step("Prove session foundation and DEFAULT assignment", () =>
       proveSessionFoundation(pool!),
+    );
+    await step("Prove series policy foundation and assignment still DEFAULT", () =>
+      proveSeriesPolicyFoundation(pool!),
     );
     await step("Run syllabus DB integration", () =>
       executeSyllabusDbTests(verifiedStatus.dbUrl),

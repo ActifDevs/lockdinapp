@@ -154,6 +154,20 @@ export async function proveSessionFoundation(pool: Pool): Promise<void> {
 
   await pool.query(
     `
+    INSERT INTO public.syllabus_version_exam_series (
+      syllabus_version_id, series, product_auto_assign
+    )
+    VALUES
+      ($1, 'May/June', true),
+      ($1, 'Oct/Nov', true),
+      ($2, 'Feb/Mar', true),
+      ($2, 'Oct/Nov', true)
+    `,
+    [versionA.id, versionB.id],
+  );
+
+  await pool.query(
+    `
     INSERT INTO public.syllabus_versions (
       subject_id, exam_board, qualification, label, is_current, source_file, lifecycle
     )

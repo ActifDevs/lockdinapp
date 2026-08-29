@@ -257,6 +257,32 @@ export async function verifyFinalSchema(
       };
     }
 
+    const seriesPolicy = await pool.query<{ column_name: string }>(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'syllabus_version_exam_series'
+        AND column_name IN ('syllabus_version_id', 'series', 'product_auto_assign')
+    `);
+    if (seriesPolicy.rows.length !== 3) {
+      return {
+        success: false,
+        error: "syllabus_version_exam_series columns are incomplete.",
+      };
+    }
+    const seriesPk = await pool.query<{ present: boolean }>(`
+      SELECT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'syllabus_version_exam_series_pk'
+      ) AS present
+    `);
+    if (!seriesPk.rows[0]?.present) {
+      return {
+        success: false,
+        error: "syllabus_version_exam_series primary key is missing.",
+      };
+    }
+
     return { success: true, serialSequence: sequence.rows[0].sequence };
   } catch {
     return { success: false, error: "Final schema verification query failed." };
@@ -269,7 +295,7 @@ export async function verifySyntheticFixturesRemoved(
   const result = await pool.query<{ count: string }>(`
     SELECT count(*)::text AS count
     FROM public.subjects
-    WHERE code IN ('TEST9998', 'TEST9997', 'TEST6301', 'TEST6302', 'C2A01', 'C2A02')
+    WHERE code IN ('TEST9998', 'TEST9997', 'TEST6301', 'TEST6302', 'C2A01', 'C2A02', 'C2B101', 'C2B102')
   `);
   if (result.rows[0]?.count !== "0") {
     throw new Error("[db-harness] Synthetic syllabus fixture cleanup failed.");
