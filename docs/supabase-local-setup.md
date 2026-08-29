@@ -104,6 +104,88 @@ data. Always verify the target before running a real import.
 | `pnpm --filter @workspace/db migrate` | Yes, if `DIRECT_DATABASE_URL` (or its compatible `DATABASE_URL` fallback) points at hosted |
 | Syllabus `syllabus:import` | Yes, if `DATABASE_URL` points at hosted |
 
+## 6. Disposable DB harness (Phase 6 Slice 2)
+
+The repository includes a disposable database harness for proving the complete migration chain from a blank local Supabase instance. This enables safe local DB integration testing without touching hosted data.
+
+### Purpose
+
+- Reconstruct the exact historical pre-0000 schema state
+- Apply migrations 0000–0009 cleanly
+- Verify the full migration chain integrity
+- Run syllabus DB integration tests against a fresh local target
+- Provide migration-fidelity confidence for release-hardening
+
+### Prerequisites
+
+- Docker Desktop running
+- Local Supabase stack already started: `pnpm supabase:start`
+- No inherited `DATABASE_URL` or `DIRECT_DATABASE_URL` pointing to hosted Supabase
+
+### Bootstrap artifact
+
+The harness uses `lib/db/bootstrap/pre-0000.sql`, a historical bootstrap artifact that reconstructs the schema state immediately before migration 0000:
+
+- **Provenance**: Reconstructed from commit `f271bef` (Initial commit) and historical migration evidence
+- **Status**: NOT a migration; historical test infrastructure only
+- **Location**: `lib/db/bootstrap/pre-0000.sql` (non-journaled, not in Drizzle migration directory)
+- **Authority**: Drizzle migrations (0000–0009) remain the authoritative application schema history
+
+### Usage
+
+```bash
+# Start local Supabase
+pnpm supabase:start
+
+# Run the disposable harness
+pnpm --filter @workspace/scripts db-harness
+
+# Run DB integration tests against the prepared local DB
+pnpm --filter @workspace/scripts test:db
+
+# Stop local Supabase when done
+pnpm supabase:stop
+```
+
+### Safety guarantees
+
+- **Local-only target**: Harness rejects any inherited hosted Supabase URLs
+- **Loopback validation**: Validates API_URL and DB_URL are loopback addresses (localhost, 127.0.0.1, ::1)
+- **No hosted fallback**: Never falls back to hosted Supabase if local is unavailable
+- **Clean start**: By default, clears the public schema before applying bootstrap
+- **No production access**: Cannot connect to Production; requires verified local provenance
+
+### Lifecycle
+
+1. Verify execution context (reject inherited hosted URLs)
+2. Check local Supabase status
+3. Validate API_URL and DB_URL are loopback
+4. Clear inherited DB variables; set verified local variables
+5. Clean public schema (optional, default: true)
+6. Apply historical pre-0000 bootstrap SQL
+7. Verify bootstrap prerequisites (tables, columns, historical differences)
+8. Execute Drizzle migrations 0000–0009
+9. Verify migration journal contains exactly 0000–0009
+10. Verify final schema and security objects (RLS, sequences, FKs)
+11. Local Supabase remains running for follow-up DB integration tests
+
+### Important distinctions
+
+- **Historical bootstrap**: Reconstructs pre-0000 state for migration fidelity testing
+- **Normal migrations**: Committed Drizzle migrations (0000–0009) remain schema authority
+- **No `drizzle-kit push`**: Harness never uses push; always applies committed migrations
+- **No `supabase db push`**: Supabase CLI manages local services only, not application schema
+
+### Troubleshooting
+
+If the harness fails:
+
+- **"Local Supabase is not running"**: Run `pnpm supabase:start` first
+- **"Inherited DB URLs are not safe"**: Clear `DATABASE_URL` and `DIRECT_DATABASE_URL` from your environment
+- **"Bootstrap verification failed"**: Check that `lib/db/bootstrap/pre-0000.sql` was not modified
+- **"Migration execution failed"**: Check that `lib/db/migrations/` contains files 0000–0009
+- **"Journal verification failed"**: Drizzle journal may be corrupted; reset local Supabase with `pnpm supabase:stop && pnpm supabase:start`
+
 ## PostgreSQL major version
 
 `supabase/config.toml` → `[db] major_version` must match the hosted major version (`SHOW server_version;` on hosted). As of foundation setup this is **17**, matching hosted `17.6`.
