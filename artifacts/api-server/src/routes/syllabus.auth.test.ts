@@ -21,6 +21,13 @@ vi.mock("../lib/logger.js", () => ({
   logger: { info: vi.fn(), error: vi.fn() },
 }));
 
+const assertTopicOnCallerPin = vi.fn();
+
+vi.mock("../lib/pin-reference-writes.js", () => ({
+  assertTopicOnCallerPin: (...args: unknown[]) =>
+    assertTopicOnCallerPin(...args),
+}));
+
 describe("syllabus topic progress auth and validation", () => {
   let app: express.Express;
 
@@ -34,6 +41,8 @@ describe("syllabus topic progress auth and validation", () => {
   beforeEach(() => {
     getClaims.mockReset();
     rpc.mockReset();
+    assertTopicOnCallerPin.mockReset();
+    assertTopicOnCallerPin.mockResolvedValue({ ok: true });
   });
 
   function authenticate() {
@@ -162,5 +171,22 @@ describe("syllabus topic progress auth and validation", () => {
     expect(rpc).toHaveBeenCalledWith("lockdin_reset_topic_progress", {
       p_topic_id: 3,
     });
+  });
+
+  it("does not call RPC when the topic is off the caller pin", async () => {
+    authenticate();
+    assertTopicOnCallerPin.mockResolvedValue({
+      ok: false,
+      status: 400,
+      error: "Invalid request",
+    });
+
+    const response = await request(app)
+      .patch("/api/syllabus-topics/1")
+      .set("Authorization", "Bearer good-token")
+      .send({ status: "completed" });
+
+    expect(response.status).toBe(400);
+    expect(rpc).not.toHaveBeenCalled();
   });
 });

@@ -16,6 +16,7 @@ import { enrichTask, enrichTasks } from "../lib/enrich-task";
 import { listUserTaskRows, mappedUserTasks } from "../lib/user-tasks";
 import { sendSupabaseError } from "../lib/supabase-errors";
 import { hasOwnershipField } from "../lib/topic-progress";
+import { assertTopicOnCallerPin } from "../lib/pin-reference-writes";
 
 const router: IRouter = Router();
 
@@ -73,6 +74,18 @@ router.post("/tasks", requireAuth, async (req, res): Promise<void> => {
   const userId = req.userId!;
   const accessToken = req.accessToken!;
   const client = createUserScopedSupabaseClient(accessToken);
+
+  if (body.data.topicId != null) {
+    const pinCheck = await assertTopicOnCallerPin(
+      userId,
+      body.data.topicId,
+      body.data.subjectId,
+    );
+    if (!pinCheck.ok) {
+      res.status(pinCheck.status).json({ error: pinCheck.error });
+      return;
+    }
+  }
 
   // Ownership is set only from the verified session. RLS WITH CHECK also
   // requires auth.uid() = user_id; we never accept body userId/user_id.

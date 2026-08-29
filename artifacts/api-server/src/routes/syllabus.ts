@@ -12,6 +12,7 @@ import {
   normalizeTopicNotes,
 } from "../lib/topic-progress";
 import { logger } from "../lib/logger";
+import { assertTopicOnCallerPin } from "../lib/pin-reference-writes";
 
 const router: IRouter = Router();
 
@@ -65,6 +66,15 @@ router.patch("/syllabus-topics/:topicId", requireAuth, async (req, res): Promise
   }
 
   const notes = normalizeTopicNotes(body.data.notes);
+  const pinCheck = await assertTopicOnCallerPin(
+    req.userId!,
+    params.data.topicId,
+  );
+  if (!pinCheck.ok) {
+    res.status(pinCheck.status).json({ error: pinCheck.error });
+    return;
+  }
+
   const client = createUserScopedSupabaseClient(req.accessToken!);
   const { data, error } = await client.rpc("lockdin_upsert_topic_progress", {
     p_topic_id: params.data.topicId,
@@ -108,6 +118,15 @@ router.delete("/syllabus-topics/:topicId", requireAuth, async (req, res): Promis
   const params = ResetSyllabusTopicProgressParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: "Invalid request" });
+    return;
+  }
+
+  const pinCheck = await assertTopicOnCallerPin(
+    req.userId!,
+    params.data.topicId,
+  );
+  if (!pinCheck.ok) {
+    res.status(pinCheck.status).json({ error: pinCheck.error });
     return;
   }
 

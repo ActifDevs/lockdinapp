@@ -30,7 +30,7 @@ const API_AUTH_EXCEPTIONS: readonly ApiAuthException[] = [
   {
     method: "GET",
     path: "/subjects/:subjectId/assessment-components",
-    mode: "public",
+    mode: "optional",
   },
   {
     method: "GET",

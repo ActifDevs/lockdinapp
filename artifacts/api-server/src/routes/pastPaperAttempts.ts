@@ -17,6 +17,7 @@ import { requireAuth } from "../middlewares/require-auth";
 import { createUserScopedSupabaseClient } from "../lib/supabase-user-client";
 import { sendSupabaseError } from "../lib/supabase-errors";
 import { hasOwnershipField } from "../lib/topic-progress";
+import { assertComponentOnCallerPin } from "../lib/pin-reference-writes";
 import {
   enrichPastPaperRows,
   listUserPastPaperRows,
@@ -190,6 +191,16 @@ router.post(
     }
 
     const userId = req.userId!;
+    const pinCheck = await assertComponentOnCallerPin(
+      userId,
+      input.subjectId,
+      input.componentId,
+    );
+    if (!pinCheck.ok) {
+      res.status(pinCheck.status).json({ error: pinCheck.error });
+      return;
+    }
+
     const client = createUserScopedSupabaseClient(req.accessToken!);
     const percentage = (input.score / input.totalMarks) * 100;
     const { data, error } = await client

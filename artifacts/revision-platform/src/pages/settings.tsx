@@ -6,6 +6,8 @@ import {
   useReplaceCurrentUserSubjects,
   getGetDashboardSummaryQueryKey,
   getGetProgressOverviewQueryKey,
+  getGetSubjectSyllabusQueryKey,
+  getListAssessmentComponentsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -241,6 +243,12 @@ export default function Settings() {
         data: { subjectIds: selectedSubjectIds },
       });
       queryClient.setQueryData(getListCurrentUserSubjectsQueryKey(), updated);
+      const subjectIdsToRefresh = [
+        ...new Set([
+          ...selectedSubjectIds,
+          ...updated.map((membership) => membership.subject.id),
+        ]),
+      ];
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: getGetDashboardSummaryQueryKey(),
@@ -248,6 +256,16 @@ export default function Settings() {
         queryClient.invalidateQueries({
           queryKey: getGetProgressOverviewQueryKey(),
         }),
+        ...subjectIdsToRefresh.map((subjectId) =>
+          queryClient.invalidateQueries({
+            queryKey: getGetSubjectSyllabusQueryKey(subjectId),
+          }),
+        ),
+        ...subjectIdsToRefresh.map((subjectId) =>
+          queryClient.invalidateQueries({
+            queryKey: getListAssessmentComponentsQueryKey(subjectId),
+          }),
+        ),
       ]);
       toast({
         title: "Subjects updated",

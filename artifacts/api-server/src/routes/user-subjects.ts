@@ -3,9 +3,12 @@ import { inArray } from "drizzle-orm";
 import {
   db,
   subjectsTable,
-  syllabusTopicsTable,
   syllabusVersionsTable,
 } from "@workspace/db";
+import { countTopicsForSyllabusVersions } from "../lib/syllabus-topic-counts";
+import {
+  REFERENCE_CONTEXT_UNAVAILABLE,
+} from "../lib/resolve-reference-syllabus-version";
 import {
   ListCurrentUserSubjectsResponse,
   ReplaceCurrentUserSubjectsBody,
@@ -63,6 +66,13 @@ export function buildMembershipResponse(
   });
 }
 
+class MembershipPinInvariantError extends Error {
+  constructor() {
+    super(REFERENCE_CONTEXT_UNAVAILABLE);
+    this.name = "MembershipPinInvariantError";
+  }
+}
+
 const MEMBERSHIP_SELECT =
   "user_id, subject_id, syllabus_version_id, created_at, updated_at";
 
@@ -89,7 +99,7 @@ async function listMemberships(
 
   const subjectIds = memberships.map((row) => row.subject_id);
   const versionIds = memberships.map((row) => row.syllabus_version_id);
-  const [subjects, versions, topics] = await Promise.all([
+  const [subjects, versions, versionTopicCounts] = await Promise.all([
     db
       .select()
       .from(subjectsTable)
@@ -98,17 +108,24 @@ async function listMemberships(
       .select()
       .from(syllabusVersionsTable)
       .where(inArray(syllabusVersionsTable.id, versionIds)),
-    db
-      .select({ subjectId: syllabusTopicsTable.subjectId })
-      .from(syllabusTopicsTable)
-      .where(inArray(syllabusTopicsTable.subjectId, subjectIds)),
+    countTopicsForSyllabusVersions(versionIds),
   ]);
 
   const topicsBySubject = new Map<number, number>();
-  for (const topic of topics) {
+  for (const membership of memberships) {
+    const version = versions.find(
+      (row) => row.id === membership.syllabus_version_id,
+    );
+    if (
+      !version ||
+      version.subjectId !== membership.subject_id ||
+      version.lifecycle === "draft"
+    ) {
+      throw new MembershipPinInvariantError();
+    }
     topicsBySubject.set(
-      topic.subjectId,
-      (topicsBySubject.get(topic.subjectId) ?? 0) + 1,
+      membership.subject_id,
+      versionTopicCounts.get(membership.syllabus_version_id) ?? 0,
     );
   }
 
@@ -126,6 +143,10 @@ router.get("/user-subjects", requireAuth, async (req, res): Promise<void> => {
     const memberships = await listMemberships(client, req.userId!);
     res.json(ListCurrentUserSubjectsResponse.parse(memberships));
   } catch (error) {
+    if (error instanceof MembershipPinInvariantError) {
+      res.status(409).json({ error: REFERENCE_CONTEXT_UNAVAILABLE });
+      return;
+    }
     logger.error({ context: "list_user_subjects" }, "membership fetch failed");
     res.status(500).json({ error: "Internal server error" });
   }
@@ -184,7 +205,11 @@ router.put("/user-subjects", requireAuth, async (req, res): Promise<void> => {
   try {
     const memberships = await listMemberships(client, req.userId!);
     res.json(ReplaceCurrentUserSubjectsResponse.parse(memberships));
-  } catch {
+  } catch (error) {
+    if (error instanceof MembershipPinInvariantError) {
+      res.status(409).json({ error: REFERENCE_CONTEXT_UNAVAILABLE });
+      return;
+    }
     logger.error(
       { context: "replace_user_subjects_readback" },
       "membership readback failed",

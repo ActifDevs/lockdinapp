@@ -4,7 +4,6 @@ import { buildMembershipResponse } from "./user-subjects";
 vi.mock("@workspace/db", () => ({
   db: {},
   subjectsTable: {},
-  syllabusTopicsTable: {},
   syllabusVersionsTable: {},
 }));
 
