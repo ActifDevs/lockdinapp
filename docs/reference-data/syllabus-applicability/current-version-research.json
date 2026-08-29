@@ -1,0 +1,548 @@
+{
+  "schemaVersion": 1,
+  "retrievalDate": "2026-08-29",
+  "authority": "Official Cambridge International syllabus PDFs and subject pages only. Search used for discovery. Snippets are not evidence.",
+  "logicalRevisionKeyConvention": {
+    "pattern": "{subjectCode}-{firstExamYear}-{lastExamYear}",
+    "example": "9702-2025-2027",
+    "notes": [
+      "Stable, human-auditable, independent of filename and is_current.",
+      "Owner must choose which official examination-year edition Lockdin currently represents before any hosted adopt.",
+      "Do not apply these candidates hosted from this research file."
+    ]
+  },
+  "seriesNormalization": {
+    "March": "Feb/Mar",
+    "June": "May/June",
+    "November": "Oct/Nov"
+  },
+  "modelSafety": {
+    "continuousRangeAloneSafeForEverySubject": "NO",
+    "seriesAvailabilityValidationRequired": "YES",
+    "reason": "Official documents typically allow June and November globally and March only for India, or June and November only. A Lockdin inclusive year×series ordinal range from May/June Y1 to Oct/Nov Y2 also contains Feb/Mar of intervening years. That is syllabus-validity-over-time, not global subject availability in every sitting."
+  },
+  "hostedInventoryNote": "Read-only hosted check 2026-08-29: nine subjects, one published DEFAULT version each, logical_revision_key null, content_sha256 null, applicability null. No second graph.",
+  "subjects": [
+    {
+      "subjectCode": "9231",
+      "subjectName": "Further Mathematics",
+      "lockdinSubjectIdHosted": 1,
+      "sourceFile": "9231_further_mathematics.csv",
+      "examBoard": "Cambridge Assessment International Education",
+      "qualification": "Cambridge International AS & A Level",
+      "hostedVersionCount": 1,
+      "lifecycle": "published",
+      "isCurrent": true,
+      "logicalRevisionKeyStatus": "unset",
+      "contentSha256Status": "unset",
+      "applicabilityStatus": "null",
+      "matchStatus": "PROBABLE",
+      "officialDocument": {
+        "title": "Cambridge International AS & A Level Further Mathematics 9231 syllabus for examination in 2026 and 2027",
+        "url": "https://www.cambridgeinternational.org/Images/697357-2026-2027-syllabus.pdf",
+        "publicationId": "697357",
+        "retrievalDate": "2026-08-29",
+        "subjectPage": "https://www.cambridgeinternational.org/programmes-and-qualifications/cambridge-international-as-and-a-level-mathematics-further-9231/"
+      },
+      "relatedOfficialDocuments": [
+        {
+          "title": "Cambridge International AS & A Level Further Mathematics 9231 syllabus for exams in 2028, 2029 and 2030",
+          "url": "https://www.cambridgeinternational.org/Images/744603-2028-2030-syllabus.pdf",
+          "publicationId": "744603",
+          "retrievalDate": "2026-08-29"
+        }
+      ],
+      "logicalRevisionKeyCandidate": "9231-2026-2027",
+      "validity": {
+        "firstYear": 2026,
+        "firstSeries": "May/June",
+        "lastYear": 2027,
+        "lastSeries": "Oct/Nov",
+        "status": "PROBABLE",
+        "officialWording": "Use this syllabus for exams in 2026 and 2027. Exams are available in the June and November series."
+      },
+      "explicitExamSeries": ["May/June", "Oct/Nov"],
+      "marchAvailability": "NOT_LISTED_IN_2026_2027_PDF",
+      "rangeAloneSafe": "NO",
+      "asALevel": "both",
+      "evidence": {
+        "page": "cover / syllabus availability statement",
+        "section": "Use this syllabus for exams in…",
+        "note": "CSV papers 1–4 (Further Pure 1/2, Further Mechanics, Further Probability & Statistics) match the official four-component structure. Consecutive 2028–2030 PDF uses the same component set; edition is not unique from CSV alone."
+      },
+      "contentMatch": {
+        "status": "PROBABLE",
+        "note": "Main topics and paper codes align with official Papers 1–4. No CSV year marker."
+      },
+      "identityAdoptionReady": "NO",
+      "applicabilityPopulationReady": "NO",
+      "c2bStrictAssignmentReady": "NO",
+      "openQuestions": [
+        "Owner must confirm Lockdin graph is the 2026–2027 edition rather than 2028–2030 (official text: no significant teaching changes).",
+        "Confirm March is never offered for 9231 in any administrative zone Lockdin serves."
+      ]
+    },
+    {
+      "subjectCode": "9489",
+      "subjectName": "History",
+      "lockdinSubjectIdHosted": 2,
+      "sourceFile": "9489_history.csv",
+      "examBoard": "Cambridge Assessment International Education",
+      "qualification": "Cambridge International AS & A Level",
+      "hostedVersionCount": 1,
+      "lifecycle": "published",
+      "isCurrent": true,
+      "logicalRevisionKeyStatus": "unset",
+      "contentSha256Status": "unset",
+      "applicabilityStatus": "null",
+      "matchStatus": "PROBABLE",
+      "officialDocument": {
+        "title": "Cambridge International AS & A Level History 9489 syllabus for examination in 2026",
+        "url": "https://www.cambridgeinternational.org/Images/697368-2026-syllabus.pdf",
+        "publicationId": "697368",
+        "retrievalDate": "2026-08-29"
+      },
+      "relatedOfficialDocuments": [
+        {
+          "title": "Cambridge International AS & A Level History 9489 syllabus for examination in 2027, 2028 and 2029",
+          "url": "https://www.cambridgeinternational.org/Images/718292-2027-2029-syllabus.pdf",
+          "publicationId": "718292",
+          "retrievalDate": "2026-08-29"
+        },
+        {
+          "title": "Syllabus update: Cambridge AS & A Level History (9489) for examination in 2026",
+          "url": "https://www.cambridgeinternational.org/Images/748946-2026-syllabus-update.pdf",
+          "publicationId": "748946",
+          "retrievalDate": "2026-08-29"
+        }
+      ],
+      "logicalRevisionKeyCandidate": "9489-2026-2026",
+      "validity": {
+        "firstYear": 2026,
+        "firstSeries": "May/June",
+        "lastYear": 2026,
+        "lastSeries": "Oct/Nov",
+        "status": "PROBABLE",
+        "officialWording": "Use this syllabus for exams in 2026. Exams are available in the June and November series."
+      },
+      "explicitExamSeries": ["May/June", "Oct/Nov"],
+      "marchAvailability": "WITHDRAWN_FOR_2026",
+      "rangeAloneSafe": "NO",
+      "asALevel": "both",
+      "evidence": {
+        "page": "cover; later availability note",
+        "section": "Use this syllabus for exams in 2026; Changes to availability",
+        "note": "Official 2026 PDF lists France, 1774–1814 and Topic 2: The Holocaust, matching CSV main topics. Official update states 2027 content and assessment change and that 2026 is a one-year document. CSV cannot be assumed to be the 2027–2029 edition."
+      },
+      "contentMatch": {
+        "status": "PROBABLE",
+        "note": "Topic titles align with the 2026 official option list. Owner review required before treating the graph as 2027–2029."
+      },
+      "identityAdoptionReady": "NO",
+      "applicabilityPopulationReady": "NO",
+      "c2bStrictAssignmentReady": "NO",
+      "openQuestions": [
+        "Confirm CSV is the 2026 (from-2021) lineage, not the 2027–2029 rewritten History syllabus.",
+        "2026 PDF states the syllabus is no longer available in the March series."
+      ]
+    },
+    {
+      "subjectCode": "9609",
+      "subjectName": "Business",
+      "lockdinSubjectIdHosted": 3,
+      "sourceFile": "9609_business.csv",
+      "examBoard": "Cambridge Assessment International Education",
+      "qualification": "Cambridge International AS & A Level",
+      "hostedVersionCount": 1,
+      "lifecycle": "published",
+      "isCurrent": true,
+      "logicalRevisionKeyStatus": "unset",
+      "contentSha256Status": "unset",
+      "applicabilityStatus": "null",
+      "matchStatus": "PROBABLE",
+      "officialDocument": {
+        "title": "Cambridge International AS & A Level Business 9609 syllabus for examination in 2026, 2027 and 2028",
+        "url": "https://www.cambridgeinternational.org/Images/697371-2026-2028-syllabus.pdf",
+        "publicationId": "697371",
+        "retrievalDate": "2026-08-29"
+      },
+      "relatedOfficialDocuments": [
+        {
+          "title": "Cambridge International AS & A Level Business 9609 syllabus for exams in 2023, 2024 and 2025",
+          "url": "https://www.cambridgeinternational.org/Images/595459-2023-2025-syllabus.pdf",
+          "publicationId": "595459",
+          "retrievalDate": "2026-08-29"
+        }
+      ],
+      "logicalRevisionKeyCandidate": "9609-2026-2028",
+      "validity": {
+        "firstYear": 2026,
+        "firstSeries": "May/June",
+        "lastYear": 2028,
+        "lastSeries": "Oct/Nov",
+        "status": "PROBABLE",
+        "officialWording": "Use this syllabus for exams in 2026, 2027 and 2028. Exams are available in the June and November series. Exams are also available in the March series in India."
+      },
+      "explicitExamSeries": ["Feb/Mar", "May/June", "Oct/Nov"],
+      "marchAvailability": "INDIA_ONLY",
+      "rangeAloneSafe": "NO",
+      "asALevel": "both",
+      "evidence": {
+        "page": "cover; Making entries",
+        "section": "Use this syllabus for exams in…",
+        "note": "CSV Papers 1–4 names (Business Concepts 1/2, Decision-Making, Strategy) and five main topic areas match the official 2026–2028 PDF. Prior 2023–2025 PDF uses the same paper titles; edition not unique from CSV."
+      },
+      "contentMatch": {
+        "status": "PROBABLE",
+        "note": "Component names match official assessment overview. No significant-teaching-change statement on 2026–2028 vs endorsed-from-2023 textbooks."
+      },
+      "identityAdoptionReady": "NO",
+      "applicabilityPopulationReady": "NO",
+      "c2bStrictAssignmentReady": "NO",
+      "openQuestions": [
+        "Choose 2023–2025 vs 2026–2028 edition for adopt.",
+        "March is India-only; must not be treated as globally available if a continuous range includes Feb/Mar."
+      ]
+    },
+    {
+      "subjectCode": "9618",
+      "subjectName": "Computer Science",
+      "lockdinSubjectIdHosted": 4,
+      "sourceFile": "9618_computer_science.csv",
+      "examBoard": "Cambridge Assessment International Education",
+      "qualification": "Cambridge International AS & A Level",
+      "hostedVersionCount": 1,
+      "lifecycle": "published",
+      "isCurrent": true,
+      "logicalRevisionKeyStatus": "unset",
+      "contentSha256Status": "unset",
+      "applicabilityStatus": "null",
+      "matchStatus": "PROBABLE",
+      "officialDocument": {
+        "title": "Cambridge International AS & A Level Computer Science 9618 syllabus for examination in 2026",
+        "url": "https://www.cambridgeinternational.org/Images/697372-2026-syllabus.pdf",
+        "publicationId": "697372",
+        "retrievalDate": "2026-08-29"
+      },
+      "relatedOfficialDocuments": [
+        {
+          "title": "Cambridge International AS & A Level Computer Science 9618 syllabus for examination in 2027, 2028 and 2029",
+          "url": "https://www.cambridgeinternational.org/Images/721397-2027-2029-syllabus.pdf",
+          "publicationId": "721397",
+          "retrievalDate": "2026-08-29"
+        }
+      ],
+      "logicalRevisionKeyCandidate": "9618-2026-2026",
+      "validity": {
+        "firstYear": 2026,
+        "firstSeries": "May/June",
+        "lastYear": 2026,
+        "lastSeries": "Oct/Nov",
+        "status": "PROBABLE",
+        "officialWording": "Use this syllabus for exams in 2026. Exams are available in the June and November series."
+      },
+      "explicitExamSeries": ["May/June", "Oct/Nov"],
+      "marchAvailability": "NOT_LISTED_IN_2026_PDF",
+      "rangeAloneSafe": "NO",
+      "asALevel": "both",
+      "evidence": {
+        "page": "cover",
+        "section": "Use this syllabus for exams in 2026",
+        "note": "CSV Papers 1–4 (Theory Fundamentals, Problem-solving and Programming, Advanced Theory, Practical) match official assessment. 2027–2029 is a separate official PDF; 2026 is a one-year document. Graph cannot uniquely pick 2026 vs 2027–2029 without owner review."
+      },
+      "contentMatch": {
+        "status": "PROBABLE",
+        "note": "AS topic headings (Information representation, Communication, Hardware, etc.) align with official content overview."
+      },
+      "identityAdoptionReady": "NO",
+      "applicabilityPopulationReady": "NO",
+      "c2bStrictAssignmentReady": "NO",
+      "openQuestions": [
+        "Owner must choose 2026 vs 2027–2029 official edition.",
+        "Confirm no March series for 9618 in Lockdin-served zones."
+      ]
+    },
+    {
+      "subjectCode": "9700",
+      "subjectName": "Biology",
+      "lockdinSubjectIdHosted": 5,
+      "sourceFile": "9700_biology.csv",
+      "examBoard": "Cambridge Assessment International Education",
+      "qualification": "Cambridge International AS & A Level",
+      "hostedVersionCount": 1,
+      "lifecycle": "published",
+      "isCurrent": true,
+      "logicalRevisionKeyStatus": "unset",
+      "contentSha256Status": "unset",
+      "applicabilityStatus": "null",
+      "matchStatus": "PROBABLE",
+      "officialDocument": {
+        "title": "Cambridge International AS & A Level Biology 9700 syllabus for examination in 2025, 2026 and 2027",
+        "url": "https://www.cambridgeinternational.org/Images/664560-2025-2027-syllabus.pdf",
+        "publicationId": "664560",
+        "retrievalDate": "2026-08-29"
+      },
+      "relatedOfficialDocuments": [
+        {
+          "title": "Cambridge International AS & A Level Biology 9700 syllabus for exams in 2028, 2029 and 2030",
+          "url": "https://www.cambridgeinternational.org/Images/744622-2028-2030-syllabus.pdf",
+          "publicationId": "744622",
+          "retrievalDate": "2026-08-29"
+        }
+      ],
+      "logicalRevisionKeyCandidate": "9700-2025-2027",
+      "validity": {
+        "firstYear": 2025,
+        "firstSeries": "May/June",
+        "lastYear": 2027,
+        "lastSeries": "Oct/Nov",
+        "status": "PROBABLE",
+        "officialWording": "Use this syllabus for exams in 2025, 2026 and 2027. Exams are available in the June and November series. Also available for examination in March 2025, 2026 and 2027 for India."
+      },
+      "explicitExamSeries": ["Feb/Mar", "May/June", "Oct/Nov"],
+      "marchAvailability": "INDIA_ONLY",
+      "rangeAloneSafe": "NO",
+      "asALevel": "both",
+      "evidence": {
+        "page": "cover",
+        "section": "Use this syllabus for exams in…",
+        "note": "CSV Papers 1–5 names match official assessment. Topic 1 Cell structure and subsequent AS topics match official content overview. CSV also stores Assessment objectives / Mathematical requirements as main topics — importer noise, not a different specification."
+      },
+      "contentMatch": {
+        "status": "PROBABLE",
+        "note": "Core topic sequence matches official AS/A content. Extra CSV headings are not official units."
+      },
+      "identityAdoptionReady": "NO",
+      "applicabilityPopulationReady": "NO",
+      "c2bStrictAssignmentReady": "NO",
+      "openQuestions": [
+        "2028–2030 official PDF exists with no significant teaching changes; owner must pick edition.",
+        "March is India-only."
+      ]
+    },
+    {
+      "subjectCode": "9701",
+      "subjectName": "Chemistry",
+      "lockdinSubjectIdHosted": 6,
+      "sourceFile": "9701_chemistry.csv",
+      "examBoard": "Cambridge Assessment International Education",
+      "qualification": "Cambridge International AS & A Level",
+      "hostedVersionCount": 1,
+      "lifecycle": "published",
+      "isCurrent": true,
+      "logicalRevisionKeyStatus": "unset",
+      "contentSha256Status": "unset",
+      "applicabilityStatus": "null",
+      "matchStatus": "PROBABLE",
+      "officialDocument": {
+        "title": "Cambridge International AS & A Level Chemistry 9701 syllabus for examination in 2025, 2026 and 2027",
+        "url": "https://www.cambridgeinternational.org/Images/664563-2025-2027-syllabus.pdf",
+        "publicationId": "664563",
+        "retrievalDate": "2026-08-29"
+      },
+      "logicalRevisionKeyCandidate": "9701-2025-2027",
+      "validity": {
+        "firstYear": 2025,
+        "firstSeries": "May/June",
+        "lastYear": 2027,
+        "lastSeries": "Oct/Nov",
+        "status": "PROBABLE",
+        "officialWording": "Use this syllabus for exams in 2025, 2026 and 2027. Exams are available in the June and November series. Also available for examination in March 2025, 2026 and 2027 for India."
+      },
+      "explicitExamSeries": ["Feb/Mar", "May/June", "Oct/Nov"],
+      "marchAvailability": "INDIA_ONLY",
+      "rangeAloneSafe": "NO",
+      "asALevel": "both",
+      "evidence": {
+        "page": "cover; Making entries",
+        "section": "Use this syllabus for exams in…",
+        "note": "CSV topic 1 Atomic structure and Papers 1–5 match official structure. Component display names in CSV are shorter (Paper 1 / Paper 2) than official titles; paper codes 9701/1–5 match."
+      },
+      "contentMatch": {
+        "status": "PROBABLE",
+        "note": "AS/A topic list aligns with official content. Owner should still confirm no later 2028+ edition is intended."
+      },
+      "identityAdoptionReady": "NO",
+      "applicabilityPopulationReady": "NO",
+      "c2bStrictAssignmentReady": "NO",
+      "openQuestions": [
+        "Search located the 2025–2027 official PDF; a later edition may exist and was not used as identity.",
+        "March is India-only."
+      ]
+    },
+    {
+      "subjectCode": "9702",
+      "subjectName": "Physics",
+      "lockdinSubjectIdHosted": 7,
+      "sourceFile": "9702_physics.csv",
+      "examBoard": "Cambridge Assessment International Education",
+      "qualification": "Cambridge International AS & A Level",
+      "hostedVersionCount": 1,
+      "lifecycle": "published",
+      "isCurrent": true,
+      "logicalRevisionKeyStatus": "unset",
+      "contentSha256Status": "unset",
+      "applicabilityStatus": "null",
+      "matchStatus": "PROBABLE",
+      "officialDocument": {
+        "title": "Cambridge International AS & A Level Physics 9702 syllabus for examination in 2025, 2026 and 2027",
+        "url": "https://www.cambridgeinternational.org/Images/664565-2025-2027-syllabus.pdf",
+        "publicationId": "664565",
+        "retrievalDate": "2026-08-29",
+        "subjectPage": "https://www.cambridgeinternational.org/programmes-and-qualifications/cambridge-international-as-and-a-level-physics-9702/"
+      },
+      "relatedOfficialDocuments": [
+        {
+          "title": "Cambridge International AS & A Level Physics 9702 syllabus for exams in 2028, 2029 and 2030",
+          "url": "https://www.cambridgeinternational.org/Images/744626-2028-2030-syllabus.pdf",
+          "publicationId": "744626",
+          "retrievalDate": "2026-08-29"
+        }
+      ],
+      "logicalRevisionKeyCandidate": "9702-2025-2027",
+      "validity": {
+        "firstYear": 2025,
+        "firstSeries": "May/June",
+        "lastYear": 2027,
+        "lastSeries": "Oct/Nov",
+        "status": "PROBABLE",
+        "officialWording": "Use this syllabus for exams in 2025, 2026 and 2027. Exams are available in the June and November series. Also available for examination in March 2025, 2026 and 2027 for India."
+      },
+      "explicitExamSeries": ["Feb/Mar", "May/June", "Oct/Nov"],
+      "marchAvailability": "INDIA_ONLY",
+      "rangeAloneSafe": "NO",
+      "asALevel": "both",
+      "evidence": {
+        "page": "cover; Content overview",
+        "section": "AS Level topics 1–11 and A Level 12–25",
+        "note": "CSV main topics 1–25 plus practical papers match the official numbered topic list and Papers 1–5. 2028–2030 official PDF states no significant teaching changes; edition is not unique from CSV."
+      },
+      "contentMatch": {
+        "status": "PROBABLE",
+        "note": "Strong structural match to official 9702 content overview. Not VERIFIED to a single examination-year PDF."
+      },
+      "identityAdoptionReady": "NO",
+      "applicabilityPopulationReady": "NO",
+      "c2bStrictAssignmentReady": "NO",
+      "openQuestions": [
+        "Owner must choose 2025–2027 vs 2028–2030 (and not the expired 2022–2024 PDF).",
+        "March is India-only."
+      ]
+    },
+    {
+      "subjectCode": "9708",
+      "subjectName": "Economics",
+      "lockdinSubjectIdHosted": 8,
+      "sourceFile": "9708_economics.csv",
+      "examBoard": "Cambridge Assessment International Education",
+      "qualification": "Cambridge International AS & A Level",
+      "hostedVersionCount": 1,
+      "lifecycle": "published",
+      "isCurrent": true,
+      "logicalRevisionKeyStatus": "unset",
+      "contentSha256Status": "unset",
+      "applicabilityStatus": "null",
+      "matchStatus": "PROBABLE",
+      "officialDocument": {
+        "title": "Cambridge International AS & A Level Economics 9708 syllabus for examination in 2026, 2027 and 2028",
+        "url": "https://www.cambridgeinternational.org/Images/697423-2026-2028-syllabus.pdf",
+        "publicationId": "697423",
+        "retrievalDate": "2026-08-29"
+      },
+      "logicalRevisionKeyCandidate": "9708-2026-2028",
+      "validity": {
+        "firstYear": 2026,
+        "firstSeries": "May/June",
+        "lastYear": 2028,
+        "lastSeries": "Oct/Nov",
+        "status": "PROBABLE",
+        "officialWording": "Use this syllabus for exams in 2026, 2027 and 2028. Exams are available in the June and November series. Exams are also available in the March series in India."
+      },
+      "explicitExamSeries": ["Feb/Mar", "May/June", "Oct/Nov"],
+      "marchAvailability": "INDIA_ONLY",
+      "rangeAloneSafe": "NO",
+      "asALevel": "both",
+      "evidence": {
+        "page": "cover; Content overview",
+        "section": "1 Basic economic ideas and resource allocation",
+        "note": "CSV Papers 1–4 and first topic title match official 2026–2028 PDF. Official Papers 1–2 are AS; 3–4 are A Level. CSV component names are generic Paper 1–4."
+      },
+      "contentMatch": {
+        "status": "PROBABLE",
+        "note": "Topic family matches official AS/A split. A later or earlier edition with the same from-2023 textbook endorsement may exist."
+      },
+      "identityAdoptionReady": "NO",
+      "applicabilityPopulationReady": "NO",
+      "c2bStrictAssignmentReady": "NO",
+      "openQuestions": [
+        "Confirm no competing official edition should be the Lockdin identity.",
+        "March is India-only."
+      ]
+    },
+    {
+      "subjectCode": "9709",
+      "subjectName": "Mathematics",
+      "lockdinSubjectIdHosted": 9,
+      "sourceFile": "9709_mathematics.csv",
+      "examBoard": "Cambridge Assessment International Education",
+      "qualification": "Cambridge International AS & A Level",
+      "hostedVersionCount": 1,
+      "lifecycle": "published",
+      "isCurrent": true,
+      "logicalRevisionKeyStatus": "unset",
+      "contentSha256Status": "unset",
+      "applicabilityStatus": "null",
+      "matchStatus": "PROBABLE",
+      "officialDocument": {
+        "title": "Cambridge International AS & A Level Mathematics 9709 syllabus for examination in 2026 and 2027",
+        "url": "https://www.cambridgeinternational.org/Images/697427-2026-2027-syllabus.pdf",
+        "publicationId": "697427",
+        "retrievalDate": "2026-08-29",
+        "subjectPage": "https://www.cambridgeinternational.org/programmes-and-qualifications/cambridge-international-as-and-a-level-mathematics-9709/"
+      },
+      "relatedOfficialDocuments": [
+        {
+          "title": "Cambridge International AS & A Level Mathematics 9709 syllabus for examination in 2023, 2024 and 2025",
+          "url": "https://www.cambridgeinternational.org/Images/597421-2023-2025-syllabus.pdf",
+          "publicationId": "597421",
+          "retrievalDate": "2026-08-29"
+        },
+        {
+          "title": "Cambridge International AS & A Level Mathematics 9709 syllabus for exams in 2028, 2029 and 2030",
+          "url": "https://www.cambridgeinternational.org/Images/744634-2028-2030-syllabus.pdf",
+          "publicationId": "744634",
+          "retrievalDate": "2026-08-29"
+        }
+      ],
+      "logicalRevisionKeyCandidate": "9709-2026-2027",
+      "validity": {
+        "firstYear": 2026,
+        "firstSeries": "May/June",
+        "lastYear": 2027,
+        "lastSeries": "Oct/Nov",
+        "status": "PROBABLE",
+        "officialWording": "Use this syllabus for exams in 2026 and 2027. Exams are available in the June and November series. Exams are also available in the March series in India."
+      },
+      "explicitExamSeries": ["Feb/Mar", "May/June", "Oct/Nov"],
+      "marchAvailability": "INDIA_ONLY",
+      "rangeAloneSafe": "NO",
+      "asALevel": "both",
+      "evidence": {
+        "page": "cover; Content overview",
+        "section": "Six components Paper 1–6",
+        "note": "CSV Papers 1–6 titles match official Pure Mathematics 1–3, Mechanics, Probability & Statistics 1–2. The same six-paper model appears in 2023–2025 and 2028–2030 official PDFs."
+      },
+      "contentMatch": {
+        "status": "PROBABLE",
+        "note": "Strong paper-structure match; examination-year edition not unique."
+      },
+      "identityAdoptionReady": "NO",
+      "applicabilityPopulationReady": "NO",
+      "c2bStrictAssignmentReady": "NO",
+      "openQuestions": [
+        "Owner must choose among 2023–2025, 2026–2027, and 2028–2030 official PDFs.",
+        "March is India-only."
+      ]
+    }
+  ]
+}
