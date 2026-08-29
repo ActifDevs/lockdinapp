@@ -10,7 +10,7 @@
     "syllabus:import": "tsx ./src/syllabus/cli.ts --mode=import",
     "syllabus:cleanup-placeholders": "tsx ./src/syllabus/cleanup-placeholder-syllabus.ts",
     "test": "vitest run",
-    "test:unit": "vitest run src/syllabus/__tests__/parse-csv.test.ts src/syllabus/__tests__/normalize.test.ts",
+    "test:unit": "vitest run src/syllabus/__tests__/parse-csv.test.ts src/syllabus/__tests__/normalize.test.ts src/syllabus/__tests__/cli.test.ts",
     "test:db": "vitest run src/syllabus/__tests__/db-upsert.test.ts"
   },
   "dependencies": {

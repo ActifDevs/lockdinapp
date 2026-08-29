@@ -76,14 +76,24 @@ The Supabase CLI manages the **local service stack and Auth environment**. Drizz
 
 ## 5. Syllabus import (separate from local start / linking / migrate)
 
-Canonical path:
+Validation and dry-run are offline operations. They parse, validate, normalize,
+and report without loading the database importer, and neither command requires
+`DATABASE_URL` or `DIRECT_DATABASE_URL`:
 
 ```bash
 pnpm --filter @workspace/scripts syllabus:validate
+pnpm --filter @workspace/scripts syllabus:import --dry-run
+```
+
+A real import is a database mutation and requires a verified target in
+`DATABASE_URL`:
+
+```bash
 pnpm --filter @workspace/scripts syllabus:import
 ```
 
-Requires a working `DATABASE_URL`. Starting local Supabase does not import Cambridge data and does not touch hosted data.
+Starting local Supabase does not import Cambridge data and does not touch hosted
+data. Always verify the target before running a real import.
 
 ## Separation checklist
 
