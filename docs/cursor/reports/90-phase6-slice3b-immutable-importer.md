@@ -102,7 +102,7 @@ pre-0000 → 0000–0012 → journal → schema (including 0012 indexes) → lif
 
 - Offline hash + CLI (including publish-without-CSV and single-subject scope)
 - Harness target-safety 20/20
-- Syllabus DB integration (upsert + Model D + legacy import guard)
+- Syllabus DB integration 29 (upsert + Model D + legacy import guard)
 - API unit 119/119
 - Scripts typecheck PASS
 - API typecheck: pre-existing TS2305 (`createDatabasePoolConfig` / `validateDatabaseUrl`) — not fixed
