@@ -48,8 +48,9 @@ const int4range = customType<{ data: string; driverData: string }>({
  * subject). It must not be treated as “move all users”.
  *
  * Applicability windows are structured year+series; values stay NULL until
- * 6.3B+ supplies real Cambridge ranges. Overlap of non-null windows is
- * excluded at the database for the same subject (btree_gist).
+ * 6.3B+ supplies real Cambridge ranges. Overlapping non-null windows are
+ * excluded only among published versions of the same subject (btree_gist).
+ * DEFAULT (`is_current`) is allowed only when lifecycle is published.
  */
 export const syllabusVersionsTable = pgTable(
   "syllabus_versions",
@@ -112,6 +113,10 @@ export const syllabusVersionsTable = pgTable(
         and ${table.applicableToYear} is not null
         and ${table.applicableToSeries} is not null
       )`,
+    ),
+    check(
+      "syllabus_versions_default_must_be_published",
+      sql`not ${table.isCurrent} or ${table.lifecycle} = 'published'`,
     ),
   ],
 );

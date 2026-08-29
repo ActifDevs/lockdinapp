@@ -2,6 +2,13 @@ import type { Pool } from "pg";
 
 const FIXTURE_CODES = ["L63A01", "L63A02"] as const;
 
+const WINDOW_W = {
+  fromYear: 2025,
+  fromSeries: "May/June",
+  toYear: 2027,
+  toSeries: "Oct/Nov",
+} as const;
+
 function constraintName(error: unknown): string {
   if (error && typeof error === "object" && "constraint" in error) {
     return String((error as { constraint?: string }).constraint ?? "");
@@ -9,19 +16,31 @@ function constraintName(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function assertConstraint(error: unknown, name: string, fallback: string): void {
+function assertConstraint(error: unknown, name: string): void {
   const actual = constraintName(error);
-  if (actual === name || (error instanceof Error && error.message.includes(name))) {
-    return;
+  const message = error instanceof Error ? error.message : String(error);
+  if (actual === name || message.includes(name)) return;
+  throw error instanceof Error ? error : new Error(message);
+}
+
+async function expectRejected(
+  operation: () => Promise<unknown>,
+  constraint: string,
+  acceptedMessage: string,
+): Promise<void> {
+  try {
+    await operation();
+    throw new Error(acceptedMessage);
+  } catch (error) {
+    if (error instanceof Error && error.message === acceptedMessage) throw error;
+    assertConstraint(error, constraint);
   }
-  throw error instanceof Error ? error : new Error(fallback);
 }
 
 export async function proveSyllabusVersionLifecycle(pool: Pool): Promise<void> {
-  await pool.query(
-    `DELETE FROM public.subjects WHERE code = ANY($1::text[])`,
-    [FIXTURE_CODES],
-  );
+  await pool.query(`DELETE FROM public.subjects WHERE code = ANY($1::text[])`, [
+    FIXTURE_CODES,
+  ]);
 
   const subjects = await pool.query<{ id: number; code: string }>(
     `
@@ -45,10 +64,91 @@ export async function proveSyllabusVersionLifecycle(pool: Pool): Promise<void> {
   await pool.query(
     `
     INSERT INTO public.syllabus_versions (
-      subject_id, exam_board, qualification, label, is_current, source_file
+      subject_id, exam_board, qualification, label, is_current, source_file, lifecycle
     ) VALUES (
-      $1, 'Cambridge International', 'AS & A Level', 'Version A', true, 'l63a01-a.csv'
+      $1, 'Cambridge International', 'AS & A Level', 'Published current',
+      true, 'l63a01-pub.csv', 'published'
     )
+    `,
+    [subjectA.id],
+  );
+
+  await expectRejected(
+    () =>
+      pool.query(
+        `
+        INSERT INTO public.syllabus_versions (
+          subject_id, exam_board, qualification, label, is_current, source_file, lifecycle
+        ) VALUES (
+          $1, 'Cambridge International', 'AS & A Level', 'Second default',
+          true, 'l63a01-dup.csv', 'published'
+        )
+        `,
+        [subjectA.id],
+      ),
+    "syllabus_versions_one_default_per_subject",
+    "[db-harness] Duplicate DEFAULT version was accepted.",
+  );
+
+  await expectRejected(
+    () =>
+      pool.query(
+        `
+        INSERT INTO public.syllabus_versions (
+          subject_id, exam_board, qualification, label, is_current, source_file, lifecycle
+        ) VALUES (
+          $1, 'Cambridge International', 'AS & A Level', 'Draft current',
+          true, 'l63a01-draft-cur.csv', 'draft'
+        )
+        `,
+        [subjectA.id],
+      ),
+    "syllabus_versions_default_must_be_published",
+    "[db-harness] Draft DEFAULT was accepted.",
+  );
+
+  await expectRejected(
+    () =>
+      pool.query(
+        `
+        INSERT INTO public.syllabus_versions (
+          subject_id, exam_board, qualification, label, is_current, source_file, lifecycle
+        ) VALUES (
+          $1, 'Cambridge International', 'AS & A Level', 'Retired current',
+          true, 'l63a01-ret-cur.csv', 'retired'
+        )
+        `,
+        [subjectA.id],
+      ),
+    "syllabus_versions_default_must_be_published",
+    "[db-harness] Retired DEFAULT was accepted.",
+  );
+
+  await expectRejected(
+    () =>
+      pool.query(
+        `
+        INSERT INTO public.syllabus_versions (
+          subject_id, exam_board, qualification, label, is_current, source_file, lifecycle
+        ) VALUES (
+          $1, 'Cambridge International', 'AS & A Level', 'Archived current',
+          true, 'l63a01-arch-cur.csv', 'archived'
+        )
+        `,
+        [subjectA.id],
+      ),
+    "syllabus_versions_default_must_be_published",
+    "[db-harness] Archived DEFAULT was accepted.",
+  );
+
+  await pool.query(
+    `
+    INSERT INTO public.syllabus_versions (
+      subject_id, exam_board, qualification, label, is_current, source_file, lifecycle
+    ) VALUES
+      ($1, 'Cambridge International', 'AS & A Level', 'Draft ok', false, 'l63a01-draft.csv', 'draft'),
+      ($1, 'Cambridge International', 'AS & A Level', 'Retired ok', false, 'l63a01-retired.csv', 'retired'),
+      ($1, 'Cambridge International', 'AS & A Level', 'Archived ok', false, 'l63a01-archived.csv', 'archived')
     `,
     [subjectA.id],
   );
@@ -58,72 +158,37 @@ export async function proveSyllabusVersionLifecycle(pool: Pool): Promise<void> {
     INSERT INTO public.syllabus_versions (
       subject_id, exam_board, qualification, label, is_current, source_file, lifecycle
     ) VALUES (
-      $1, 'Cambridge International', 'AS & A Level', 'Version B', false, 'l63a01-b.csv', 'published'
-    )
-    `,
-    [subjectA.id],
-  );
-
-  try {
-    await pool.query(
-      `
-      INSERT INTO public.syllabus_versions (
-        subject_id, exam_board, qualification, label, is_current, source_file
-      ) VALUES (
-        $1, 'Cambridge International', 'AS & A Level', 'Second default', true, 'l63a01-c.csv'
-      )
-      `,
-      [subjectA.id],
-    );
-    throw new Error("[db-harness] Duplicate DEFAULT version was accepted.");
-  } catch (error) {
-    assertConstraint(
-      error,
-      "syllabus_versions_one_default_per_subject",
-      "[db-harness] Duplicate DEFAULT failed for the wrong reason.",
-    );
-  }
-
-  await pool.query(
-    `
-    INSERT INTO public.syllabus_versions (
-      subject_id, exam_board, qualification, label, is_current, source_file
-    ) VALUES (
-      $1, 'Cambridge International', 'AS & A Level', 'Subject B default', true, 'l63a02-a.csv'
+      $1, 'Cambridge International', 'AS & A Level', 'Subject B default',
+      true, 'l63a02-pub.csv', 'published'
     )
     `,
     [subjectB.id],
   );
 
-  try {
-    await pool.query(
-      `
-      UPDATE public.syllabus_versions
-      SET applicable_from_year = 2025
-      WHERE subject_id = $1 AND source_file = 'l63a01-b.csv'
-      `,
-      [subjectA.id],
-    );
-    throw new Error("[db-harness] Partial applicability window was accepted.");
-  } catch (error) {
-    assertConstraint(
-      error,
-      "syllabus_versions_applicability_complete",
-      "[db-harness] Partial window failed for the wrong reason.",
-    );
-  }
+  await expectRejected(
+    () =>
+      pool.query(
+        `
+        UPDATE public.syllabus_versions
+        SET applicable_from_year = 2025
+        WHERE source_file = 'l63a01-draft.csv'
+        `,
+      ),
+    "syllabus_versions_applicability_complete",
+    "[db-harness] Partial applicability window was accepted.",
+  );
 
   await pool.query(
     `
     UPDATE public.syllabus_versions
     SET
-      applicable_from_year = 2025,
-      applicable_from_series = 'May/June',
-      applicable_to_year = 2027,
-      applicable_to_series = 'Oct/Nov'
-    WHERE subject_id = $1 AND source_file = 'l63a01-a.csv'
+      applicable_from_year = $1,
+      applicable_from_series = $2,
+      applicable_to_year = $3,
+      applicable_to_series = $4
+    WHERE source_file = 'l63a01-pub.csv'
     `,
-    [subjectA.id],
+    [WINDOW_W.fromYear, WINDOW_W.fromSeries, WINDOW_W.toYear, WINDOW_W.toSeries],
   );
 
   try {
@@ -135,23 +200,54 @@ export async function proveSyllabusVersionLifecycle(pool: Pool): Promise<void> {
         applicable_from_series = 'May/June',
         applicable_to_year = 2026,
         applicable_to_series = 'Oct/Nov'
-      WHERE subject_id = $1 AND source_file = 'l63a01-b.csv'
+      WHERE source_file = 'l63a01-draft.csv'
       `,
-      [subjectA.id],
     );
     throw new Error("[db-harness] Inverted applicability window was accepted.");
   } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "[db-harness] Inverted applicability window was accepted."
+    ) {
+      throw error;
+    }
     const message = error instanceof Error ? error.message : String(error);
     const invertedRejected =
       constraintName(error) === "syllabus_versions_applicability_order" ||
       message.includes("syllabus_versions_applicability_order") ||
       message.includes("range lower bound must be less than or equal to range upper bound");
-    if (!invertedRejected) {
-      throw error instanceof Error
-        ? error
-        : new Error("[db-harness] Inverted window failed for the wrong reason.");
-    }
+    if (!invertedRejected) throw error instanceof Error ? error : new Error(String(error));
   }
+
+  await pool.query(
+    `
+    INSERT INTO public.syllabus_versions (
+      subject_id, exam_board, qualification, label, is_current, source_file, lifecycle
+    ) VALUES (
+      $1, 'Cambridge International', 'AS & A Level', 'Published later',
+      false, 'l63a01-pub2.csv', 'published'
+    )
+    `,
+    [subjectA.id],
+  );
+
+  await expectRejected(
+    () =>
+      pool.query(
+        `
+        UPDATE public.syllabus_versions
+        SET
+          applicable_from_year = $1,
+          applicable_from_series = $2,
+          applicable_to_year = $3,
+          applicable_to_series = $4
+        WHERE source_file = 'l63a01-pub2.csv'
+        `,
+        [WINDOW_W.fromYear, WINDOW_W.fromSeries, WINDOW_W.toYear, WINDOW_W.toSeries],
+      ),
+    "syllabus_versions_applicable_windows_no_overlap",
+    "[db-harness] Published vs published overlap was accepted.",
+  );
 
   await pool.query(
     `
@@ -161,69 +257,107 @@ export async function proveSyllabusVersionLifecycle(pool: Pool): Promise<void> {
       applicable_from_series = 'Feb/Mar',
       applicable_to_year = 2029,
       applicable_to_series = 'Oct/Nov'
-    WHERE subject_id = $1 AND source_file = 'l63a01-b.csv'
+    WHERE source_file = 'l63a01-pub2.csv'
     `,
-    [subjectA.id],
   );
-
-  try {
-    await pool.query(
-      `
-      UPDATE public.syllabus_versions
-      SET
-        applicable_from_year = 2026,
-        applicable_from_series = 'May/June',
-        applicable_to_year = 2028,
-        applicable_to_series = 'May/June'
-      WHERE subject_id = $1 AND source_file = 'l63a01-b.csv'
-      `,
-      [subjectA.id],
-    );
-    throw new Error("[db-harness] Overlapping same-subject windows were accepted.");
-  } catch (error) {
-    assertConstraint(
-      error,
-      "syllabus_versions_applicable_windows_no_overlap",
-      "[db-harness] Overlap failed for the wrong reason.",
-    );
-  }
 
   await pool.query(
     `
     UPDATE public.syllabus_versions
     SET
-      applicable_from_year = 2026,
-      applicable_from_series = 'May/June',
-      applicable_to_year = 2028,
-      applicable_to_series = 'May/June'
-    WHERE subject_id = $1 AND source_file = 'l63a02-a.csv'
+      applicable_from_year = $1,
+      applicable_from_series = $2,
+      applicable_to_year = $3,
+      applicable_to_series = $4
+    WHERE source_file IN ('l63a01-draft.csv', 'l63a01-retired.csv', 'l63a01-archived.csv')
     `,
-    [subjectB.id],
+    [WINDOW_W.fromYear, WINDOW_W.fromSeries, WINDOW_W.toYear, WINDOW_W.toSeries],
   );
 
-  const nullWindow = await pool.query<{ n: string }>(
+  await pool.query(
     `
-    SELECT count(*)::text AS n
-    FROM public.syllabus_versions
-    WHERE subject_id = $1 AND applicable_session_range IS NULL
+    UPDATE public.syllabus_versions
+    SET
+      applicable_from_year = $1,
+      applicable_from_series = $2,
+      applicable_to_year = $3,
+      applicable_to_series = $4
+    WHERE source_file = 'l63a02-pub.csv'
     `,
-    [subjectB.id],
+    [WINDOW_W.fromYear, WINDOW_W.fromSeries, WINDOW_W.toYear, WINDOW_W.toSeries],
   );
-  if (nullWindow.rows[0]?.n === "1") {
-    throw new Error("[db-harness] Subject B window was not stored.");
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `
+      INSERT INTO public.syllabus_versions (
+        subject_id, exam_board, qualification, label, is_current, source_file, lifecycle,
+        applicable_from_year, applicable_from_series, applicable_to_year, applicable_to_series
+      ) VALUES (
+        $1, 'Cambridge International', 'AS & A Level', 'Replacement draft',
+        false, 'l63a01-replace.csv', 'draft',
+        $2, $3, $4, $5
+      )
+      `,
+      [subjectA.id, WINDOW_W.fromYear, WINDOW_W.fromSeries, WINDOW_W.toYear, WINDOW_W.toSeries],
+    );
+    await client.query(
+      `
+      UPDATE public.syllabus_versions
+      SET is_current = false, lifecycle = 'retired', retired_at = now()
+      WHERE source_file = 'l63a01-pub.csv'
+      `,
+    );
+    await client.query(
+      `
+      UPDATE public.syllabus_versions
+      SET lifecycle = 'published', is_current = true, published_at = now()
+      WHERE source_file = 'l63a01-replace.csv'
+      `,
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
 
-  const defaults = await pool.query<{ subject_id: number; n: string }>(
+  const transition = await pool.query<{
+    source_file: string;
+    lifecycle: string;
+    is_current: boolean;
+    from_year: number | null;
+  }>(
     `
-    SELECT subject_id, count(*)::text AS n
+    SELECT source_file, lifecycle, is_current,
+           applicable_from_year AS from_year
     FROM public.syllabus_versions
-    WHERE is_current = true AND subject_id = ANY($1::int[])
-    GROUP BY subject_id
+    WHERE source_file IN ('l63a01-pub.csv', 'l63a01-replace.csv')
+    ORDER BY source_file
     `,
-    [[subjectA.id, subjectB.id]],
   );
-  if (defaults.rows.some((row) => Number(row.n) !== 1) || defaults.rows.length !== 2) {
-    throw new Error("[db-harness] DEFAULT uniqueness proof failed.");
+  const retiredA = transition.rows.find((row) => row.source_file === "l63a01-pub.csv");
+  const publishedB = transition.rows.find(
+    (row) => row.source_file === "l63a01-replace.csv",
+  );
+  if (
+    !retiredA ||
+    retiredA.lifecycle !== "retired" ||
+    retiredA.is_current !== false ||
+    retiredA.from_year !== WINDOW_W.fromYear
+  ) {
+    throw new Error("[db-harness] Publication transition did not retain retired A.");
+  }
+  if (
+    !publishedB ||
+    publishedB.lifecycle !== "published" ||
+    publishedB.is_current !== true ||
+    publishedB.from_year !== WINDOW_W.fromYear
+  ) {
+    throw new Error("[db-harness] Publication transition did not publish B as DEFAULT.");
   }
 
   const pinCountAfter = await pool.query<{ n: string }>(

@@ -65,11 +65,17 @@ ALTER TABLE "syllabus_versions" ADD CONSTRAINT "syllabus_versions_applicability_
     <= public.lockdin_exam_session_ordinal("applicable_to_year", "applicable_to_series")
   )
 );--> statement-breakpoint
+ALTER TABLE "syllabus_versions" ADD CONSTRAINT "syllabus_versions_default_must_be_published" CHECK (
+  NOT "is_current" OR "lifecycle" = 'published'::"syllabus_version_lifecycle"
+);--> statement-breakpoint
 ALTER TABLE "syllabus_versions" ADD CONSTRAINT "syllabus_versions_applicable_windows_no_overlap"
 EXCLUDE USING gist (
   "subject_id" WITH =,
   "applicable_session_range" WITH &&
-) WHERE ("applicable_session_range" IS NOT NULL);--> statement-breakpoint
+) WHERE (
+  "applicable_session_range" IS NOT NULL
+  AND "lifecycle" = 'published'::"syllabus_version_lifecycle"
+);--> statement-breakpoint
 
 UPDATE "syllabus_versions"
 SET "published_at" = "imported_at"
