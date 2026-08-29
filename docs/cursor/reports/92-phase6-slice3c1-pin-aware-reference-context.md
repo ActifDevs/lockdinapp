@@ -136,6 +136,61 @@ REAL SECOND PRODUCTION VERSION: **NOT AUTHORIZED**
 
 Merge, hosted apply/adopt/import/publish, 0013, exam-session assignment, Cambridge windows, frontend version selector, repinning, historical backfill.
 
+## Final Preview merge clearance
+
+- Date: 2026-08-29
+- Implementation SHA: `b1d482390c2816ab8b43bcf73cfebd6ded24b303`
+- `origin/main` still `cff8bbd7e157afe33c80b59eca5df27e3f4a4fc2` (unchanged; no auto-rebase)
+- Working tree at clearance: CLEAN
+- Owner human signoff of this Preview pass: **not claimed** (implementation already passed owner code review; merge still requires owner merge authorization)
+
+**Preview (`lockdinapp-web`):**
+
+- GitHub deployment: `6157270869`
+- Vercel dashboard id: `7hLbazmxZDanmrpXBhLaL4pVBVyW`
+- branch: `phase6-slice3c1-pin-aware-reference-context`
+- source: exact feature SHA above
+- state: READY / success
+- immutable URL: `https://lockdinapp-fx0ifv4e1-actif-devs.vercel.app`
+- sibling Preview `lockdinapp`: `6157267185` / `3zzApEJxDZvi9eSpwu74nXZ3r53k` READY (same SHA)
+- Build command remains `pnpm run build:vercel` (api-server + Vite). Does not invoke `syllabus:adopt` / `import` / `publish`, db-harness, or migration reconstruction.
+
+**Public smoke (immutable Preview URL, unauthenticated):**
+
+| Request | Result |
+| --- | --- |
+| `GET /api/healthz` | 200 `{"status":"ok"}` `x-request-id: b73871a6-f926-4f6c-9360-8cc3fb127b56` |
+| `GET /api/healthz/db` | 200 `{"status":"ok","database":"ok"}` `x-request-id: 9c8bb0bc-8526-426e-8419-c48852fa89d0` |
+| `GET /api/tasks` | 401 `{"error":"Unauthorized"}` `x-request-id: f560c43b-bc64-4107-96dd-bd8b17fd0f7e` |
+| `GET /api/subjects` | 200, 9 catalogue subjects, `topicsTotal` present |
+| `GET /api/subjects/1` | 200, `topicsTotal` 24 matches list |
+| `GET /api/subjects/1/syllabus` | 200, 4 units, no duplicate titles, no 5xx |
+| `GET /api/subjects/1/assessment-components` | 200, paper list for that subject |
+
+Hosted remains **one graph per subject**. This Preview catalogue pass is single-version compatibility evidence only. Multi-version isolation remains the disposable `lockdin-db-harness` proof.
+
+**Authenticated Preview read:** NOT CHECKED (no already-authorized QA session used; no credentials requested).
+
+**Write QA this pass:** NOT PERFORMED. Pin write validation remains unit tests + harness, not hosted mutation.
+
+**Hosted read-only (authorized project, no credentials in this report):**
+
+| Check | Result |
+| --- | --- |
+| Journal rows | 13 |
+| Head `created_at` / hash | `1788010369454` / `a86e2fa7f2e053d4d75632f5a5f044a8af5fb2a18b94243d7aeab17008b62eea` = committed `0012_ordinary_penance.sql` |
+| Unexpected 0013 | none |
+| Versions per subject | 1 each (9 subjects) |
+| Draft versions | 0 |
+| Identity keys set | 0 (hosted adoption still not performed) |
+| `user_subjects` | 12 rows, 0 null pins, 0 subject/version mismatches |
+
+**Runtime/build:** GitHub `Vercel – lockdinapp-web` success for exact SHA. Exercised Preview routes returned 200/401 with request IDs; no 5xx, no syllabus mutation, no raw DB errors. Full Vercel log stream was not pulled via authenticated Vercel MCP in this run.
+
+**Automated evidence (implementation; not re-run in this Preview-only pass):** API 133/133; frontend 209/209; syllabus 36/36; harness safety 20/20; disposable reconstruction + multi-version isolation PASS; scripts/frontend/API typecheck PASS. Stock API integration 42/42 **not claimed**.
+
+**This run hosted mutation:** NONE. Merge: **NOT PERFORMED**.
+
 ## Final verdict
 
 6.3C1 **implementation PASS** on the feature branch. Merge and hosted second graph **not performed**. Owner review required before merge.
