@@ -8,6 +8,7 @@ import {
   timestamp,
   unique,
   uniqueIndex,
+  index,
   check,
   customType,
 } from "drizzle-orm/pg-core";
@@ -48,9 +49,13 @@ const int4range = customType<{ data: string; driverData: string }>({
  * subject). It must not be treated as “move all users”.
  *
  * Applicability windows are structured year+series; values stay NULL until
- * 6.3B+ supplies real Cambridge ranges. Overlapping non-null windows are
+ * later slices supply real Cambridge ranges. Overlapping non-null windows are
  * excluded only among published versions of the same subject (btree_gist).
  * DEFAULT (`is_current`) is allowed only when lifecycle is published.
+ *
+ * Identity (6.3B): `logical_revision_key` is unique per subject when set.
+ * `content_sha256` is a graph fingerprint (non-unique). `source_file` is
+ * last-seen provenance (non-unique).
  */
 export const syllabusVersionsTable = pgTable(
   "syllabus_versions",
@@ -83,13 +88,13 @@ export const syllabusVersionsTable = pgTable(
     applicableSessionRange: int4range("applicable_session_range"),
   },
   (table) => [
-    unique("syllabus_versions_subject_source_unique").on(
-      table.subjectId,
-      table.sourceFile,
-    ),
     unique("syllabus_versions_subject_id_id_unique").on(
       table.subjectId,
       table.id,
+    ),
+    index("syllabus_versions_subject_source_idx").on(
+      table.subjectId,
+      table.sourceFile,
     ),
     uniqueIndex("syllabus_versions_one_default_per_subject")
       .on(table.subjectId)
@@ -97,7 +102,7 @@ export const syllabusVersionsTable = pgTable(
     uniqueIndex("syllabus_versions_logical_revision_per_subject")
       .on(table.subjectId, table.logicalRevisionKey)
       .where(sql`${table.logicalRevisionKey} is not null`),
-    uniqueIndex("syllabus_versions_content_sha256_per_subject")
+    index("syllabus_versions_content_sha256_idx")
       .on(table.subjectId, table.contentSha256)
       .where(sql`${table.contentSha256} is not null`),
     check(
