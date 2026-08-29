@@ -7,9 +7,10 @@ It is not an import source. It must not be applied to hosted `syllabus_versions`
 ## Files
 
 - `current-version-research.json` — per-subject mapping from Lockdin graphs to official Cambridge International syllabus PDFs.
-- Schema version **2** adds a 2026-08-29 forensic edition-identification pass. Previous `matchStatus` values are stored as `previousMatchStatus`. Report 96 uncertainty is not overwritten silently.
+- Schema version **3** records the owner identity policy: `logical_revision_key` is `{subjectCode}-rNNN` (internal snapshot). Cambridge edition stays in this artifact. Year-span and year-span-plus-official-version key proposals are superseded, not erased.
+- Schema version **2** added the forensic edition-identification pass. Previous `matchStatus` values remain as `previousMatchStatus`.
 
-Companion report: `docs/cursor/reports/97-phase6-current-syllabus-edition-identification.md`.
+Companion reports: 97 (edition identification), 98 (legacy adoption readiness).
 
 ## Status vocabulary
 
