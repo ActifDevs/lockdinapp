@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import {
   db,
   subjectsTable,
@@ -266,6 +266,38 @@ export async function importSyllabusRevision(
       );
 
     if (!version) {
+      const sameSourceNullIdentity = await tx
+        .select()
+        .from(syllabusVersionsTable)
+        .where(
+          and(
+            eq(syllabusVersionsTable.subjectId, subject.id),
+            eq(syllabusVersionsTable.sourceFile, syllabus.csvFile),
+            isNull(syllabusVersionsTable.logicalRevisionKey),
+          ),
+        );
+      if (sameSourceNullIdentity.some((row) => row.lifecycle === "draft")) {
+        throw new SyllabusOperatorError(
+          "legacy_identity_requires_adoption",
+          "an identity-null draft exists for this subject and source_file; that is not a Model D state and is not a legacy adoption candidate",
+        );
+      }
+      const terminalLegacy = sameSourceNullIdentity.filter((row) =>
+        TERMINAL.has(row.lifecycle),
+      );
+      if (terminalLegacy.length > 1) {
+        throw new SyllabusOperatorError(
+          "ambiguous_legacy_candidate",
+          "multiple identity-null published/retired/archived versions match this subject and source_file; refuse to guess (ambiguous legacy candidate)",
+        );
+      }
+      if (terminalLegacy.length === 1) {
+        throw new SyllabusOperatorError(
+          "legacy_identity_requires_adoption",
+          "an existing identity-null snapshot matches this subject and source_file; run the explicit legacy identity adoption operation first",
+        );
+      }
+
       const [created] = await tx
         .insert(syllabusVersionsTable)
         .values({

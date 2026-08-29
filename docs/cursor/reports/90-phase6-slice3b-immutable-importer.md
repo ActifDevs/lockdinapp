@@ -20,6 +20,18 @@ Corrections applied on the same feature branch (no 0013):
 5. `publish` does not parse or normalize CSV; it uses subject code + logical key only.
 6. `adopt` of a row that already holds the requested key as a **draft** REJECTS (not a legacy published target). Terminal same-key/same-hash remains already-adopted.
 
+### FINAL LEGACY GUARD CORRECTION
+
+Ordinary `importSyllabusRevision` looks up by `logical_revision_key`. If none exists, it now searches identity-null rows for the same `subject_id` + `source_file` **before** inserting a draft.
+
+- Exactly one identity-null **terminal** snapshot (`published` / `retired` / `archived`): **REJECT** `legacy_identity_requires_adoption` — operator must run explicit adopt. No draft, no graph write, no auto-adopt.
+- More than one such match: **REJECT** `ambiguous_legacy_candidate`.
+- Identity-null **draft** at that provenance: invariant error (not a legacy candidate).
+- No matching identity-null row: create a new draft as before (including a new key after A has been adopted, even if `source_file` is reused).
+- A different `source_file` does not match unrelated legacy A; draft B may be created at the data-model level. Hosted second graphs remain forbidden until 6.3C1.
+
+0012 is unchanged.
+
 ## Identity contract
 
 - **`logical_revision_key`:** canonical version identity. Unique per subject when set. A published graph is never rewritten under the same key.
@@ -90,7 +102,7 @@ pre-0000 → 0000–0012 → journal → schema (including 0012 indexes) → lif
 
 - Offline hash + CLI (including publish-without-CSV and single-subject scope)
 - Harness target-safety 20/20
-- Syllabus DB integration 25 (upsert + Model D, including fingerprint/DEFAULT/applicability matrix)
+- Syllabus DB integration (upsert + Model D + legacy import guard)
 - API unit 119/119
 - Scripts typecheck PASS
 - API typecheck: pre-existing TS2305 (`createDatabasePoolConfig` / `validateDatabaseUrl`) — not fixed

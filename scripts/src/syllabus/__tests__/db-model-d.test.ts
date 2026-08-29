@@ -187,6 +187,92 @@ describe("draft import", () => {
   });
 });
 
+describe("legacy import guard", () => {
+  async function makeIdentityNullPublished() {
+    await importSyllabusRevision(syllabus(), "tmp");
+    const [subject] = await db.select().from(subjectsTable).where(eq(subjectsTable.code, CODE));
+    const [version] = await db
+      .select()
+      .from(syllabusVersionsTable)
+      .where(eq(syllabusVersionsTable.subjectId, subject.id));
+    await db.execute(sql`
+      UPDATE public.syllabus_versions
+      SET logical_revision_key = NULL, content_sha256 = NULL,
+          lifecycle = 'published', is_current = true
+      WHERE id = ${version.id}
+    `);
+    return { subject, version };
+  }
+
+  it("rejects same-source import while a published identity-null snapshot exists", async () => {
+    const { version } = await makeIdentityNullPublished();
+    await expect(importSyllabusRevision(syllabus(), "rev-a")).rejects.toThrow(
+      /legacy identity adoption/,
+    );
+    const versions = await db.select().from(syllabusVersionsTable);
+    expect(versions).toHaveLength(1);
+    expect(versions[0]!.id).toBe(version.id);
+    expect(versions[0]!.logicalRevisionKey).toBeNull();
+    expect(versions[0]!.lifecycle).toBe("published");
+  });
+
+  it("allows a same-source new key only after explicit adoption", async () => {
+    await makeIdentityNullPublished();
+    await adoptLegacyIdentity({
+      subjectCode: CODE,
+      sourceFile: "model-d.csv",
+      logicalRevisionKey: "rev-a",
+      syllabus: syllabus(),
+    });
+    const created = await importSyllabusRevision(syllabus(), "rev-b");
+    expect(created.operation).toBe("draft-created");
+    const [a] = await db
+      .select()
+      .from(syllabusVersionsTable)
+      .where(eq(syllabusVersionsTable.logicalRevisionKey, "rev-a"));
+    const [b] = await db
+      .select()
+      .from(syllabusVersionsTable)
+      .where(eq(syllabusVersionsTable.logicalRevisionKey, "rev-b"));
+    expect(a.lifecycle).toBe("published");
+    expect(b.lifecycle).toBe("draft");
+    expect(b.isCurrent).toBe(false);
+  });
+
+  it("allows a different-source new revision while an unrelated identity-null row exists", async () => {
+    await makeIdentityNullPublished();
+    const created = await importSyllabusRevision(
+      syllabus({ csvFile: "other.csv" }),
+      "rev-b",
+    );
+    expect(created.operation).toBe("draft-created");
+    const versions = await db.select().from(syllabusVersionsTable);
+    expect(versions).toHaveLength(2);
+  });
+
+  it("rejects ambiguous identity-null same-source candidates", async () => {
+    const { subject, version } = await makeIdentityNullPublished();
+    await db.execute(sql`
+      INSERT INTO public.syllabus_versions (
+        subject_id, exam_board, qualification, label, is_current, source_file, lifecycle
+      ) VALUES (
+        ${subject.id}, 'Cambridge International', 'Cambridge International AS & A Level',
+        'Other', false, 'model-d.csv', 'published'
+      )
+    `);
+    await expect(importSyllabusRevision(syllabus(), "rev-a")).rejects.toThrow(
+      /ambiguous/,
+    );
+    const versions = await db
+      .select()
+      .from(syllabusVersionsTable)
+      .where(eq(syllabusVersionsTable.subjectId, subject.id));
+    expect(versions).toHaveLength(2);
+    expect(versions.every((row) => row.logicalRevisionKey === null)).toBe(true);
+    expect(version.id).toBeDefined();
+  });
+});
+
 describe("legacy adoption", () => {
   it("adopts identity metadata when the DB graph matches the source", async () => {
     await importSyllabusRevision(syllabus(), "tmp");
