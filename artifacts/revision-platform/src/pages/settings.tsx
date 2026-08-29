@@ -40,7 +40,11 @@ import { PageHeader } from "@/components/page-header";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { cn } from "@/lib/utils";
 import { Link, useSearchParams } from "wouter";
-import { LEVEL_OPTIONS, getUpcomingExamSessions } from "@/lib/exam-sessions";
+import {
+  LEVEL_OPTIONS,
+  getUpcomingExamSessions,
+  structuredSessionFromPickerLabel,
+} from "@/lib/exam-sessions";
 import { ReadStateNotice } from "@/components/read-state-notice";
 import {
   omitDefaultQueryValue,
@@ -240,7 +244,10 @@ export default function Settings() {
     if (selectedSubjectIds.length < 1 || selectedSubjectIds.length > 5) return;
     try {
       const updated = await replaceSubjects.mutateAsync({
-        data: { subjectIds: selectedSubjectIds },
+        data: {
+          subjectIds: selectedSubjectIds,
+          intendedExamSession: structuredSessionFromPickerLabel(examSession),
+        },
       });
       queryClient.setQueryData(getListCurrentUserSubjectsQueryKey(), updated);
       const subjectIdsToRefresh = [

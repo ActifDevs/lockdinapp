@@ -8,7 +8,11 @@ import { cn } from "@/lib/utils";
 import { useListSubjects, ApiError } from "@workspace/api-client-react";
 import { Check, ChevronRight, Loader2, Search } from "lucide-react";
 import { IllustCalm } from "@/components/illustrations";
-import { getUpcomingExamSessions, LEVEL_OPTIONS } from "@/lib/exam-sessions";
+import {
+  getUpcomingExamSessions,
+  LEVEL_OPTIONS,
+  structuredSessionFromPickerLabel,
+} from "@/lib/exam-sessions";
 import {
   canProceedWithSubjects,
   filterSubjectsByQuery,
@@ -92,6 +96,7 @@ export default function Onboarding() {
         level: level!,
         examSession: examSession!,
         subjectIds: selectedIds,
+        intendedExamSession: structuredSessionFromPickerLabel(examSession),
       });
     } catch (err) {
       const msg =

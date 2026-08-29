@@ -52,6 +52,8 @@ export type CompleteOnboardingPayload = {
   level: string;
   examSession: string;
   subjectIds: number[];
+  intendedExamSession?: CompleteOnboardingInput["intendedExamSession"];
+  subjectSessionOverrides?: CompleteOnboardingInput["subjectSessionOverrides"];
 };
 
 type AuthContextValue = {
@@ -361,6 +363,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         level: payload.level,
         examSession: payload.examSession,
         subjectIds: payload.subjectIds,
+        ...(payload.intendedExamSession
+          ? { intendedExamSession: payload.intendedExamSession }
+          : {}),
+        ...(payload.subjectSessionOverrides
+          ? { subjectSessionOverrides: payload.subjectSessionOverrides }
+          : {}),
       };
       const profile = await completeCurrentUserOnboarding(body);
       if (session?.user) {
