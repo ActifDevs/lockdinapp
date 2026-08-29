@@ -7,6 +7,9 @@ It is not an import source. It must not be applied to hosted `syllabus_versions`
 ## Files
 
 - `current-version-research.json` — per-subject mapping from Lockdin graphs to official Cambridge International syllabus PDFs.
+- Schema version **2** adds a 2026-08-29 forensic edition-identification pass. Previous `matchStatus` values are stored as `previousMatchStatus`. Report 96 uncertainty is not overwritten silently.
+
+Companion report: `docs/cursor/reports/97-phase6-current-syllabus-edition-identification.md`.
 
 ## Status vocabulary
 
@@ -19,7 +22,7 @@ Search-engine snippets and third-party sites are not authority. Every factual cl
 
 ## Retrieval
 
-Research date recorded in the JSON: **2026-08-29**.
+Research dates recorded in the JSON: **2026-08-29** (Report 96 inventory + Report 97 forensic pass).
 
 ## Do not
 

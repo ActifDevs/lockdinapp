@@ -1,14 +1,24 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "retrievalDate": "2026-08-29",
   "authority": "Official Cambridge International syllabus PDFs and subject pages only. Search used for discovery. Snippets are not evidence.",
   "logicalRevisionKeyConvention": {
-    "pattern": "{subjectCode}-{firstExamYear}-{lastExamYear}",
-    "example": "9702-2025-2027",
+    "pattern": "{subjectCode}-{firstExamYear}-{lastExamYear}-v{officialSyllabusVersion}",
+    "example": "9489-2027-2029-v2",
+    "previousPattern": "{subjectCode}-{firstExamYear}-{lastExamYear}",
+    "rejected": [
+      "Year-span-only is insufficient: Cambridge issues version N updates for the same examination-year range (e.g. 9709 2026\u20132027 version 4; 9231 2026\u20132027 version 3; 9609/9708 2026\u20132028 version 2; 9618 2026 version 2; 9489 2026 version 3).",
+      "Images publication id alone (e.g. 718292) is useful provenance but may be a CMS asset id, not a syllabus revision code printed as a stable product key."
+    ],
+    "storeSeparately": [
+      "cambridgeImagesPublicationId",
+      "officialPublishedMonth",
+      "officialDocumentUrl"
+    ],
     "notes": [
-      "Stable, human-auditable, independent of filename and is_current.",
-      "Owner must choose which official examination-year edition Lockdin currently represents before any hosted adopt.",
-      "Do not apply these candidates hosted from this research file."
+      "Do not apply hosted.",
+      "Official syllabus Version N is printed on the Cambridge PDF.",
+      "Independent of filename and is_current."
     ]
   },
   "seriesNormalization": {
@@ -19,7 +29,7 @@
   "modelSafety": {
     "continuousRangeAloneSafeForEverySubject": "NO",
     "seriesAvailabilityValidationRequired": "YES",
-    "reason": "Official documents typically allow June and November globally and March only for India, or June and November only. A Lockdin inclusive year×series ordinal range from May/June Y1 to Oct/Nov Y2 also contains Feb/Mar of intervening years. That is syllabus-validity-over-time, not global subject availability in every sitting."
+    "reason": "Official documents typically allow June and November globally and March only for India, or June and November only. A Lockdin inclusive year\u00d7series ordinal range from May/June Y1 to Oct/Nov Y2 also contains Feb/Mar of intervening years. That is syllabus-validity-over-time, not global subject availability in every sitting."
   },
   "hostedInventoryNote": "Read-only hosted check 2026-08-29: nine subjects, one published DEFAULT version each, logical_revision_key null, content_sha256 null, applicability null. No second graph.",
   "subjects": [
@@ -52,7 +62,7 @@
           "retrievalDate": "2026-08-29"
         }
       ],
-      "logicalRevisionKeyCandidate": "9231-2026-2027",
+      "logicalRevisionKeyCandidate": "9231-2026-2027-v3",
       "validity": {
         "firstYear": 2026,
         "firstSeries": "May/June",
@@ -61,26 +71,54 @@
         "status": "PROBABLE",
         "officialWording": "Use this syllabus for exams in 2026 and 2027. Exams are available in the June and November series."
       },
-      "explicitExamSeries": ["May/June", "Oct/Nov"],
+      "explicitExamSeries": [
+        "May/June",
+        "Oct/Nov"
+      ],
       "marchAvailability": "NOT_LISTED_IN_2026_2027_PDF",
       "rangeAloneSafe": "NO",
       "asALevel": "both",
       "evidence": {
         "page": "cover / syllabus availability statement",
-        "section": "Use this syllabus for exams in…",
-        "note": "CSV papers 1–4 (Further Pure 1/2, Further Mechanics, Further Probability & Statistics) match the official four-component structure. Consecutive 2028–2030 PDF uses the same component set; edition is not unique from CSV alone."
+        "section": "Use this syllabus for exams in\u2026",
+        "note": "CSV papers 1\u20134 (Further Pure 1/2, Further Mechanics, Further Probability & Statistics) match the official four-component structure. Consecutive 2028\u20132030 PDF uses the same component set; edition is not unique from CSV alone."
       },
       "contentMatch": {
         "status": "PROBABLE",
-        "note": "Main topics and paper codes align with official Papers 1–4. No CSV year marker."
+        "note": "Main topics and paper codes align with official Papers 1\u20134. No CSV year marker."
       },
       "identityAdoptionReady": "NO",
       "applicabilityPopulationReady": "NO",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "Owner must confirm Lockdin graph is the 2026–2027 edition rather than 2028–2030 (official text: no significant teaching changes).",
-        "Confirm March is never offered for 9231 in any administrative zone Lockdin serves."
-      ]
+        "Owner must confirm Lockdin graph is the 2026\u20132027 edition rather than 2028\u20132030 (official text: no significant teaching changes).",
+        "Confirm March is never offered for 9231 in any administrative zone Lockdin serves.",
+        "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
+        "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
+      ],
+      "previousMatchStatus": "PROBABLE",
+      "forensicPass": {
+        "date": "2026-08-29",
+        "bestMatchingEdition": "Cambridge International AS & A Level Further Mathematics 9231 for exams in 2026 and 2027 (Images 697357, official Version 3, published July 2025) \u2014 not uniquely proven vs 2028\u20132030 744603",
+        "officialSyllabusVersion": "3",
+        "officialPublished": "July 2025",
+        "cambridgeImagesPublicationId": "697357",
+        "discriminators": {
+          "status": "NONE_UNIQUE",
+          "note": "Zero main-topic, subtopic, or learning-outcome strings in the CSV appear in only one of 697357 vs 744603. Both official PDFs state no significant teaching changes. Papers 1\u20134 titles, durations, and marks match both."
+        },
+        "gitProvenance": {
+          "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
+          "correctedIfAny": null,
+          "role": "supporting only; not a substitute for official-document content matching"
+        }
+      },
+      "previousLogicalRevisionKeyCandidate": "9231-2026-2027",
+      "productAutomaticSeries": [
+        "May/June",
+        "Oct/Nov"
+      ],
+      "officialMarchForAutomaticAssignment": "DEFERRED"
     },
     {
       "subjectCode": "9489",
@@ -95,19 +133,22 @@
       "logicalRevisionKeyStatus": "unset",
       "contentSha256Status": "unset",
       "applicabilityStatus": "null",
-      "matchStatus": "PROBABLE",
+      "matchStatus": "VERIFIED",
       "officialDocument": {
-        "title": "Cambridge International AS & A Level History 9489 syllabus for examination in 2026",
-        "url": "https://www.cambridgeinternational.org/Images/697368-2026-syllabus.pdf",
-        "publicationId": "697368",
+        "title": "Cambridge International AS & A Level History 9489 syllabus for examination in 2027, 2028 and 2029",
+        "url": "https://www.cambridgeinternational.org/Images/718292-2027-2029-syllabus.pdf",
+        "publicationId": "718292",
+        "officialSyllabusVersion": "2",
+        "published": "September 2024",
         "retrievalDate": "2026-08-29"
       },
       "relatedOfficialDocuments": [
         {
-          "title": "Cambridge International AS & A Level History 9489 syllabus for examination in 2027, 2028 and 2029",
-          "url": "https://www.cambridgeinternational.org/Images/718292-2027-2029-syllabus.pdf",
-          "publicationId": "718292",
-          "retrievalDate": "2026-08-29"
+          "title": "Cambridge International AS & A Level History 9489 syllabus for examination in 2026",
+          "url": "https://www.cambridgeinternational.org/Images/697368-2026-syllabus.pdf",
+          "publicationId": "697368",
+          "retrievalDate": "2026-08-29",
+          "role": "previous-probable-candidate-superseded-by-forensic-pass"
         },
         {
           "title": "Syllabus update: Cambridge AS & A Level History (9489) for examination in 2026",
@@ -116,35 +157,76 @@
           "retrievalDate": "2026-08-29"
         }
       ],
-      "logicalRevisionKeyCandidate": "9489-2026-2026",
+      "logicalRevisionKeyCandidate": "9489-2027-2029-v2",
       "validity": {
-        "firstYear": 2026,
+        "firstYear": 2027,
         "firstSeries": "May/June",
-        "lastYear": 2026,
+        "lastYear": 2029,
         "lastSeries": "Oct/Nov",
-        "status": "PROBABLE",
-        "officialWording": "Use this syllabus for exams in 2026. Exams are available in the June and November series."
+        "status": "VERIFIED",
+        "officialWording": "Use this syllabus for exams in 2027, 2028 and 2029. Exams are available in the June and November series."
       },
-      "explicitExamSeries": ["May/June", "Oct/Nov"],
-      "marchAvailability": "WITHDRAWN_FOR_2026",
+      "explicitExamSeries": [
+        "May/June",
+        "Oct/Nov"
+      ],
+      "marchAvailability": "NOT_LISTED_IN_2027_2029_PDF",
       "rangeAloneSafe": "NO",
       "asALevel": "both",
       "evidence": {
-        "page": "cover; later availability note",
-        "section": "Use this syllabus for exams in 2026; Changes to availability",
-        "note": "Official 2026 PDF lists France, 1774–1814 and Topic 2: The Holocaust, matching CSV main topics. Official update states 2027 content and assessment change and that 2026 is a one-year document. CSV cannot be assumed to be the 2027–2029 edition."
+        "page": "cover; Content overview p.9; Assessment overview p.10; Changes pp.78\u201380",
+        "section": "Use this syllabus for exams in 2027, 2028 and 2029",
+        "note": "Report 96 Holocaust/France overlap is preserved as non-discriminating. Forensic pass uses 2027-only topics and assessment rename."
       },
       "contentMatch": {
-        "status": "PROBABLE",
-        "note": "Topic titles align with the 2026 official option list. Owner review required before treating the graph as 2027–2029."
+        "status": "VERIFIED",
+        "note": "Option titles, Paper 1 Historical Sources naming, three-topic AS structure, and France key-question wording match official 718292 and contradict 697368 2026 structure."
       },
-      "identityAdoptionReady": "NO",
+      "identityAdoptionReady": "YES",
       "applicabilityPopulationReady": "NO",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "Confirm CSV is the 2026 (from-2021) lineage, not the 2027–2029 rewritten History syllabus.",
-        "2026 PDF states the syllabus is no longer available in the March series."
-      ]
+        "Owner must still approve logical_revision_key 9489-2027-2029-v2 before hosted adopt.",
+        "Official 2027\u20132029 PDF: not available in all administrative zones; not available in the US from 2027. Lockdin has no zone model \u2014 record only.",
+        "Do not populate applicability until series-availability is modelled; May/June 2027\u2013Oct/Nov 2029 still contains Feb/Mar 2028 and 2029 in a continuous 0011 range."
+      ],
+      "previousMatchStatus": "PROBABLE",
+      "forensicPass": {
+        "date": "2026-08-29",
+        "bestMatchingEdition": "Cambridge International AS & A Level History 9489 for exams in 2027, 2028 and 2029",
+        "officialSyllabusVersion": "2",
+        "officialPublished": "September 2024",
+        "cambridgeImagesPublicationId": "718292",
+        "discriminators": {
+          "status": "UNIQUE_VS_2026",
+          "against": "697368 2026-only edition",
+          "examples": [
+            "CSV main topic 'Russia from autocracy to revolution 1881-1924' is official 2027 wording; 2026 uses 'The Russian Revolution, 1894\u20131921'.",
+            "CSV mains 'The Civil War and Reconstruction 1820-77', 'A time of challenges: the USA 1961-74', 'The route to independence: Malaysia and Indonesia c.1909-67', 'End of minority rule in South Africa and Zimbabwe 1948-94' appear in 718292 and not as 2026 option titles.",
+            "CSV Paper 1 name is 'Paper 1 Historical Sources'; official 2026 assessment overview uses 'Document question'; official 2027 uses 'Historical Sources'.",
+            "CSV AS European option aligns with official 'Modern Europe, 1774\u20131924' (three topics), not 2026 'Modern Europe, 1750\u20131921' (four topics including Industrial Revolution in Britain, which is absent from the CSV).",
+            "CSV France key question uses 'immediate consequences' (2027), not 2026 'immediate outcomes'.",
+            "Official 718292 pp. 78\u201380 lists those content/assessment changes for first examination in 2027."
+          ]
+        },
+        "gitProvenance": {
+          "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
+          "correctedIfAny": "3547a9c 2026-07-27 Corrected the history, biology, chemistry and mathematics csv files for importation",
+          "role": "supporting only; not a substitute for official-document content matching"
+        },
+        "previousOfficialDocumentKept": {
+          "title": "Cambridge International AS & A Level History 9489 syllabus for examination in 2026",
+          "url": "https://www.cambridgeinternational.org/Images/697368-2026-syllabus.pdf",
+          "publicationId": "697368",
+          "note": "Report 96 treated this as the probable identity because France 1774\u20131814 and The Holocaust appear in both editions. Forensic pass: those topics are not unique. The Lockdin graph matches the 2027\u20132029 rewrite."
+        }
+      },
+      "previousLogicalRevisionKeyCandidate": "9489-2026-2026",
+      "productAutomaticSeries": [
+        "May/June",
+        "Oct/Nov"
+      ],
+      "officialMarchForAutomaticAssignment": "DEFERRED"
     },
     {
       "subjectCode": "9609",
@@ -174,7 +256,7 @@
           "retrievalDate": "2026-08-29"
         }
       ],
-      "logicalRevisionKeyCandidate": "9609-2026-2028",
+      "logicalRevisionKeyCandidate": "9609-2026-2028-v2",
       "validity": {
         "firstYear": 2026,
         "firstSeries": "May/June",
@@ -183,26 +265,55 @@
         "status": "PROBABLE",
         "officialWording": "Use this syllabus for exams in 2026, 2027 and 2028. Exams are available in the June and November series. Exams are also available in the March series in India."
       },
-      "explicitExamSeries": ["Feb/Mar", "May/June", "Oct/Nov"],
+      "explicitExamSeries": [
+        "Feb/Mar",
+        "May/June",
+        "Oct/Nov"
+      ],
       "marchAvailability": "INDIA_ONLY",
       "rangeAloneSafe": "NO",
       "asALevel": "both",
       "evidence": {
         "page": "cover; Making entries",
-        "section": "Use this syllabus for exams in…",
-        "note": "CSV Papers 1–4 names (Business Concepts 1/2, Decision-Making, Strategy) and five main topic areas match the official 2026–2028 PDF. Prior 2023–2025 PDF uses the same paper titles; edition not unique from CSV."
+        "section": "Use this syllabus for exams in\u2026",
+        "note": "CSV Papers 1\u20134 names (Business Concepts 1/2, Decision-Making, Strategy) and five main topic areas match the official 2026\u20132028 PDF. Prior 2023\u20132025 PDF uses the same paper titles; edition not unique from CSV."
       },
       "contentMatch": {
         "status": "PROBABLE",
-        "note": "Component names match official assessment overview. No significant-teaching-change statement on 2026–2028 vs endorsed-from-2023 textbooks."
+        "note": "Component names match official assessment overview. No significant-teaching-change statement on 2026\u20132028 vs endorsed-from-2023 textbooks."
       },
       "identityAdoptionReady": "NO",
       "applicabilityPopulationReady": "NO",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "Choose 2023–2025 vs 2026–2028 edition for adopt.",
-        "March is India-only; must not be treated as globally available if a continuous range includes Feb/Mar."
-      ]
+        "Choose 2023\u20132025 vs 2026\u20132028 edition for adopt.",
+        "March is India-only; must not be treated as globally available if a continuous range includes Feb/Mar.",
+        "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
+        "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
+      ],
+      "previousMatchStatus": "PROBABLE",
+      "forensicPass": {
+        "date": "2026-08-29",
+        "bestMatchingEdition": "Not unique: 595459 (2023\u20132025) and 697371 (2026\u20132028 Version 2, December 2025) share the same five topic titles and Papers 1\u20134 names",
+        "officialSyllabusVersion": "2",
+        "officialPublished": "December 2025",
+        "cambridgeImagesPublicationId": "697371",
+        "discriminators": {
+          "status": "INSUFFICIENT",
+          "note": "One CSV learning-outcome string matched 2023\u20132025 PDF extract and not 2026\u20132028 extract; likely hyphenation/wording, not a structural rewrite. Official 2026\u20132028 PDF: no significant teaching changes; textbooks from 2023 still suitable."
+        },
+        "gitProvenance": {
+          "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
+          "correctedIfAny": null,
+          "role": "supporting only; not a substitute for official-document content matching"
+        }
+      },
+      "previousLogicalRevisionKeyCandidate": "9609-2026-2028",
+      "productAutomaticSeries": [
+        "May/June",
+        "Oct/Nov"
+      ],
+      "officialMarchForAutomaticAssignment": "DEFERRED"
     },
     {
       "subjectCode": "9618",
@@ -230,9 +341,16 @@
           "url": "https://www.cambridgeinternational.org/Images/721397-2027-2029-syllabus.pdf",
           "publicationId": "721397",
           "retrievalDate": "2026-08-29"
+        },
+        {
+          "title": "Syllabus update: Cambridge International AS & A Level Computer Science (9618) for examination in 2026",
+          "url": "https://www.cambridgeinternational.org/Images/747145-2026-syllabus-update.pdf",
+          "publicationId": "747145",
+          "retrievalDate": "2026-08-29",
+          "note": "Same 2026 year-span, Version 2 December 2025."
         }
       ],
-      "logicalRevisionKeyCandidate": "9618-2026-2026",
+      "logicalRevisionKeyCandidate": "9618-2026-2026-v2",
       "validity": {
         "firstYear": 2026,
         "firstSeries": "May/June",
@@ -241,14 +359,17 @@
         "status": "PROBABLE",
         "officialWording": "Use this syllabus for exams in 2026. Exams are available in the June and November series."
       },
-      "explicitExamSeries": ["May/June", "Oct/Nov"],
+      "explicitExamSeries": [
+        "May/June",
+        "Oct/Nov"
+      ],
       "marchAvailability": "NOT_LISTED_IN_2026_PDF",
       "rangeAloneSafe": "NO",
       "asALevel": "both",
       "evidence": {
         "page": "cover",
         "section": "Use this syllabus for exams in 2026",
-        "note": "CSV Papers 1–4 (Theory Fundamentals, Problem-solving and Programming, Advanced Theory, Practical) match official assessment. 2027–2029 is a separate official PDF; 2026 is a one-year document. Graph cannot uniquely pick 2026 vs 2027–2029 without owner review."
+        "note": "CSV Papers 1\u20134 (Theory Fundamentals, Problem-solving and Programming, Advanced Theory, Practical) match official assessment. 2027\u20132029 is a separate official PDF; 2026 is a one-year document. Graph cannot uniquely pick 2026 vs 2027\u20132029 without owner review."
       },
       "contentMatch": {
         "status": "PROBABLE",
@@ -258,9 +379,34 @@
       "applicabilityPopulationReady": "NO",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "Owner must choose 2026 vs 2027–2029 official edition.",
-        "Confirm no March series for 9618 in Lockdin-served zones."
-      ]
+        "Owner must choose 2026 vs 2027\u20132029 official edition.",
+        "Confirm no March series for 9618 in Lockdin-served zones.",
+        "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
+        "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
+      ],
+      "previousMatchStatus": "PROBABLE",
+      "forensicPass": {
+        "date": "2026-08-29",
+        "bestMatchingEdition": "Not unique vs 697372 (2026 Version 2) and 721397 (2027\u20132029 Version 2); official 2027\u20132029 PDF states no significant teaching changes and from-2021 textbooks remain suitable",
+        "officialSyllabusVersion": "2",
+        "officialPublished": "December 2025",
+        "cambridgeImagesPublicationId": "697372",
+        "discriminators": {
+          "status": "NONE_UNIQUE",
+          "note": "All 19 CSV main topics appear in both official PDFs. Zero unique subtopic/LO hits. Papers 1\u20134 names, 150-minute Paper 4 Practical, and 75-mark papers match both. Official 2026 update 747145 is a version-2 clarification (papers/calculators), not a content rewrite."
+        },
+        "gitProvenance": {
+          "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
+          "correctedIfAny": null,
+          "role": "supporting only; not a substitute for official-document content matching"
+        }
+      },
+      "previousLogicalRevisionKeyCandidate": "9618-2026-2026",
+      "productAutomaticSeries": [
+        "May/June",
+        "Oct/Nov"
+      ],
+      "officialMarchForAutomaticAssignment": "DEFERRED"
     },
     {
       "subjectCode": "9700",
@@ -290,7 +436,7 @@
           "retrievalDate": "2026-08-29"
         }
       ],
-      "logicalRevisionKeyCandidate": "9700-2025-2027",
+      "logicalRevisionKeyCandidate": "9700-2025-2027-v1",
       "validity": {
         "firstYear": 2025,
         "firstSeries": "May/June",
@@ -299,14 +445,18 @@
         "status": "PROBABLE",
         "officialWording": "Use this syllabus for exams in 2025, 2026 and 2027. Exams are available in the June and November series. Also available for examination in March 2025, 2026 and 2027 for India."
       },
-      "explicitExamSeries": ["Feb/Mar", "May/June", "Oct/Nov"],
+      "explicitExamSeries": [
+        "Feb/Mar",
+        "May/June",
+        "Oct/Nov"
+      ],
       "marchAvailability": "INDIA_ONLY",
       "rangeAloneSafe": "NO",
       "asALevel": "both",
       "evidence": {
         "page": "cover",
-        "section": "Use this syllabus for exams in…",
-        "note": "CSV Papers 1–5 names match official assessment. Topic 1 Cell structure and subsequent AS topics match official content overview. CSV also stores Assessment objectives / Mathematical requirements as main topics — importer noise, not a different specification."
+        "section": "Use this syllabus for exams in\u2026",
+        "note": "CSV Papers 1\u20135 names match official assessment. Topic 1 Cell structure and subsequent AS topics match official content overview. CSV also stores Assessment objectives / Mathematical requirements as main topics \u2014 importer noise, not a different specification."
       },
       "contentMatch": {
         "status": "PROBABLE",
@@ -316,9 +466,34 @@
       "applicabilityPopulationReady": "NO",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "2028–2030 official PDF exists with no significant teaching changes; owner must pick edition.",
-        "March is India-only."
-      ]
+        "2028\u20132030 official PDF exists with no significant teaching changes; owner must pick edition.",
+        "March is India-only.",
+        "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
+        "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
+      ],
+      "previousMatchStatus": "PROBABLE",
+      "forensicPass": {
+        "date": "2026-08-29",
+        "bestMatchingEdition": "Not unique vs 664560 (2025\u20132027 Version 1) and 744622 (2028\u20132030 Version 1); both state no significant teaching changes",
+        "officialSyllabusVersion": "1",
+        "officialPublished": "September 2022",
+        "cambridgeImagesPublicationId": "664560",
+        "discriminators": {
+          "status": "NONE_UNIQUE",
+          "note": "AS/A topic titles 1\u201319 and Papers 1\u20135 weightings match both official PDFs. CSV also stores Assessment objectives / Mathematical requirements as main topics (importer noise)."
+        },
+        "gitProvenance": {
+          "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
+          "correctedIfAny": "3547a9c 2026-07-27 Corrected the history, biology, chemistry and mathematics csv files for importation",
+          "role": "supporting only; not a substitute for official-document content matching"
+        }
+      },
+      "previousLogicalRevisionKeyCandidate": "9700-2025-2027",
+      "productAutomaticSeries": [
+        "May/June",
+        "Oct/Nov"
+      ],
+      "officialMarchForAutomaticAssignment": "DEFERRED"
     },
     {
       "subjectCode": "9701",
@@ -340,7 +515,7 @@
         "publicationId": "664563",
         "retrievalDate": "2026-08-29"
       },
-      "logicalRevisionKeyCandidate": "9701-2025-2027",
+      "logicalRevisionKeyCandidate": "9701-2025-2027-v1",
       "validity": {
         "firstYear": 2025,
         "firstSeries": "May/June",
@@ -349,14 +524,18 @@
         "status": "PROBABLE",
         "officialWording": "Use this syllabus for exams in 2025, 2026 and 2027. Exams are available in the June and November series. Also available for examination in March 2025, 2026 and 2027 for India."
       },
-      "explicitExamSeries": ["Feb/Mar", "May/June", "Oct/Nov"],
+      "explicitExamSeries": [
+        "Feb/Mar",
+        "May/June",
+        "Oct/Nov"
+      ],
       "marchAvailability": "INDIA_ONLY",
       "rangeAloneSafe": "NO",
       "asALevel": "both",
       "evidence": {
         "page": "cover; Making entries",
-        "section": "Use this syllabus for exams in…",
-        "note": "CSV topic 1 Atomic structure and Papers 1–5 match official structure. Component display names in CSV are shorter (Paper 1 / Paper 2) than official titles; paper codes 9701/1–5 match."
+        "section": "Use this syllabus for exams in\u2026",
+        "note": "CSV topic 1 Atomic structure and Papers 1\u20135 match official structure. Component display names in CSV are shorter (Paper 1 / Paper 2) than official titles; paper codes 9701/1\u20135 match."
       },
       "contentMatch": {
         "status": "PROBABLE",
@@ -366,8 +545,41 @@
       "applicabilityPopulationReady": "NO",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "Search located the 2025–2027 official PDF; a later edition may exist and was not used as identity.",
-        "March is India-only."
+        "Search located the 2025\u20132027 official PDF; a later edition may exist and was not used as identity.",
+        "March is India-only.",
+        "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
+        "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
+      ],
+      "previousMatchStatus": "PROBABLE",
+      "forensicPass": {
+        "date": "2026-08-29",
+        "bestMatchingEdition": "Not unique vs 664563 (2025\u20132027 Version 1) and 744624 (2028\u20132030 Version 1). Later edition confirmed official; both state no significant teaching changes.",
+        "officialSyllabusVersion": "1",
+        "officialPublished": "September 2022",
+        "cambridgeImagesPublicationId": "664563",
+        "discriminators": {
+          "status": "INSUFFICIENT",
+          "note": "Some CSV learning-outcome strings failed a naive 2028 PDF substring search; the same scientific terms (solubility product, Kstab, buffer solutions) are present in 744624. Official 2028 PDF: no significant teaching changes; from-2022 textbooks still suitable. Do not treat extract misses as edition proof."
+        },
+        "gitProvenance": {
+          "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
+          "correctedIfAny": "3547a9c 2026-07-27 Corrected the history, biology, chemistry and mathematics csv files for importation",
+          "role": "supporting only; not a substitute for official-document content matching"
+        }
+      },
+      "previousLogicalRevisionKeyCandidate": "9701-2025-2027",
+      "productAutomaticSeries": [
+        "May/June",
+        "Oct/Nov"
+      ],
+      "officialMarchForAutomaticAssignment": "DEFERRED",
+      "relatedOfficialDocuments": [
+        {
+          "title": "Cambridge International AS & A Level Chemistry 9701 syllabus for exams in 2028, 2029 and 2030",
+          "url": "https://www.cambridgeinternational.org/Images/744624-2028-2030-syllabus.pdf",
+          "publicationId": "744624",
+          "retrievalDate": "2026-08-29"
+        }
       ]
     },
     {
@@ -399,7 +611,7 @@
           "retrievalDate": "2026-08-29"
         }
       ],
-      "logicalRevisionKeyCandidate": "9702-2025-2027",
+      "logicalRevisionKeyCandidate": "9702-2025-2027-v1",
       "validity": {
         "firstYear": 2025,
         "firstSeries": "May/June",
@@ -408,14 +620,18 @@
         "status": "PROBABLE",
         "officialWording": "Use this syllabus for exams in 2025, 2026 and 2027. Exams are available in the June and November series. Also available for examination in March 2025, 2026 and 2027 for India."
       },
-      "explicitExamSeries": ["Feb/Mar", "May/June", "Oct/Nov"],
+      "explicitExamSeries": [
+        "Feb/Mar",
+        "May/June",
+        "Oct/Nov"
+      ],
       "marchAvailability": "INDIA_ONLY",
       "rangeAloneSafe": "NO",
       "asALevel": "both",
       "evidence": {
         "page": "cover; Content overview",
-        "section": "AS Level topics 1–11 and A Level 12–25",
-        "note": "CSV main topics 1–25 plus practical papers match the official numbered topic list and Papers 1–5. 2028–2030 official PDF states no significant teaching changes; edition is not unique from CSV."
+        "section": "AS Level topics 1\u201311 and A Level 12\u201325",
+        "note": "CSV main topics 1\u201325 plus practical papers match the official numbered topic list and Papers 1\u20135. 2028\u20132030 official PDF states no significant teaching changes; edition is not unique from CSV."
       },
       "contentMatch": {
         "status": "PROBABLE",
@@ -425,9 +641,34 @@
       "applicabilityPopulationReady": "NO",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "Owner must choose 2025–2027 vs 2028–2030 (and not the expired 2022–2024 PDF).",
-        "March is India-only."
-      ]
+        "Owner must choose 2025\u20132027 vs 2028\u20132030 (and not the expired 2022\u20132024 PDF).",
+        "March is India-only.",
+        "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
+        "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
+      ],
+      "previousMatchStatus": "PROBABLE",
+      "forensicPass": {
+        "date": "2026-08-29",
+        "bestMatchingEdition": "Not unique vs 664565 (2025\u20132027 Version 1) and 744626 (2028\u20132030 Version 1); both state no significant teaching changes",
+        "officialSyllabusVersion": "1",
+        "officialPublished": "September 2022",
+        "cambridgeImagesPublicationId": "664565",
+        "discriminators": {
+          "status": "INSUFFICIENT",
+          "note": "Topics 1\u201325 match both. A few LO substring hits differed (LaTeX vs plain E=mc^2). Official 2028 PDF: no significant teaching changes."
+        },
+        "gitProvenance": {
+          "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
+          "correctedIfAny": null,
+          "role": "supporting only; not a substitute for official-document content matching"
+        }
+      },
+      "previousLogicalRevisionKeyCandidate": "9702-2025-2027",
+      "productAutomaticSeries": [
+        "May/June",
+        "Oct/Nov"
+      ],
+      "officialMarchForAutomaticAssignment": "DEFERRED"
     },
     {
       "subjectCode": "9708",
@@ -449,7 +690,7 @@
         "publicationId": "697423",
         "retrievalDate": "2026-08-29"
       },
-      "logicalRevisionKeyCandidate": "9708-2026-2028",
+      "logicalRevisionKeyCandidate": "9708-2026-2028-v2",
       "validity": {
         "firstYear": 2026,
         "firstSeries": "May/June",
@@ -458,14 +699,18 @@
         "status": "PROBABLE",
         "officialWording": "Use this syllabus for exams in 2026, 2027 and 2028. Exams are available in the June and November series. Exams are also available in the March series in India."
       },
-      "explicitExamSeries": ["Feb/Mar", "May/June", "Oct/Nov"],
+      "explicitExamSeries": [
+        "Feb/Mar",
+        "May/June",
+        "Oct/Nov"
+      ],
       "marchAvailability": "INDIA_ONLY",
       "rangeAloneSafe": "NO",
       "asALevel": "both",
       "evidence": {
         "page": "cover; Content overview",
         "section": "1 Basic economic ideas and resource allocation",
-        "note": "CSV Papers 1–4 and first topic title match official 2026–2028 PDF. Official Papers 1–2 are AS; 3–4 are A Level. CSV component names are generic Paper 1–4."
+        "note": "CSV Papers 1\u20134 and first topic title match official 2026\u20132028 PDF. Official Papers 1\u20132 are AS; 3\u20134 are A Level. CSV component names are generic Paper 1\u20134."
       },
       "contentMatch": {
         "status": "PROBABLE",
@@ -476,7 +721,47 @@
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
         "Confirm no competing official edition should be the Lockdin identity.",
-        "March is India-only."
+        "March is India-only.",
+        "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
+        "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
+      ],
+      "previousMatchStatus": "PROBABLE",
+      "forensicPass": {
+        "date": "2026-08-29",
+        "bestMatchingEdition": "Not unique vs 595463 (2023\u20132025 Version 2) and 697423 (2026\u20132028 Version 2). Official 2026\u20132028 update 748950 is weblink-only (December 2025).",
+        "officialSyllabusVersion": "2",
+        "officialPublished": "December 2025",
+        "cambridgeImagesPublicationId": "697423",
+        "discriminators": {
+          "status": "INSUFFICIENT",
+          "note": "CSV Papers 1\u20134 timings/marks match both editions. Topic family is the same. CSV has both 'Government microeconomy intervention' and 'Government microeconomic intervention' \u2014 labelling noise, not an edition id."
+        },
+        "gitProvenance": {
+          "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
+          "correctedIfAny": null,
+          "role": "supporting only; not a substitute for official-document content matching"
+        }
+      },
+      "previousLogicalRevisionKeyCandidate": "9708-2026-2028",
+      "productAutomaticSeries": [
+        "May/June",
+        "Oct/Nov"
+      ],
+      "officialMarchForAutomaticAssignment": "DEFERRED",
+      "relatedOfficialDocuments": [
+        {
+          "title": "Cambridge International AS & A Level Economics 9708 syllabus for exams in 2023, 2024 and 2025",
+          "url": "https://www.cambridgeinternational.org/Images/595463-2023-2025-syllabus.pdf",
+          "publicationId": "595463",
+          "retrievalDate": "2026-08-29"
+        },
+        {
+          "title": "Syllabus update: Cambridge International AS & A Level Economics (9708) for examination in 2026, 2027 and 2028",
+          "url": "https://www.cambridgeinternational.org/Images/748950-2026-2028-syllabus-update.pdf",
+          "publicationId": "748950",
+          "retrievalDate": "2026-08-29",
+          "note": "Version 2, December 2025; weblink change only \u2014 evidence that same year-span can be amended."
+        }
       ]
     },
     {
@@ -514,7 +799,7 @@
           "retrievalDate": "2026-08-29"
         }
       ],
-      "logicalRevisionKeyCandidate": "9709-2026-2027",
+      "logicalRevisionKeyCandidate": "9709-2026-2027-v4",
       "validity": {
         "firstYear": 2026,
         "firstSeries": "May/June",
@@ -523,14 +808,18 @@
         "status": "PROBABLE",
         "officialWording": "Use this syllabus for exams in 2026 and 2027. Exams are available in the June and November series. Exams are also available in the March series in India."
       },
-      "explicitExamSeries": ["Feb/Mar", "May/June", "Oct/Nov"],
+      "explicitExamSeries": [
+        "Feb/Mar",
+        "May/June",
+        "Oct/Nov"
+      ],
       "marchAvailability": "INDIA_ONLY",
       "rangeAloneSafe": "NO",
       "asALevel": "both",
       "evidence": {
         "page": "cover; Content overview",
-        "section": "Six components Paper 1–6",
-        "note": "CSV Papers 1–6 titles match official Pure Mathematics 1–3, Mechanics, Probability & Statistics 1–2. The same six-paper model appears in 2023–2025 and 2028–2030 official PDFs."
+        "section": "Six components Paper 1\u20136",
+        "note": "CSV Papers 1\u20136 titles match official Pure Mathematics 1\u20133, Mechanics, Probability & Statistics 1\u20132. The same six-paper model appears in 2023\u20132025 and 2028\u20132030 official PDFs."
       },
       "contentMatch": {
         "status": "PROBABLE",
@@ -540,9 +829,70 @@
       "applicabilityPopulationReady": "NO",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "Owner must choose among 2023–2025, 2026–2027, and 2028–2030 official PDFs.",
-        "March is India-only."
-      ]
+        "Owner must choose among 2023\u20132025, 2026\u20132027, and 2028\u20132030 official PDFs.",
+        "March is India-only.",
+        "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
+        "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
+      ],
+      "previousMatchStatus": "PROBABLE",
+      "forensicPass": {
+        "date": "2026-08-29",
+        "bestMatchingEdition": "Not unique vs 597421 (2023\u20132025 Version 1), 697427 (2026\u20132027 Version 4, December 2025), and 744634 (2028\u20132030 Version 1). All six paper titles match.",
+        "officialSyllabusVersion": "4",
+        "officialPublished": "December 2025",
+        "cambridgeImagesPublicationId": "697427",
+        "discriminators": {
+          "status": "NONE_UNIQUE",
+          "note": "Zero unique subtopic/LO hits across the three official PDFs. Official later editions state no significant teaching changes; from-2020 textbooks still suitable."
+        },
+        "gitProvenance": {
+          "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
+          "correctedIfAny": "3547a9c 2026-07-27 Corrected the history, biology, chemistry and mathematics csv files for importation",
+          "role": "supporting only; not a substitute for official-document content matching"
+        }
+      },
+      "previousLogicalRevisionKeyCandidate": "9709-2026-2027",
+      "productAutomaticSeries": [
+        "May/June",
+        "Oct/Nov"
+      ],
+      "officialMarchForAutomaticAssignment": "DEFERRED"
     }
-  ]
+  ],
+  "forensicPassDate": "2026-08-29",
+  "previousResearchDate": "2026-08-29",
+  "previousLogicalRevisionKeyConvention": {
+    "pattern": "{subjectCode}-{firstExamYear}-{lastExamYear}",
+    "example": "9702-2025-2027",
+    "notes": [
+      "Stable, human-auditable, independent of filename and is_current.",
+      "Owner must choose which official examination-year edition Lockdin currently represents before any hosted adopt.",
+      "Do not apply these candidates hosted from this research file."
+    ]
+  },
+  "yearSpanOnlyKeySafe": "NO",
+  "productAutomaticAssignmentPolicy": {
+    "enumRetainsFebMar": true,
+    "automaticAssignment": "DEFERRED for India-only March",
+    "initialAutomaticSeries": [
+      "May/June",
+      "Oct/Nov"
+    ],
+    "note": "Official India-only March is recorded in provenance and must not be treated as globally assignable. No centre/country eligibility model exists."
+  },
+  "c2bSeriesModelRecommendation": {
+    "continuousRangeAlone": "INSUFFICIENT",
+    "recommended": "normalized child table syllabus_version_exam_series",
+    "rejectedAlternatives": [
+      "enum array on syllabus_versions \u2014 weaker audit trail and harder official-vs-product split",
+      "frontend restrictions only \u2014 cannot enforce server-side assignment"
+    ],
+    "proposedColumnsConceptual": [
+      "syllabus_version_id",
+      "series (exam_sitting_series enum)",
+      "official_availability (global | india_only | not_offered | unresolved)",
+      "product_auto_assign (boolean)"
+    ],
+    "reason": "Separates official Cambridge availability from Lockdin v1 automatic assignment; keeps Feb/Mar in the enum; allows later region rules without replacing the 0011 range."
+  }
 }
