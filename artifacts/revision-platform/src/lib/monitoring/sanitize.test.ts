@@ -1,91 +1,153 @@
 import { describe, expect, it } from "vitest";
 import {
   PRIVACY_INIT_FLAGS,
-  redactSensitiveText,
+  REDACTED_MESSAGE,
   sanitizeRoutePath,
   sanitizeSentryEvent,
 } from "./sanitize";
 
+const REPRESENTATIVE_EVENT = {
+  environment: "preview",
+  release: "deadbeef",
+  message: "Revise photosynthesis chapter 4",
+  user: { email: "a@b.co", username: "sam" },
+  extra: { detail: "My private task content" },
+  contexts: { culture: { notes: "My chemistry notes about equilibrium" } },
+  tags: {
+    request_id: "req-1",
+    runtime: "frontend",
+    email: "a@b.co",
+  },
+  request: {
+    method: "POST",
+    url: "/api/tasks?title=secret#frag",
+    headers: { authorization: "Bearer secret", cookie: "sid=1" },
+    cookies: { sid: "1" },
+    data: { title: "Revise photosynthesis chapter 4" },
+    query_string: "email=a@b.co",
+  },
+  exception: {
+    values: [
+      {
+        type: "TypeError",
+        value: "Revise photosynthesis chapter 4",
+        mechanism: { type: "generic", handled: true, data: { body: "secret" } },
+        stacktrace: {
+          frames: [
+            {
+              function: "createTask",
+              module: "App",
+              filename: "https://app.example/assets/index.js?token=abc#x",
+              abs_path: "https://app.example/src/pages/study-plan.tsx?user=1",
+              lineno: 42,
+              colno: 7,
+              in_app: true,
+              platform: "javascript",
+              vars: { notes: "My chemistry revision notes", title: "task" },
+              context_line: "throw new Error(task.title)",
+              pre_context: ["const title = task.title"],
+              post_context: ["return null"],
+              module_metadata: { secret: true },
+            },
+          ],
+        },
+      },
+    ],
+  },
+  breadcrumbs: [
+    {
+      category: "console",
+      message: "My chemistry revision notes",
+      data: { arguments: ["Paper 42 score was 67"] },
+    },
+    {
+      category: "ui.click",
+      message: "clicked Revise photosynthesis",
+    },
+    {
+      category: "navigation",
+      message: "My chemistry revision notes",
+      timestamp: 1,
+      data: { from: "/dashboard?email=a@b.co", to: "/study-plan#unit" },
+    },
+    {
+      category: "fetch",
+      message: "should not keep",
+      data: {
+        method: "GET",
+        url: "/api/tasks?notes=x",
+        status_code: 200,
+        authorization: "Bearer x",
+      },
+    },
+  ],
+};
+
 describe("frontend Sentry sanitization", () => {
-  it("redacts email, jwt, bearer, and database URLs", () => {
-    const text = redactSensitiveText(
-      "user a@b.co token eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.aaa.bbb Bearer abc postgres://u:p@host/db",
-    );
-    expect(text).not.toMatch(/@/);
-    expect(text).not.toContain("eyJ");
-    expect(text).not.toContain("Bearer abc");
-    expect(text).not.toContain("postgres://");
+  it("preserves usable stack frames and drops locals", () => {
+    const sanitized = sanitizeSentryEvent(REPRESENTATIVE_EVENT);
+    const frame = sanitized.exception?.values?.[0]?.stacktrace?.frames?.[0];
+    expect(sanitized.exception?.values?.[0]?.type).toBe("TypeError");
+    expect(frame).toMatchObject({
+      function: "createTask",
+      module: "App",
+      lineno: 42,
+      colno: 7,
+      in_app: true,
+      platform: "javascript",
+    });
+    expect(frame?.filename).toBe("/assets/index.js");
+    expect(frame?.abs_path).toBe("/src/pages/study-plan.tsx");
+    expect(frame).not.toHaveProperty("vars");
+    expect(frame).not.toHaveProperty("context_line");
+    expect(frame).not.toHaveProperty("pre_context");
+    expect(frame).not.toHaveProperty("module_metadata");
+    expect(JSON.stringify(frame)).not.toMatch(/\?|#|token=abc/);
   });
 
-  it("strips query strings, fragments, and opaque ids", () => {
+  it("fails closed on arbitrary exception and event messages", () => {
+    const sanitized = sanitizeSentryEvent(REPRESENTATIVE_EVENT);
+    expect(sanitized.message).toBeUndefined();
+    expect(sanitized.exception?.values?.[0]?.value).toBe(REDACTED_MESSAGE);
+    expect(JSON.stringify(sanitized)).not.toContain("Revise photosynthesis chapter 4");
+    expect(JSON.stringify(sanitized)).not.toContain("My private task content");
+    expect(JSON.stringify(sanitized)).not.toContain("Paper 42 score was 67");
+  });
+
+  it("drops breadcrumb free text and non-diagnostic categories", () => {
+    const sanitized = sanitizeSentryEvent(REPRESENTATIVE_EVENT);
+    expect(sanitized.breadcrumbs?.some((b) => b.category === "console")).toBe(false);
+    expect(sanitized.breadcrumbs?.some((b) => b.category === "ui.click")).toBe(false);
+    expect(sanitized.breadcrumbs?.some((b) => b.message)).toBe(false);
+    expect(JSON.stringify(sanitized.breadcrumbs)).not.toContain(
+      "My chemistry revision notes",
+    );
+    const nav = sanitized.breadcrumbs?.find((b) => b.category === "navigation");
+    expect(nav?.data).toEqual({ from: "/dashboard", to: "/study-plan" });
+    const fetchCrumb = sanitized.breadcrumbs?.find((b) => b.category === "fetch");
+    expect(fetchCrumb?.data).toEqual({
+      method: "GET",
+      url: "/api/tasks",
+      status_code: 200,
+    });
+  });
+
+  it("drops extra, user, contexts, auth, cookies, bodies, and query strings", () => {
+    const sanitized = sanitizeSentryEvent(REPRESENTATIVE_EVENT);
+    expect(sanitized.extra).toBeUndefined();
+    expect(sanitized.user).toBeUndefined();
+    expect(sanitized.contexts).toBeUndefined();
+    expect(sanitized.request).toEqual({ method: "POST", url: "/api/tasks" });
+    expect(sanitized.tags).toEqual({ request_id: "req-1", runtime: "frontend" });
+    expect(JSON.stringify(sanitized)).not.toMatch(
+      /a@b\.co|Bearer secret|postgres:|sid=1/,
+    );
+  });
+
+  it("strips query strings from routes", () => {
     expect(
       sanitizeRoutePath("/subjects/11111111-1111-4111-8111-111111111111?email=a@b.co#x"),
     ).toBe("/subjects/:id");
-    expect(sanitizeRoutePath("https://app.example/past-papers?score=90")).toBe(
-      "/past-papers",
-    );
-  });
-
-  it("drops PII, study content, auth, cookies, bodies, and credentials", () => {
-    const sanitized = sanitizeSentryEvent({
-      environment: "preview",
-      release: "abc123",
-      message: "boom a@b.co",
-      exception: { values: [{ type: "Error", value: "title: revise cells" }] },
-      user: { email: "a@b.co", username: "sam", name: "Sam" },
-      extra: {
-        email: "a@b.co",
-        name: "Sam",
-        username: "sam",
-        title: "Revise cells",
-        notes: "page 12",
-        score: 90,
-        marks: 12,
-        percentage: 80,
-        authorization: "Bearer secret",
-        cookie: "sid=1",
-        database_url: "postgres://u:p@host/db",
-        sql: "select * from users",
-      },
-      request: {
-        method: "POST",
-        url: "/api/tasks?title=secret",
-        headers: { authorization: "Bearer x", cookie: "a=b" },
-        cookies: { sid: "1" },
-        data: { title: "Revise cells" },
-        query_string: "email=a@b.co",
-      },
-      tags: {
-        request_id: "req-1",
-        runtime: "frontend",
-        email: "a@b.co",
-      },
-      breadcrumbs: [
-        {
-          category: "http",
-          data: { authorization: "Bearer x", url: "/api/tasks?q=1" },
-        },
-        {
-          category: "navigation",
-          data: { url: "/dashboard?user=sam" },
-        },
-      ],
-    });
-
-    expect(sanitized.user).toBeUndefined();
-    expect(sanitized.extra).toBeUndefined();
-    expect(sanitized.request).toEqual({ method: "POST", url: "/api/tasks" });
-    expect(sanitized.request).not.toHaveProperty("headers");
-    expect(sanitized.request).not.toHaveProperty("cookies");
-    expect(sanitized.request).not.toHaveProperty("data");
-    expect(sanitized.request).not.toHaveProperty("query_string");
-    expect(sanitized.tags).toEqual({ request_id: "req-1", runtime: "frontend" });
-    expect(JSON.stringify(sanitized)).not.toMatch(/a@b\.co|Bearer x|Revise cells|postgres:/);
-    expect(sanitized.environment).toBe("preview");
-    expect(sanitized.release).toBe("abc123");
-    expect(sanitized.breadcrumbs?.some((b) => b.data && "authorization" in b.data)).toBe(
-      false,
-    );
   });
 
   it("keeps Session Replay and default PII disabled", () => {

@@ -6,6 +6,7 @@ import {
 } from "./environment";
 import {
   PRIVACY_INIT_FLAGS,
+  isDiagnosticBreadcrumbCategory,
   sanitizeSentryEvent,
   type LooseSentryEvent,
 } from "./sanitize";
@@ -78,16 +79,14 @@ export async function initFrontendSentry(
         return sanitizeSentryEvent(event as LooseSentryEvent) as typeof event;
       },
       beforeBreadcrumb(breadcrumb) {
-        const data = breadcrumb.data ?? {};
-        if (
-          "authorization" in data ||
-          "cookie" in data ||
-          "body" in data ||
-          "request_body" in data
-        ) {
+        if (!isDiagnosticBreadcrumbCategory(breadcrumb.category)) {
           return null;
         }
-        return breadcrumb;
+        return {
+          category: breadcrumb.category,
+          timestamp: breadcrumb.timestamp,
+          data: breadcrumb.data,
+        };
       },
     });
     sentry = sdk;

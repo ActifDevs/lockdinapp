@@ -13,7 +13,8 @@ export {
 } from "./environment";
 export {
   PRIVACY_INIT_FLAGS,
-  redactSensitiveText,
+  REDACTED_MESSAGE,
+  isDiagnosticBreadcrumbCategory,
   sanitizeRoutePath,
   sanitizeSentryEvent,
 } from "./sanitize";

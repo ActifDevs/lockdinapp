@@ -75,12 +75,33 @@ Missing DSN = safe no-op. Sentry exceptions are swallowed so product/API behavio
 
 ## Privacy/redaction
 
-`beforeSend` rebuilds events on an allow-list:
+### Owner-review findings (fixed before hosted config)
 
-- Keep: environment, release, sanitized exception/message, `request.method` + sanitized path, tags `request_id` and `runtime`.
-- Drop: `user`, extra bags, cookies, headers, request/response bodies, query strings, fragments.
-- Redact in strings: email, JWT, Bearer tokens, `postgres://` URLs.
-- Paths: query/hash stripped; UUID and numeric segments become `:id`.
+1. **Stacktrace loss.** The first sanitizer rebuilt `exception.values[]` with only `type` and `value`, dropping the official `stacktrace.frames` object (`@sentry/core` `Exception` / `Stacktrace` / `StackFrame`). Hosted issues would not have been symbolication-ready.
+2. **Arbitrary free-text leakage.** Pattern matching (email/JWT/Bearer/Postgres/`title:` labels) could not cover study text such as “Revise photosynthesis chapter 4”. Frontend `extra` also kept unknown string keys.
+
+### Remediation
+
+`beforeSend` still **rebuilds** the event. It does not clone the original payload.
+
+**Retained**
+
+- `environment`, `release`
+- exception `type`
+- exception `value` only if it is on an explicit allow-list (currently empty; otherwise `[redacted-message]`)
+- stack frames, using official field names only: `function`, `module`, `filename`, `abs_path`, `lineno`, `colno`, `in_app`, `platform`
+- `request.method` + sanitized path
+- tags `request_id`, `runtime`
+- diagnostic breadcrumbs only (`navigation`, `fetch`, `xhr`, `http`) with sanitized `url` / `from` / `to` / `method` / `status_code`
+
+**Dropped**
+
+- `event.message` (Lockdin does not use `captureMessage`)
+- arbitrary exception values / study content
+- frame `vars`, `context_line`, `pre_context`, `post_context`, `module_metadata`
+- `user`, `extra`, unapproved `contexts`
+- cookies, headers, Authorization, bodies, query strings, fragments
+- console / `ui.*` breadcrumbs and all breadcrumb `message` text
 
 `sendDefaultPii` is `false`. Session Replay sample rates are `0` and Replay is not installed.
 
@@ -112,15 +133,15 @@ Recommended later (7.3B), server/build-only:
 
 Focused mocks only. No Sentry Cloud traffic.
 
-Coverage includes: missing config no-op; one boundary capture; one API central capture; Sentry failure does not change HTTP/UI; `request_id`; release/environment; Authorization/cookies/bodies/PII/study content/DB URLs/query strings removed; Replay + default PII off; PostHog exception capture not introduced.
+Coverage includes the original no-op / single-capture / failure-isolation tests plus representative Sentry event fixtures proving: stack frames survive; locals do not; query/fragment stripped from frame and request URLs; arbitrary exception/event/breadcrumb/extra study text is dropped; exception type, `runtime`, and API `request_id` survive; Auth/cookies/bodies absent; Replay off; PostHog unchanged.
 
 ## Regression verification
 
 | Gate | Result |
 | --- | --- |
 | `pnpm run typecheck` | PASS |
-| `pnpm --filter @workspace/api-server test` | PASS — 35 files, 183 tests |
-| `vitest run --pool=forks --maxWorkers=1` (frontend) | PASS — 42 files, 249 tests (plus focused monitoring re-run 12/12) |
+| `pnpm --filter @workspace/api-server test` | PASS — 35 files, 182 tests |
+| `vitest run --pool=forks --maxWorkers=1` (frontend) | PASS — 42 files, 251 tests |
 | `pnpm --filter @workspace/scripts test:unit` | PASS — 41 tests |
 | `pnpm --filter @workspace/scripts test:harness` | PASS — 21 tests |
 | `pnpm run check:migrations` | PASS — count=16, head=`0015_silent_sentinel` |
@@ -136,7 +157,8 @@ Coverage includes: missing config no-op; one boundary capture; one API central c
 | --- | --- |
 | **BLOCKER** | None in this implementation. |
 | **HIGH** | Browser DSN is public by design. Treat it as a project identifier, not an admin token. Auth token must never be `VITE_*`. |
-| **MEDIUM** | Exception **messages** can still include unexpected free text if a developer throws user content. Redaction covers common patterns, not every string. |
+| **MEDIUM** | *(Fixed before hosted config.)* Arbitrary exception/event text is no longer pattern-matched; values fail closed to `[redacted-message]`. |
+| **MEDIUM** | *(Fixed before hosted config.)* Stack frames are now rebuilt from official `StackFrame` fields instead of being dropped. |
 | **MEDIUM** | Preview is historically Production-backed. Hosted 7.3B must not inject Production errors. |
 | **LOW** | React development mode can rethrow boundary errors to the console; production builds are the duplicate-capture check. |
 | **LOW** | One shared Sentry project (recommended) mixes frontend/API issues; `runtime` tag is required for filtering. |
