@@ -34,6 +34,36 @@ describe("applicability manifest", () => {
     );
   });
 
+  it("accepts a synthetic future-revision write-set", () => {
+    const raw = {
+      schemaVersion: 1,
+      provenance: {
+        report: "synthetic",
+        researchArtifact: "synthetic",
+        ownerDecision: "fixture only",
+      },
+      versions: [
+        {
+          subjectCode: "9702",
+          logicalRevisionKey: "9702-r002",
+          expectedContentSha256: "a".repeat(64),
+          applicability: {
+            from: { year: 2031, series: "May/June" },
+            to: { year: 2033, series: "Oct/Nov" },
+          },
+          seriesPolicy: {
+            "Feb/Mar": false,
+            "May/June": true,
+            "Oct/Nov": true,
+          },
+        },
+      ],
+    };
+    expect(parseApplicabilityManifest(raw).versions[0]?.logicalRevisionKey).toBe(
+      "9702-r002",
+    );
+  });
+
   it("rejects a mutated Feb/Mar policy", () => {
     const raw = structuredClone(loadApplicabilityManifest()) as unknown as {
       versions: Array<{ seriesPolicy: { "Feb/Mar": boolean } }>;

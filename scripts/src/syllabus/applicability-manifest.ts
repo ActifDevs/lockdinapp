@@ -86,10 +86,10 @@ export function parseApplicabilityManifest(raw: unknown): ApplicabilityManifest 
       "unsupported applicability manifest schemaVersion",
     );
   }
-  if (!Array.isArray(doc.versions) || doc.versions.length !== 9) {
+  if (!Array.isArray(doc.versions) || doc.versions.length < 1) {
     throw new SyllabusOperatorError(
       "invalid_applicability_manifest",
-      "manifest must contain exactly nine versions",
+      "manifest must contain at least one version",
     );
   }
 
@@ -112,11 +112,11 @@ export function parseApplicabilityManifest(raw: unknown): ApplicabilityManifest 
     }
     if (
       typeof logicalRevisionKey !== "string" ||
-      logicalRevisionKey !== `${subjectCode}-r001`
+      !new RegExp(`^${subjectCode}-r\\d{3}$`).test(logicalRevisionKey)
     ) {
       throw new SyllabusOperatorError(
         "invalid_applicability_manifest",
-        `versions[${index}].logicalRevisionKey must be ${subjectCode}-r001`,
+        `versions[${index}].logicalRevisionKey must be ${subjectCode}-rNNN`,
       );
     }
     if (
@@ -176,12 +176,15 @@ export function parseApplicabilityManifest(raw: unknown): ApplicabilityManifest 
     };
   });
 
-  const codes = new Set(versions.map((row) => row.subjectCode));
-  if (codes.size !== 9) {
-    throw new SyllabusOperatorError(
-      "invalid_applicability_manifest",
-      "manifest subject codes must be unique",
-    );
+  const keys = new Set<string>();
+  for (const row of versions) {
+    if (keys.has(row.logicalRevisionKey)) {
+      throw new SyllabusOperatorError(
+        "invalid_applicability_manifest",
+        "manifest logical revision keys must be unique",
+      );
+    }
+    keys.add(row.logicalRevisionKey);
   }
 
   return {
@@ -191,12 +194,42 @@ export function parseApplicabilityManifest(raw: unknown): ApplicabilityManifest 
   };
 }
 
+export function assertCanonicalNineR001WriteSet(
+  manifest: ApplicabilityManifest,
+): void {
+  if (manifest.versions.length !== 9) {
+    throw new SyllabusOperatorError(
+      "invalid_applicability_manifest",
+      "canonical production write-set must contain exactly nine versions",
+    );
+  }
+  const codes = new Set(manifest.versions.map((row) => row.subjectCode));
+  if (codes.size !== 9) {
+    throw new SyllabusOperatorError(
+      "invalid_applicability_manifest",
+      "canonical production write-set subject codes must be unique",
+    );
+  }
+  for (const row of manifest.versions) {
+    if (row.logicalRevisionKey !== `${row.subjectCode}-r001`) {
+      throw new SyllabusOperatorError(
+        "invalid_applicability_manifest",
+        `${row.subjectCode} canonical write-set key must remain ${row.subjectCode}-r001`,
+      );
+    }
+  }
+}
+
 export function loadApplicabilityManifest(
   filePath = DEFAULT_APPLICABILITY_MANIFEST_PATH,
 ): ApplicabilityManifest {
-  return parseApplicabilityManifest(
+  const manifest = parseApplicabilityManifest(
     JSON.parse(readFileSync(filePath, "utf8")) as unknown,
   );
+  if (filePath === DEFAULT_APPLICABILITY_MANIFEST_PATH) {
+    assertCanonicalNineR001WriteSet(manifest);
+  }
+  return manifest;
 }
 
 export function windowsEqual(

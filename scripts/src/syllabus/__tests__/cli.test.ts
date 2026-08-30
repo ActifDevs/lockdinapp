@@ -60,6 +60,23 @@ describe("syllabus CLI database isolation", () => {
     expect(captured.logs).toContain("\nOverall: OK");
   });
 
+  it("accepts an explicit r002 revision without inferring identity from the filename", async () => {
+    clearDatabaseEnvironment();
+    const loadImporter = vi.fn<() => Promise<SyllabusImporter>>();
+    const captured = captureOutput();
+
+    const exitCode = await runSyllabusCli(
+      ["--mode=validate", "--files=9702", "--revision=9702-r002"],
+      { loadImporter, output: captured.output },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(loadImporter).not.toHaveBeenCalled();
+    expect(captured.logs).toContainEqual(
+      expect.stringContaining("revision=9702-r002"),
+    );
+  });
+
   it("dry-runs a filtered import without database configuration, writes, or importer loading", async () => {
     clearDatabaseEnvironment();
     const loadImporter = vi.fn<() => Promise<SyllabusImporter>>();
