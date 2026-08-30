@@ -32,6 +32,7 @@ import { proveSessionFoundation } from "./session-foundation-proof.js";
 import { proveSeriesPolicyFoundation } from "./series-policy-proof.js";
 import { proveApplicabilityPopulation } from "./applicability-population-proof.js";
 import { proveStrictAssignment } from "./strict-assignment-proof.js";
+import { proveFutureRevisionLifecycle } from "./future-revision-lifecycle-proof.js";
 import { verifyFinalSchema, verifySyntheticFixturesRemoved } from "./verify.js";
 
 interface HarnessStep {
@@ -131,10 +132,10 @@ export async function runHarness(): Promise<HarnessResult> {
         throw new Error("[db-harness] Executed bootstrap state is invalid.");
       }
     });
-    await step("Execute committed migrations 0000-0015", () =>
+    await step("Execute committed migrations through journal head", () =>
       executeMigrations(verifiedStatus.dbUrl),
     );
-    await step("Verify Drizzle journal 0000-0015", async () => {
+    await step("Verify Drizzle journal matches committed files", async () => {
       const result = await verifyMigrationJournal(pool!);
       if (!result.success) throw new Error(result.error);
     });
@@ -162,6 +163,9 @@ export async function runHarness(): Promise<HarnessResult> {
     );
     await step("Prove C2B2 strict session-aware assignment", () =>
       proveStrictAssignment(pool!),
+    );
+    await step("Prove disposable r001 to r002 lifecycle", () =>
+      proveFutureRevisionLifecycle(pool!),
     );
     await step("Run syllabus DB integration", () =>
       executeSyllabusDbTests(verifiedStatus.dbUrl),

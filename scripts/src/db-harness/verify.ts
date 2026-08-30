@@ -295,7 +295,7 @@ export async function verifySyntheticFixturesRemoved(
   const result = await pool.query<{ count: string }>(`
     SELECT count(*)::text AS count
     FROM public.subjects
-    WHERE code IN ('TEST9998', 'TEST9997', 'TEST6301', 'TEST6302', 'C2A01', 'C2A02', 'C2B101', 'C2B102', 'APPX01')
+    WHERE code IN ('TEST9998', 'TEST9997', 'TEST6301', 'TEST6302', 'C2A01', 'C2A02', 'C2B101', 'C2B102', 'APPX01', 'C2B201', 'C2B202', 'R002X1')
   `);
   if (result.rows[0]?.count !== "0") {
     throw new Error("[db-harness] Synthetic syllabus fixture cleanup failed.");
