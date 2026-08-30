@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildMembershipSessionRpcArgs,
   hasStructuredSessionInput,
+  mapMembershipAssignmentRpcError,
   mapStoredIntendedExamSession,
 } from "./intended-exam-session";
 
@@ -43,5 +44,26 @@ describe("intended exam session helpers", () => {
     expect(
       hasStructuredSessionInput({ year: 2027, series: "May/June" }, undefined),
     ).toBe(true);
+  });
+
+  it("maps resolver failures to safe client errors", () => {
+    expect(
+      mapMembershipAssignmentRpcError("22023", "intended_exam_session_required"),
+    ).toEqual({ status: 400, error: "Choose a supported exam session." });
+    expect(
+      mapMembershipAssignmentRpcError("P0001", "no_applicable_syllabus_version"),
+    ).toEqual({ status: 400, error: "No syllabus matches that exam session." });
+    expect(
+      mapMembershipAssignmentRpcError(
+        "P0001",
+        "ambiguous_applicable_syllabus_version",
+      ),
+    ).toEqual({
+      status: 409,
+      error: "That exam session cannot be assigned right now.",
+    });
+    expect(
+      mapMembershipAssignmentRpcError("P0001", "lockdin_resolve_applicable_syllabus_version"),
+    ).toBeNull();
   });
 });

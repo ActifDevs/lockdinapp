@@ -84,3 +84,40 @@ export function hasStructuredSessionInput(
 ): boolean {
   return Boolean(intendedExamSession) || (overrides?.length ?? 0) > 0;
 }
+
+export type MembershipAssignmentClientError = {
+  status: 400 | 409;
+  error: string;
+};
+
+export function mapMembershipAssignmentRpcError(
+  code: string,
+  message: string,
+): MembershipAssignmentClientError | null {
+  if (message.includes("intended_exam_session_required")) {
+    return { status: 400, error: "Choose a supported exam session." };
+  }
+  if (message.includes("no_applicable_syllabus_version")) {
+    return { status: 400, error: "No syllabus matches that exam session." };
+  }
+  if (message.includes("ambiguous_applicable_syllabus_version")) {
+    return {
+      status: 409,
+      error: "That exam session cannot be assigned right now.",
+    };
+  }
+  if (message.includes("invalid_subject_session_overrides")) {
+    return { status: 400, error: "Invalid subject session override." };
+  }
+  if (
+    code === "22023" ||
+    message.includes("invalid_") ||
+    message.includes("authentication_required")
+  ) {
+    return null;
+  }
+  if (code === "P0001" && message.includes("profile_missing")) {
+    return null;
+  }
+  return null;
+}

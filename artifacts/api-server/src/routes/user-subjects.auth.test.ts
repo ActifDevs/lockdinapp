@@ -123,4 +123,21 @@ describe("user-subject membership auth and validation", () => {
       });
     },
   );
+
+  it("maps missing-session assignment to a safe 400", async () => {
+    getClaims.mockResolvedValue({
+      data: { claims: { sub: "02444f79-c2bb-4596-ae99-d5d6877f1001" } },
+      error: null,
+    });
+    rpc.mockResolvedValue({
+      data: null,
+      error: { code: "22023", message: "intended_exam_session_required" },
+    });
+    const response = await request(app)
+      .put("/api/user-subjects")
+      .set("Authorization", "Bearer good-token")
+      .send({ subjectIds: [1] });
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe("Choose a supported exam session.");
+  });
 });

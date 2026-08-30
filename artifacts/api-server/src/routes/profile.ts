@@ -11,6 +11,7 @@ import { createUserScopedSupabaseClient } from "../lib/supabase-user-client";
 import {
   buildMembershipSessionRpcArgs,
   hasStructuredSessionInput,
+  mapMembershipAssignmentRpcError,
 } from "../lib/intended-exam-session";
 import { logger } from "../lib/logger";
 
@@ -263,6 +264,11 @@ router.post("/profile/complete-onboarding", requireAuth, async (req, res): Promi
   if (error) {
     const message = error.message ?? "";
     const code = error.code ?? "";
+    const assignmentError = mapMembershipAssignmentRpcError(code, message);
+    if (assignmentError) {
+      res.status(assignmentError.status).json({ error: assignmentError.error });
+      return;
+    }
 
     if (code === "23505" || message.includes("username_unavailable")) {
       res.status(409).json({ error: "Username is unavailable." });

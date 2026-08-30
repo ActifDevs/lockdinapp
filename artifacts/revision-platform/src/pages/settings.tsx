@@ -242,11 +242,25 @@ export default function Settings() {
 
   const saveSubjects = async () => {
     if (selectedSubjectIds.length < 1 || selectedSubjectIds.length > 5) return;
+    const currentIds = new Set(
+      (memberships ?? []).map((membership) => membership.subject.id),
+    );
+    const addsSubjects = selectedSubjectIds.some((id) => !currentIds.has(id));
+    const intendedExamSession = structuredSessionFromPickerLabel(examSession);
+    if (addsSubjects && !intendedExamSession) {
+      toast({
+        title: "Choose a supported exam session",
+        description:
+          "Adding a subject needs May/June or Oct/Nov. Other is profile-only.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       const updated = await replaceSubjects.mutateAsync({
         data: {
           subjectIds: selectedSubjectIds,
-          intendedExamSession: structuredSessionFromPickerLabel(examSession),
+          ...(intendedExamSession ? { intendedExamSession } : {}),
         },
       });
       queryClient.setQueryData(getListCurrentUserSubjectsQueryKey(), updated);
@@ -443,6 +457,10 @@ export default function Settings() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="examSession">Exam session</Label>
+                <p className="text-xs text-muted-foreground">
+                  May/June and Oct/Nov are used when adding subjects. Other updates
+                  profile text only and does not create memberships.
+                </p>
                 <select
                   id="examSession"
                   value={examSession}

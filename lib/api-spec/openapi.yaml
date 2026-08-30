@@ -957,7 +957,10 @@ components:
 
     IntendedExamSession:
       type: object
-      description: Structured intended final exam sitting. Not used for version assignment in 6.3C2A.
+      description: >
+        Structured intended final exam sitting. Required at runtime when the
+        request creates a new membership. Optional for retained-only or
+        removal-only Settings replacement. Clients never send a version id.
       properties:
         year:
           type: integer
