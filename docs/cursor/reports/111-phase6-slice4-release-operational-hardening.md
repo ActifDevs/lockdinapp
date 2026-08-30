@@ -24,21 +24,38 @@ No schema change was required. 0016 remains **ABSENT**.
 
 ## Integration suite
 
-- Stock suite remains loopback-only via `require-local-supabase` (fail closed on hosted URLs).
-- Journal assertions now use `lib/db/migrations/meta/_journal.json` (count + latest hash/when). They will continue to work when 0016+ is legitimately added.
-- Onboarding and new-membership replacements send structured `intendedExamSession`.
-- Added coverage: missing session → safe 400; Feb/Mar denied; out-of-range denied; per-subject override; legacy 5-arg and strict 10-arg onboarding overloads both present; replace 1-arg and 6-arg overloads both present.
-- Destructive empty-DB / r002 proofs stay on `lockdin-db-harness`, not the ordinary `lockedinapp` workdir and not hosted Production.
+### Failure matrix (ordinary `lockedinapp` stack, 22/18/5)
 
-Local ordinary Supabase on this machine was behind 0012 before this run. After a **loopback-only** `drizzle-kit migrate` to 0015, the HTTP suite still depends on a seeded catalogue plus applicability/policy. That seed is developer-local and is **not** CI’s disposable path.
+| Class | Tests | Cause |
+| --- | --- | --- |
+| A. Stale Phase 6 contract | membership columns omitted `intended_exam_*`; replace-fn required pre-0015 `ON CONFLICT` only | Suite still asserted Slice 3 membership DDL |
+| A+B. Strict session + missing applicability | onboarding 400, empty memberships, pin-preserve 400, topic-progress 400, mixed override 400 | Structured session against rows with no applicable window/policy |
+| A. Pin-aware write contract | past-paper create 400; task topic-progress 400 | Writes require a membership pin |
+| C. Cascade | past-paper list/dashboard/delete | Attempt IDs never created |
+| F. Superseded SQL | replace privilege test | 0015 apply uses `NOT EXISTS`, not `ON CONFLICT` |
+| E. Application regression | none | None proven |
+
+### Authoritative path (Option A)
+
+Same HTTP/auth/RLS files. Ordinary `lockedinapp` is no longer a valid target.
+
+1. Dedicated `lockdin-db-harness` only (ports 55421/55422). Hosted and ordinary stacks fail closed.
+2. Empty → committed journal head (currently 0015).
+3. Synthetic catalogue `HTTP01`–`HTTP06` (applicability 2020–2033, Feb/Mar denied, two topics, components). Not Cambridge content.
+4. Vitest HTTP suite (45 tests).
+5. Seed removed; schema disposed.
+
+Commands: `pnpm --filter @workspace/scripts db-harness` and `pnpm --filter @workspace/api-server test:integration`.
+
+### Equivalent coverage
+
+HTTP 45/45 plus harness proofs cover migrate 0015, catalogue, May/June, Oct/Nov, Feb/Mar deny, missing session, out-of-range, resolver, override, pin/session retain, no repin, safe errors, auth, RLS, atomic replace, no client `syllabusVersionId`.
 
 ## CI
 
-- Added `.github/workflows/pr-quality.yml`.
-- Job `quality`: typecheck, API tests, frontend tests, syllabus unit tests, harness target-safety + migration-integrity tests, `check:migrations`, OpenAPI codegen diff, `git diff --check`.
-- Job `disposable-db`: dedicated harness with `LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1`. No Production secrets. Inherited hosted `DATABASE_URL` fails the job.
-- HTTP `test:integration` is **not** started in CI against an empty runner: it requires a seeded loopback catalogue. Assignment/lifecycle authority in CI is the disposable harness.
-- Frontend timeouts are not globally inflated. CI (Linux) should not inherit the Windows-local contention note from Report 110.
+- `.github/workflows/pr-quality.yml`
+- Job `quality`: typecheck, API, frontend **serialized** (`--pool=forks --maxWorkers=1`; no global timeout inflation), syllabus units, harness unit + drift, codegen, `git diff --check`.
+- Job `disposable-db`: full harness including the authoritative HTTP/auth/RLS suite. No Production secrets. Hosted `DATABASE_URL` fails closed.
 
 ## Migration drift
 
@@ -93,22 +110,20 @@ Successor research must start before those windows end. Expiry does not repin st
 | Harness unit | `pnpm --filter @workspace/scripts test:harness` | **21/21 PASS** (was 20) |
 | Migration drift | `pnpm run check:migrations` | **PASS** `count=16 head=0015_silent_sentinel` |
 | API unit | `pnpm --filter @workspace/api-server test` | **146/146 PASS** |
-| Frontend | `pnpm --filter @workspace/revision-platform test` then serial rerun | Contention timeouts on a parallel full run; serial `--maxWorkers=1` **227/227 PASS**. Authoritative count: **227/227 PASS** |
+| Frontend | `vitest run --pool=forks --maxWorkers=1` | **227/227 PASS** (CI uses the same serialization) |
 | Typecheck | `pnpm run typecheck` | **PASS** (4 workspace projects) |
 | OpenAPI/codegen | `pnpm run check:codegen` | **PASS** (no generated diff) |
 | `git diff --check` | `git diff --check` | **PASS** |
 | Production-equivalent build | `pnpm --filter @workspace/revision-platform run build:vercel` | **PASS** |
-| HTTP integration | `pnpm --filter @workspace/api-server test:integration` | Loopback guard **11/11 PASS**. Ordinary local suite **22 passed / 18 failed / 5 skipped** after loopback migrate to 0015 (catalogue seed / applicability / service shape). **Not labeled PASS.** |
-| Disposable harness | `LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1 pnpm --filter @workspace/scripts db-harness` | **PASS** including empty→head migrate, journal match, C2B2 strict assignment, disposable r001→r002 lifecycle, and stack cleanup |
-
-Do not treat skipped/failed HTTP integration as PASS.
+| Authoritative HTTP integration | `pnpm --filter @workspace/api-server test:integration` | Loopback guard **11/11 PASS**. HTTP **45/45 PASS** on disposable harness + seed. **0 skipped.** |
+| Disposable harness | `LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1 pnpm --filter @workspace/scripts db-harness` | **PASS** empty→head, journal, C2B2, r001→r002, syllabus DB, **authoritative HTTP/auth/RLS**, cleanup |
 
 ## Diff review
 
-- **Blocker:** none in-scope for merge-to-main (merge still owner-gated).
-- **High:** ordinary local HTTP integration is still environment-dependent; CI relies on the disposable harness for lifecycle/migration proof.
-- **Medium:** DEFAULT promotion for an already-published successor is still a constrained SQL/admin step (`publish` only publishes drafts). Documented in the runbook.
-- **Low:** frontend full-suite timeouts under parallel load remain a local resource note, not a product defect.
+- **Blocker:** none.
+- **High:** none remaining for the integration gap.
+- **Medium:** DEFAULT flip on an already-published successor remains an explicit owner SQL/admin step. `publish` only publishes drafts. Documented as sufficient Phase 6 operations; no new promotion system.
+- **Low:** parallel frontend runs can still hit 5s contention locally; CI is serialized.
 
 ## Hosted-state safety
 
@@ -122,13 +137,12 @@ Do not treat skipped/failed HTTP integration as PASS.
 
 ## Remaining risks
 
-- HTTP integration against a developer `lockedinapp` stack can fail if applicability/policy or catalogue seed is incomplete even after journal 0015.
-- Disposable harness duration/Docker availability on CI.
+- Disposable harness needs Docker on CI (~60s locally for the full proof).
 - No owner final signoff. No Phase 6 close.
 
 ## Merge readiness
 
-Ready for **owner review** on the feature branch. Not merged. Not pushed to `main`.
+Ready for **owner review** on the feature branch. Integration gap closed. Not merged. Not pushed to `main`.
 
 ## Phase 6 status
 

@@ -33,6 +33,7 @@ import { proveSeriesPolicyFoundation } from "./series-policy-proof.js";
 import { proveApplicabilityPopulation } from "./applicability-population-proof.js";
 import { proveStrictAssignment } from "./strict-assignment-proof.js";
 import { proveFutureRevisionLifecycle } from "./future-revision-lifecycle-proof.js";
+import { proveHttpIntegration } from "./http-integration.js";
 import { verifyFinalSchema, verifySyntheticFixturesRemoved } from "./verify.js";
 
 interface HarnessStep {
@@ -169,6 +170,14 @@ export async function runHarness(): Promise<HarnessResult> {
     );
     await step("Run syllabus DB integration", () =>
       executeSyllabusDbTests(verifiedStatus.dbUrl),
+    );
+    await step("Run authoritative HTTP/auth/RLS integration", () =>
+      proveHttpIntegration(pool!, {
+        apiUrl: verifiedStatus.apiUrl,
+        dbUrl: verifiedStatus.dbUrl,
+        publishableKey: verifiedStatus.publishableKey,
+        serviceRoleKey: verifiedStatus.serviceRoleKey,
+      }),
     );
     await step("Verify synthetic fixture cleanup", () =>
       verifySyntheticFixturesRemoved(pool!),

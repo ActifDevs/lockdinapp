@@ -10,7 +10,7 @@
     "start": "node --enable-source-maps ./start.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:integration": "node --test ./scripts/require-local-supabase.test.mjs && node ./scripts/require-local-supabase.mjs && vitest run --config vitest.integration.config.ts"
+    "test:integration": "node --test ./scripts/require-local-supabase.test.mjs && LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1 pnpm --filter @workspace/scripts exec tsx src/db-harness/run-http-integration-cli.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",

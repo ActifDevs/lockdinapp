@@ -32,7 +32,7 @@ jobs:
       - name: API unit tests
         run: pnpm --filter @workspace/api-server test
       - name: Frontend unit tests
-        run: pnpm --filter @workspace/revision-platform test
+        run: pnpm --filter @workspace/revision-platform exec vitest run --config vitest.config.ts --pool=forks --maxWorkers=1
       - name: Syllabus and reference-data unit tests
         run: pnpm --filter @workspace/scripts test:unit
       - name: Harness target-safety and migration integrity tests

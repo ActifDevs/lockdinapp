@@ -47,19 +47,23 @@ export function assertLoopbackUrl(name, value) {
 }
 
 async function main() {
+  const harnessWorkdir = path.join(repoRoot, "scripts", "fixtures", "db-harness");
   let raw;
   try {
-    raw = execFileSync(process.execPath, [supabaseCliScript, "status", "-o", "json"], {
-      cwd: repoRoot,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-  } catch {
-    throw new Error(
-      "[test:integration] Local Supabase is unavailable. Start it with " +
-        "`pnpm supabase:start` (or `pnpm exec supabase start`) and re-run " +
-        "`pnpm test:integration`. This command never falls back to hosted Supabase.",
+    raw = execFileSync(
+      process.execPath,
+      [supabaseCliScript, "--workdir", harnessWorkdir, "status", "-o", "json"],
+      {
+        cwd: repoRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      },
     );
+  } catch {
+    console.log(
+      "[test:integration] Dedicated harness is not running yet; the integration CLI will start it.",
+    );
+    return;
   }
 
   let status;
@@ -76,6 +80,11 @@ async function main() {
 
   assertLoopbackUrl("API_URL", apiUrl);
   assertLoopbackUrl("DB_URL", dbUrl);
+  if (Number(new URL(apiUrl).port) !== 55421 || Number(new URL(dbUrl).port) !== 55422) {
+    throw new Error(
+      "[test:integration] Refusing ordinary lockedinapp or hosted endpoints; dedicated lockdin-db-harness ports are required.",
+    );
+  }
 
   if (!status.PUBLISHABLE_KEY && !status.ANON_KEY) {
     throw new Error(

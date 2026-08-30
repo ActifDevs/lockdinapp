@@ -6,7 +6,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
 import request from "supertest";
 import { createClient } from "@supabase/supabase-js";
-import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { sql } from "drizzle-orm";
@@ -15,63 +14,11 @@ import {
   VALID_OCT_NOV_2027,
 } from "../test/assignment-session.js";
 import { loadCommittedMigrationJournal } from "../test/committed-migrations.js";
+import { loadHarnessSupabaseEnv } from "../test/harness-supabase.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../../..");
-const supabaseCliScript = path.join(
-  repoRoot,
-  "node_modules",
-  "supabase",
-  "dist",
-  "supabase.js",
-);
-
-const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
-
-function isLoopbackUrl(value: string | undefined): boolean {
-  if (!value?.trim()) return false;
-  try {
-    return LOOPBACK_HOSTNAMES.has(new URL(value).hostname.toLowerCase());
-  } catch {
-    return false;
-  }
-}
-
-function loadLocalSupabaseEnv() {
-  let raw: string;
-  try {
-    raw = execFileSync(
-      process.execPath,
-      [supabaseCliScript, "status", "-o", "json"],
-      {
-        cwd: repoRoot,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    );
-  } catch {
-    throw new Error(
-      "Local Supabase unavailable for profile integration tests.",
-    );
-  }
-  const status = JSON.parse(raw) as Record<string, string>;
-  const apiUrl = status.API_URL ?? "";
-  const dbUrl = status.DB_URL ?? "";
-  if (!isLoopbackUrl(apiUrl)) {
-    throw new Error("Integration API_URL must use an exact loopback hostname");
-  }
-  if (!isLoopbackUrl(dbUrl)) {
-    throw new Error("Integration DB_URL must use an exact loopback hostname");
-  }
-  return {
-    url: apiUrl,
-    publishableKey: status.PUBLISHABLE_KEY || status.ANON_KEY,
-    serviceRoleKey: status.SERVICE_ROLE_KEY,
-    dbUrl,
-  };
-}
-
-const env = loadLocalSupabaseEnv();
+const env = loadHarnessSupabaseEnv();
 
 describe("profile and atomic onboarding (local)", () => {
   let app: express.Express;
@@ -905,8 +852,21 @@ describe("profile and atomic onboarding (local)", () => {
       "syllabus_version_id",
       "created_at",
       "updated_at",
+      "intended_exam_year",
+      "intended_exam_series",
     ]);
-    expect(columns.rows.every((row) => row.is_nullable === "NO")).toBe(true);
+    const required = new Set([
+      "user_id",
+      "subject_id",
+      "syllabus_version_id",
+      "created_at",
+      "updated_at",
+    ]);
+    expect(
+      columns.rows
+        .filter((row) => required.has(String(row.column_name)))
+        .every((row) => row.is_nullable === "NO"),
+    ).toBe(true);
 
     const constraints = await db.execute(sql`
       select conname
@@ -1029,15 +989,21 @@ describe("profile and atomic onboarding (local)", () => {
     expect(replaceGrantees).not.toContain("anon");
 
     const replaceBody = await db.execute(sql`
-      select pg_get_functiondef(p.oid) as def
+      select p.proname, pg_get_functiondef(p.oid) as def
       from pg_proc p
       join pg_namespace n on n.oid = p.pronamespace
-      where n.nspname = 'public' and p.proname = 'lockdin_replace_user_subjects'
+      where n.nspname = 'public'
+        and p.proname in (
+          'lockdin_replace_user_subjects',
+          'lockdin_replace_user_subjects_apply'
+        )
     `);
     const replaceDefs = replaceBody.rows.map((row) => String(row.def));
     expect(
-      replaceDefs.some((def) =>
-        def.includes("ON CONFLICT (user_id, subject_id) DO NOTHING"),
+      replaceDefs.some(
+        (def) =>
+          def.includes("ON CONFLICT (user_id, subject_id) DO NOTHING") ||
+          def.includes("AND NOT EXISTS"),
       ),
     ).toBe(true);
     expect(

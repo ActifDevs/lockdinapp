@@ -77,6 +77,12 @@ curriculum content.
 ## 9. Default decision
 
 - `DEFAULT` (`is_current`) is an administrative catalogue selector.
+- `syllabus:publish` publishes a **draft**. It does not re-enter an already
+  published successor to flip DEFAULT. That is intentional.
+- After `r002` is published, promoting it to DEFAULT is an explicit owner
+  SQL/admin step (`is_current` on the published successor, cleared on the
+  previous default). This is sufficient for Phase 6. There is no product
+  DEFAULT-promotion command and none is required for the runbook.
 - Making `r002` default must not rewrite existing membership pins.
 - Leave `r001` published if students remain pinned to it.
 
