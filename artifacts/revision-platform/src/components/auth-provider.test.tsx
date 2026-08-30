@@ -56,13 +56,11 @@ vi.mock("@/lib/app-url", () => ({
 
 const noteLocalSignup = vi.fn();
 const emitAccountCreatedIfPending = vi.fn();
-const resetAnalyticsIdentity = vi.fn();
 
 vi.mock("@/lib/analytics", () => ({
   noteLocalSignup: (...args: unknown[]) => noteLocalSignup(...args),
   emitAccountCreatedIfPending: (...args: unknown[]) =>
     emitAccountCreatedIfPending(...args),
-  resetAnalyticsIdentity: (...args: unknown[]) => resetAnalyticsIdentity(...args),
 }));
 
 function Probe() {
@@ -347,6 +345,28 @@ describe("AuthProvider", () => {
     expect(noteLocalSignup).toHaveBeenCalled();
   });
 
+  it("pending signup plus authenticated session requests account_created", async () => {
+    signUp.mockResolvedValue({
+      data: {
+        user: { id: "user-a" },
+        session: null,
+      },
+      error: null,
+    });
+    renderAuth();
+    await waitFor(() =>
+      expect(screen.getByTestId("loading").textContent).toBe("false"),
+    );
+    await act(async () => {
+      screen.getByText("signup").click();
+    });
+    expect(noteLocalSignup).toHaveBeenCalledWith("user-a");
+    await act(async () => {
+      authListener?.("SIGNED_IN", sessionFor("user-a"));
+    });
+    expect(emitAccountCreatedIfPending).toHaveBeenCalledWith("user-a");
+  });
+
   it("login does not mark account_created pending", async () => {
     renderAuth();
     await waitFor(() =>
@@ -403,7 +423,6 @@ describe("AuthProvider", () => {
     });
     expect(queryClient.getQueryData(["tasks"])).toBeUndefined();
     expect(signOut).toHaveBeenCalled();
-    expect(resetAnalyticsIdentity).toHaveBeenCalled();
   });
 
   it("SIGNED_OUT clears user state", async () => {
@@ -487,7 +506,6 @@ describe("AuthProvider", () => {
       expect(screen.getByTestId("user-id").textContent).toBe("user-b");
     });
     expect(queryClient.getQueryData(examDatesKey)).toBeUndefined();
-    expect(resetAnalyticsIdentity).toHaveBeenCalled();
   });
 
   it("stale profile from User A cannot replace User B", async () => {

@@ -15,12 +15,13 @@ export default function PrivacyPage() {
       </ul>
       <h2>Product analytics</h2>
       <p>
-        When analytics is configured, Lockdin uses PostHog (EU cloud) for a small set of custom product
-        events so we can see whether people complete signup, onboarding, task creation, and past-paper
-        logging. This is product analytics, not advertising. Automatic collection is turned off:
-        no autocapture, no Session Replay, no heatmaps, and no advertising integrations. Events do not
-        include email, name, username, task notes, syllabus text, or paper scores. Preview and Production
-        use separate PostHog projects operationally.
+        When analytics is configured, Lockdin uses PostHog (EU cloud) from the server for a small set
+        of custom product events so we can see whether people complete signup, onboarding, task
+        creation, and past-paper logging. There is no PostHog SDK in the browser. This is product
+        analytics, not advertising. Automatic collection is turned off: no autocapture, no Session
+        Replay, no heatmaps, and no advertising integrations. Events do not include email, name,
+        username, task notes, syllabus text, or paper scores. Preview and Production use separate
+        PostHog projects operationally.
       </p>
       <p>
         Analytics is optional for the product: if it is not configured, Lockdin still works. This page

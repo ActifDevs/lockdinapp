@@ -1,6 +1,7 @@
 export {
   fireAndForgetAnalytics,
   isApiAnalyticsConfigured,
+  trackAccountCreated,
   trackOnboardingCompleted,
   trackPastPaperAttemptCreated,
   trackTaskCreated,
@@ -11,4 +12,4 @@ export {
   isApprovedAnalyticsEvent,
   sanitizeApprovedEvent,
 } from "./contract.js";
-export { createAnalyticsAlias } from "./alias.js";
+export { createAnalyticsAlias, createAnalyticsEventUuid } from "./alias.js";

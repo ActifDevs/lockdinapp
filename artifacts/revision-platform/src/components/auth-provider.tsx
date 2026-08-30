@@ -27,7 +27,6 @@ import { LEGACY_PERSONAL_STORAGE_KEYS } from "@/lib/user-scoped-storage";
 import {
   emitAccountCreatedIfPending,
   noteLocalSignup,
-  resetAnalyticsIdentity,
 } from "@/lib/analytics";
 
 export type AuthUser = {
@@ -156,7 +155,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setIsLoading(false);
     queryClient.clear();
-    resetAnalyticsIdentity();
   }, [queryClient]);
 
   const logout = useCallback(async () => {
@@ -234,10 +232,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (previousUserId && previousUserId !== nextUserId) {
         queryClient.clear();
         setUser(null);
-        resetAnalyticsIdentity();
       }
       sessionUserIdRef.current = nextUserId;
-      emitAccountCreatedIfPending(nextUserId);
+      void emitAccountCreatedIfPending(nextUserId);
 
       // Keep onAuthStateChange synchronous; resolve outside the callback.
       queueMicrotask(() => {
@@ -270,7 +267,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         if (event === "SIGNED_OUT") {
           queryClient.clear();
-          resetAnalyticsIdentity();
         }
         setIsLoading(false);
         return;
@@ -341,7 +337,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       noteLocalSignup(data.user?.id ?? null);
       if (data.session?.user?.id) {
-        emitAccountCreatedIfPending(data.session.user.id);
+        void emitAccountCreatedIfPending(data.session.user.id);
       }
       const sessionAvailable = Boolean(data.session);
       return {

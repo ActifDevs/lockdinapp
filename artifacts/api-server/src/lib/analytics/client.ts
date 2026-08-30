@@ -1,6 +1,6 @@
 import { PostHog } from "posthog-node";
 import { logger } from "../logger.js";
-import { createAnalyticsAlias } from "./alias.js";
+import { createAnalyticsAlias, createAnalyticsEventUuid } from "./alias.js";
 import {
   resolveAnalyticsEnvironment,
   sanitizeApprovedEvent,
@@ -15,6 +15,7 @@ type PostHogLike = {
     distinctId: string;
     event: string;
     properties: Record<string, unknown>;
+    uuid?: string;
   }) => Promise<void>;
 };
 
@@ -99,6 +100,10 @@ async function captureApproved<E extends keyof ApprovedEventProperties>(
   if (!ph) {
     return;
   }
+  const uuid =
+    sanitized.event === "account_created"
+      ? createAnalyticsEventUuid(userId, sanitized.event, secret)
+      : undefined;
   try {
     await withTimeout(
       ph.captureImmediate({
@@ -108,6 +113,7 @@ async function captureApproved<E extends keyof ApprovedEventProperties>(
           ...sanitized.properties,
           $process_person_profile: false,
         },
+        ...(uuid ? { uuid } : {}),
       }),
       CAPTURE_BUDGET_MS,
     );
@@ -124,6 +130,14 @@ export async function fireAndForgetAnalytics(
   } catch {
     logger.info({ context: "analytics" }, "analytics capture skipped");
   }
+}
+
+export async function trackAccountCreated(input: { userId: string }): Promise<void> {
+  await captureApproved(
+    "account_created",
+    { environment: currentApiAnalyticsEnvironment() },
+    input.userId,
+  );
 }
 
 export async function trackOnboardingCompleted(input: {

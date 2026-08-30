@@ -135,6 +135,7 @@ describe("global API authentication policy", () => {
     ["get", "/profile"],
     ["patch", "/profile"],
     ["post", "/profile/complete-onboarding"],
+    ["post", "/analytics/account-created"],
     ["get", "/user-subjects"],
     ["put", "/user-subjects"],
   ] as const)("rejects anonymous %s %s", async (method, path) => {

@@ -1,18 +1,7 @@
-export { LOCKDIN_POSTHOG_INIT_OPTIONS } from "./browser-config";
 export {
   emitAccountCreatedIfPending,
-  isBrowserAnalyticsConfigured,
   noteLocalSignup,
-  resetAnalyticsIdentity,
-  trackAccountCreated,
-  tryEmitUnknownEvent,
-} from "./client";
-export {
-  FORBIDDEN_ANALYTICS_PROPERTY_KEYS,
-  filterBrowserCaptureEvent,
-  isApprovedAnalyticsEvent,
-  sanitizeApprovedEvent,
-} from "./contract";
+} from "./report-account-created";
 export {
   hasEmittedAccountCreated,
   markPendingAccountCreated,

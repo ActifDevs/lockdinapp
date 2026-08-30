@@ -31,6 +31,7 @@ export * from './profile';
 export * from './profileUpdate';
 export * from './progressOverview';
 export * from './recentPerformanceItem';
+export * from './reportAccountCreatedInput';
 export * from './subject';
 export * from './subjectAssignmentSessions';
 export * from './subjectInput';

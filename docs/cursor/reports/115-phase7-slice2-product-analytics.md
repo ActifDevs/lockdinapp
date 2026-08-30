@@ -6,193 +6,171 @@
 - Branch: `phase7-slice2-product-analytics`
 - Base / `origin/main` at branch creation: `897427501595ae6c6582ea99851c9832c17f76ec`
 - Phase 7 Slice 7.1: **CLOSED** (Reports 113 and 114 on main)
-- This slice: **7.2A local implementation + hosted-config gate**. No PostHog projects created, no Vercel env changes, no Supabase changes, no migration 0016, no merge to main.
+- This slice: **7.2A local implementation + hosted-config gate**, including identity remediation. No PostHog projects created, no Vercel env changes, no Supabase changes, no migration 0016, no merge to main.
 - Migration head: **0015_silent_sentinel**. **0016 ABSENT**.
-- SDKs (current at implementation): `posthog-js` 1.422.x (browser), `posthog-node` 5.51.x (API). Privacy option names were taken from those SDK types, not from memory.
+- SDK: `posthog-node` only (API). **`posthog-js` was removed** after owner review: a browser anonymous distinct id cannot join to API HMAC aliases, so a connected activation funnel was not possible.
 
 ## Approved contract
 
-Owner-approved (Report 114, 2026-08-30):
+Owner-approved (Report 114, 2026-08-30), unchanged except identity delivery:
 
 - Provider: **PostHog Cloud EU**
 - Custom events only: `account_created`, `onboarding_completed`, `task_created`, `past_paper_attempt_created`
 - Not implemented: `first_task_created`, `first_past_paper_attempt`, `streak_achieved`, `subject_completed`
 - No autocapture, Session Replay, heatmaps, surveys, advertising integrations, or automatic exception capture
 - Allow-list properties only; Preview and Production separated by **separate projects** plus an `environment` property
-- Analytics failure must not fail product writes
+- Analytics failure must not fail product writes or session establishment
 - Missing configuration = safe no-op
 
 ## Implementation
 
-Internal modules (no PostHog calls from pages/routes except typed wrappers):
+**All PostHog capture is server-side.** The frontend does not initialize PostHog and does not send events to PostHog.
 
-- Frontend: `artifacts/revision-platform/src/lib/analytics/`
-- API: `artifacts/api-server/src/lib/analytics/`
+- API module: `artifacts/api-server/src/lib/analytics/`
+- First-party endpoint: `POST /api/analytics/account-created` (OpenAPI `reportAccountCreated`)
+- Frontend: local pending-signup marker + best-effort call to that endpoint (`artifacts/revision-platform/src/lib/analytics/`)
 
 Product call sites:
 
-- `trackAccountCreated` / `noteLocalSignup` / `emitAccountCreatedIfPending` / `resetAnalyticsIdentity` from `auth-provider.tsx`
+- Signup lifecycle: `auth-provider.tsx` `noteLocalSignup` then `emitAccountCreatedIfPending` → `POST /api/analytics/account-created` (empty body; `skipUnauthorizedHandler` so a 401 cannot log the user out)
 - `trackOnboardingCompleted` after successful `POST /api/profile/complete-onboarding`
 - `trackTaskCreated` after successful `POST /api/tasks` (201)
 - `trackPastPaperAttemptCreated` after successful `POST /api/past-paper-attempts` (201)
 
-Unknown event names cannot pass `sanitizeApprovedEvent`. Unknown/forbidden properties are dropped. `posthog-js` is loaded only when client project token **and** host are present (dynamic import).
+Unknown event names cannot pass `sanitizeApprovedEvent`. Unknown/forbidden properties are dropped.
+
+A **browser anonymous PostHog id plus API HMAC id is not a connected funnel.** That earlier design is withdrawn.
 
 ## Event contracts
 
-| Event | Owner | Trigger | Properties |
+| Event | Capture owner | Trigger | Properties |
 | --- | --- | --- | --- |
-| `account_created` | Frontend | Local signup pending + first authenticated session for that signup | `environment` |
-| `onboarding_completed` | API | Successful onboarding RPC (already-completed returns 409, so success is the transition) | `environment`, `subject_count` (integer count only) |
+| `account_created` | API (after first-party POST) | Local signup pending + authenticated session | `environment` |
+| `onboarding_completed` | API | Successful onboarding RPC (already-completed returns 409) | `environment`, `subject_count` |
 | `task_created` | API | Each successful task insert | `environment` |
 | `past_paper_attempt_created` | API | Each successful attempt insert | `environment` |
 
-API events also set PostHog’s `$process_person_profile: false` as a **delivery flag**, not a product property. `before_send` on the browser strips every property except the allow-list, which drops `$pageview`, `$autocapture`, `$exception`, `$current_url`, email, and study content.
+API events also set `$process_person_profile: false` as a PostHog delivery flag, not a product property.
 
 ## Identity model
 
-- **Never sent:** email, name, username, raw Supabase UUID.
-- **Frontend:** PostHog anonymous distinct id only. `identify()` is not called. `person_profiles: 'never'`.
-- **API:** HMAC-SHA256 of the authenticated user UUID with `LOCKDIN_ANALYTICS_ALIAS_SECRET`, prefixed `lockdin_ph_`. Distinct id is required by `posthog-node` capture; fully anonymous capture without a distinct id is not offered by the current Node SDK. No analytics identity table/column.
-- Alias secret: server-only, never `VITE_*`, never logged, never committed. If missing or shorter than 16 characters, API analytics is a no-op even if a project token is present.
+**Unified:** every approved event uses HMAC-SHA256 of the authenticated Supabase UUID with `LOCKDIN_ANALYTICS_ALIAS_SECRET`, prefixed `lockdin_ph_`.
+
+- Never sent: email, name, username, raw Supabase UUID.
+- No `identify()` and no browser distinct id.
+- No analytics identity table/column. No migration.
+- Alias secret: server-only, never `VITE_*`, never logged, never committed. Missing/short secret ⇒ API analytics no-op.
 
 ## Account-boundary handling
 
-- Successful `signUp` stores a **local** pending marker (user id in `localStorage` when Supabase returns `data.user.id`; otherwise a `sessionStorage` flag). Ordinary `login` does not set that marker.
-- `account_created` fires once when a matching session appears, then a local emitted flag prevents repeats. Later logins do not fire.
-- Logout (`clearProtectedState`) and `SIGNED_OUT` call `posthog.reset()`.
-- Authoritative account switch (`previousUserId !== nextUserId`) clears React Query **and** resets PostHog before the next user’s pending check.
+- Successful `signUp` stores a **local** pending marker. Ordinary `login` does not.
+- When a matching session appears, the frontend calls `POST /api/analytics/account-created` once (in-flight + emitted flags). The API uses `req.userId` from the verified JWT. Bodies with any keys (including `userId` / email) are rejected with 400.
+- The endpoint always returns **204** after auth so PostHog failures do not break session, navigation, or onboarding. 401 on this call does not invoke the global logout handler.
+
+## account_created retry / deduplication
+
+Current PostHog Node `capture` / `captureImmediate` accepts an optional **`uuid`**. Official docs: a unique UUID can help storage de-duplicate retries; **capture itself does not deduplicate**, and **strict immediate dedup is not guaranteed**. CDP troubleshooting also mentions matching uuid + event name + timestamp + distinct_id.
+
+This implementation:
+
+- Sends a **deterministic UUID v5-shaped id** derived from HMAC(alias + `account_created`), not the raw user UUID, on `account_created` only (occurrence events keep auto UUIDs).
+- Relies on local pending/emitted flags as the primary once-per-signup guard.
+- Does **not** invent database telemetry state.
+- Remaining risk: a retried first-party call before the local emitted flag is set could still produce a duplicate ingest; PostHog may eventually collapse matching uuids. Treat funnel counts as best-effort until Preview proof.
 
 ## Privacy controls
 
-Browser init (`LOCKDIN_POSTHOG_INIT_OPTIONS`) explicitly sets:
+There is no browser PostHog init. Server client: `disableGeoip: true`, `enableExceptionAutocapture: false`, `captureImmediate` with an 800ms budget. Failures swallowed. Logs: `{ context: "analytics", event }` only.
 
-- `autocapture: false`
-- `disable_session_recording: true`
-- `capture_pageview: false`
-- `capture_pageleave: false`
-- `disable_surveys: true`
-- `capture_heatmaps: false` / `enable_heatmaps: false`
-- `capture_exceptions: false`
-- `capture_dead_clicks: false`
-- `person_profiles: 'never'`
-- `ip: false`
-- `advanced_disable_feature_flags: true`
-- `disable_external_dependency_loading: true`
-- `before_send` allow-list filter
-
-API client: `disableGeoip: true`, `enableExceptionAutocapture: false`, `captureImmediate` with an 800ms budget so serverless freeze is less likely without blocking forever. Failures are swallowed; logs mention only `{ context: "analytics", event }` — no payloads, no alias, no UUID.
+Owner must still disable Replay/autocapture/heatmaps/surveys/exception capture **in the PostHog project UI** (server SDK does not autocapture those, but dashboard defaults can still be confusing).
 
 ## Environment model
 
-Logical values: `development` | `preview` | `production`.
+Logical values: `development` | `preview` | `production` via **server** `LOCKDIN_ANALYTICS_ENV`, else `VERCEL_ENV`, else `NODE_ENV`.
 
-- Frontend: `VITE_LOCKDIN_ANALYTICS_ENV`. `build:vercel` fills this from `VERCEL_ENV` when unset.
-- API: `LOCKDIN_ANALYTICS_ENV`, else `VERCEL_ENV`, else `NODE_ENV === production` → `production`, else `development`.
-
-Project tokens are **not** hardcoded. Preview vs Production must use **different** PostHog projects (different tokens) in Vercel env. This slice does not set those values.
+**No `VITE_POSTHOG_*` variables.** No client PostHog project token.
 
 ## Privacy disclosure
 
-`artifacts/revision-platform/src/pages/privacy.tsx` now states that configured PostHog EU usage is limited custom events, with no Session Replay, autocapture, heatmaps, or advertising integrations, and without email/name/username/study scores in analytics. It does **not** claim lawful basis, consent UI completeness, or under-18 conclusions. Formal review remains flagged.
+`privacy.tsx` states PostHog EU is used from the **server** for limited custom events, with no browser SDK, no Session Replay, autocapture, heatmaps, or advertising integrations, and without email/name/username/study scores. It does **not** claim lawful basis. Formal review remains flagged.
 
 ## Tests
 
-Focused unit tests (mocks only; no PostHog Cloud traffic):
-
-- Missing config = no-op
-- Unknown event names rejected
-- Forbidden properties stripped
-- Approved shapes accepted
-- PostHog throw does not fail onboarding / task create / past-paper create
-- `task_created` and `past_paper_attempt_created` fire on every successful create (not 0→1)
-- `account_created` not on ordinary login; pending signup → session emits once
-- Logout / account switch reset frontend analytics
-- HMAC alias deterministic, differs by user, not equal to raw UUID
-- Init options keep automatic collection off
+- Missing server config = no-op
+- Unknown events / forbidden properties rejected
+- All four events share one HMAC distinct id; raw UUID not in the capture payload
+- `account_created` uses deterministic `uuid`; occurrence events do not
+- Ordinary login does not call the first-party endpoint
+- Pending signup + session calls the endpoint once with an empty body
+- Endpoint requires auth; cannot choose another user via body
+- PostHog throw does not fail 204 / onboarding / task / past-paper
+- `skipUnauthorizedHandler` does not log the user out on 401
+- No browser PostHog identity tests (SDK removed)
 
 ## Regression verification
 
+Recorded after identity remediation:
+
 - `pnpm run typecheck`: PASS
-- `pnpm --filter @workspace/api-server test`: PASS (163)
-- Frontend `vitest run --pool=forks --maxWorkers=1`: PASS (239)
+- `pnpm --filter @workspace/api-server test`: PASS (170)
+- Frontend `vitest run --pool=forks --maxWorkers=1`: PASS (237)
 - `pnpm --filter @workspace/scripts test:unit`: PASS
 - `pnpm --filter @workspace/scripts test:harness`: PASS
 - `pnpm run check:migrations`: PASS `count=16 head=0015_silent_sentinel`
-- `pnpm run check:codegen`: PASS
-- `git diff --check`: PASS
+- OpenAPI codegen regenerated and committed with this change
 - API esbuild + Vite production build: PASS
+- `git diff --check`: PASS
 
 ## Security/privacy review
 
 | Severity | Finding |
 | --- | --- |
-| **BLOCKER** | None found in this diff. |
-| **HIGH** | None remaining in slice scope. Local pending-signup storage may hold a Supabase user id **in the browser only**; it is not sent to PostHog. |
-| **MEDIUM** | PostHog project dashboards can still offer Replay/autocapture; code disables them and `before_send` drops non-allow-listed events, but the owner must also turn those project settings off. Frontend anonymous persistence lives in PostHog storage until `reset()`. If Preview Vercel env accidentally uses the Production project token, events mix — operational, not code. |
-| **LOW** | API capture is best-effort; a frozen isolate could still drop a rare event. `$process_person_profile` is sent on API events as a PostHog control flag. `core-js` postinstall is explicitly disallowed (`allowBuilds.core-js: false`) because PostHog pulled it in. |
+| **BLOCKER** | The previous mixed identity is **fixed**. |
+| **HIGH** | Local pending-signup storage may hold a Supabase user id **in the browser only**; it is not sent to PostHog. |
+| **MEDIUM** | PostHog `uuid` dedup is eventual/best-effort. Preview/Production token mix remains an operational risk. |
+| **LOW** | Serverless freeze can still drop an event. `$process_person_profile` is a control flag. |
 
 ## Hosted-config requirements
 
-Do **not** create these in this slice. Exact owner checklist:
+Do **not** create these in this slice.
 
 ### POSTHOG PREVIEW PROJECT
 
-- Region: **EU** (PostHog Cloud EU)
+- Region: **EU**
 - Suggested name: `Lockdin Preview`
-- Token needed: **Project API key** (`phc_…`), not a personal/admin key
+- Token: Project API key (`phc_…`)
 - Host: `https://eu.i.posthog.com`
-- Approved settings: autocapture off; session replay off; heatmaps off; surveys off; exception/error capture off; no advertising integrations; person profiles unused / anonymous events; retention prefer ≤90 days if the plan allows
+- Settings: autocapture/replay/heatmaps/surveys/exception capture off; retention prefer ≤90 days
 
 ### POSTHOG PRODUCTION PROJECT
 
-- Region: **EU**
-- Suggested name: `Lockdin Production`
-- Token needed: separate **Project API key**
-- Host: `https://eu.i.posthog.com`
-- Same approved settings as Preview
-- Never reuse the Preview token
+- Separate EU project, separate token, same host and settings.
 
-### VERCEL PREVIEW ENV
+### VERCEL PREVIEW ENV (all server-only)
 
-| Name | Client-safe? |
-| --- | --- |
-| `VITE_POSTHOG_PROJECT_TOKEN` | Yes (Preview project token) |
-| `VITE_POSTHOG_HOST` | Yes (`https://eu.i.posthog.com`) |
-| `VITE_LOCKDIN_ANALYTICS_ENV` | Yes (`preview`; optional if `build:vercel` maps `VERCEL_ENV`) |
-| `POSTHOG_PROJECT_TOKEN` | **Server-only** (same Preview project) |
-| `POSTHOG_HOST` | **Server-only** |
-| `LOCKDIN_ANALYTICS_ENV` | **Server-only** (`preview`; optional if `VERCEL_ENV` is preview) |
-| `LOCKDIN_ANALYTICS_ALIAS_SECRET` | **Server-only** |
+- `POSTHOG_PROJECT_TOKEN`
+- `POSTHOG_HOST` (`https://eu.i.posthog.com`)
+- `LOCKDIN_ANALYTICS_ENV=preview` (optional if `VERCEL_ENV` is preview)
+- `LOCKDIN_ANALYTICS_ALIAS_SECRET`
 
-### VERCEL PRODUCTION ENV
+### VERCEL PRODUCTION ENV (all server-only)
 
-Same names. Tokens must be the **Production** project. `VITE_LOCKDIN_ANALYTICS_ENV` / `LOCKDIN_ANALYTICS_ENV` = `production`.
+Same names; Production project token; `LOCKDIN_ANALYTICS_ENV=production`.
 
 ### HMAC SECRET
 
-- Required for API events (`LOCKDIN_ANALYTICS_ALIAS_SECRET`, ≥16 characters)
-- Generate on a trusted machine, e.g. `openssl rand -hex 32`
-- Store only in Vercel (and local `.env.local` if testing API capture)
-- Use the **same** secret within an environment so aliases stay stable; **do not** share Production secret into Preview unless deliberately joining identities (not recommended)
-- **Never print the final value in reports, commits, or chat logs**
+Generate with `openssl rand -hex 32`. Store in Vercel only. Never print the value. Same secret within an environment; do not share Production into Preview.
 
 ### Dashboard verify/disable
 
-In both projects: Session replay, autocapture, heatmaps, surveys, error tracking, toolbar/session recording scripts, and any “capture exceptions” default.
+Session replay, autocapture, heatmaps, surveys, error tracking.
 
 ## Remaining owner gate
 
-1. Create Preview + Production PostHog EU projects with the settings above.
-2. Set Vercel Preview and Production env vars (no Git commit).
-3. Generate and store the alias secret.
-4. Confirm privacy-page copy is acceptable before live capture.
-5. Authorize a follow-up **7.2B** Preview proof (one controlled event each) — not this branch merge by itself.
+1. Create Preview + Production PostHog EU projects.
+2. Set **server-only** Vercel env vars.
+3. Store the alias secret.
+4. Confirm privacy copy.
+5. Authorize 7.2B Preview proof.
 
-This slice does **not** authorize Production go-live of analytics, Sentry (7.3), Auth (7.4), beta invites, or restore.
-
-## Merge readiness
-
-Local implementation is **ready for the owner hosted-config gate**.
-
-**MERGE: HOLD** until the owner creates/approves PostHog projects and Vercel env, then a separately authorized merge/proof slice.
+**MERGE: HOLD.**
