@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { sql } from "drizzle-orm";
+import { loadCommittedMigrationJournal } from "../test/committed-migrations.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../../..");
@@ -455,26 +456,16 @@ describe("two-user local Supabase exam-date ownership", () => {
     expect(migration).not.toContain("FOR UPDATE");
     expect(migration).not.toContain("GRANT UPDATE");
 
-    const migration0012Path = path.join(
-      repoRoot,
-      "lib",
-      "db",
-      "migrations",
-      "0012_ordinary_penance.sql",
-    );
-    const expectedLatestHash = createHash("sha256")
-      .update(readFileSync(migration0012Path))
-      .digest("hex");
-
+    const committed = loadCommittedMigrationJournal(repoRoot);
     const journal = await db.execute(sql`
       select count(*)::int as count, max(created_at)::text as latest,
         (array_agg(hash order by created_at desc))[1] as latest_hash
       from drizzle.__drizzle_migrations
     `);
     expect(journal.rows[0]).toEqual({
-      count: 13,
-      latest: "1788010369454",
-      latest_hash: expectedLatestHash,
+      count: committed.count,
+      latest: committed.latestWhen,
+      latest_hash: committed.latestHash,
     });
   });
 });

@@ -11,6 +11,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { eq, sql } from "drizzle-orm";
+import { VALID_MAY_JUNE_2027 } from "../test/assignment-session.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../../..");
@@ -175,6 +176,7 @@ describe("two-user local Supabase topic progress isolation", () => {
           username: `topic_${token === tokenA ? "a" : "b"}_${stamp}`,
           level: "AS Level (Year 12)",
           examSession: "May/June 2027",
+          intendedExamSession: VALID_MAY_JUNE_2027,
           subjectIds: [subjectId],
         });
       expect([200, 409]).toContain(onboard.status);

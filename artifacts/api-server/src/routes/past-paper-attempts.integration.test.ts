@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { eq, sql } from "drizzle-orm";
+import { loadCommittedMigrationJournal } from "../test/committed-migrations.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../../..");
@@ -581,7 +582,7 @@ describe("two-user local Supabase past-paper ownership and year", () => {
       from drizzle.__drizzle_migrations
     `);
     expect(journal.rows[0]).toEqual({
-      count: 13,
+      count: loadCommittedMigrationJournal(repoRoot).count,
       has_0008: true,
     });
   });
