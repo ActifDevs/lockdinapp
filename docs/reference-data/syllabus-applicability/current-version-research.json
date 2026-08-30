@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "retrievalDate": "2026-08-29",
   "authority": "Official Cambridge International syllabus PDFs and subject pages only. Search used for discovery. Snippets are not evidence.",
   "logicalRevisionKeyConvention": {
@@ -7,7 +7,7 @@
     "example": "9489-r001",
     "kind": "INTERNAL LOCKDIN SNAPSHOT IDENTITY",
     "cambridgeEditionEncoded": false,
-    "ownerDecision": "Approved. Identifies the immutable Lockdin graph, not a Cambridge examination-year edition. Existing hosted legacy graph per subject is r001. Future graphs increment r002, r003, \u2026",
+    "ownerDecision": "Approved. Identifies the immutable Lockdin graph, not a Cambridge examination-year edition. Existing hosted legacy graph per subject is r001. Future graphs increment r002, r003, …",
     "notes": [
       "Do not infer Cambridge years from this key.",
       "Do not apply hosted from this research file until the owner authorizes adopt.",
@@ -22,7 +22,7 @@
   "modelSafety": {
     "continuousRangeAloneSafeForEverySubject": "NO",
     "seriesAvailabilityValidationRequired": "YES",
-    "reason": "Official documents typically allow June and November globally and March only for India, or June and November only. A Lockdin inclusive year\u00d7series ordinal range from May/June Y1 to Oct/Nov Y2 also contains Feb/Mar of intervening years. That is syllabus-validity-over-time, not global subject availability in every sitting."
+    "reason": "Official documents typically allow June and November globally and March only for India, or June and November only. A Lockdin inclusive year×series ordinal range from May/June Y1 to Oct/Nov Y2 also contains Feb/Mar of intervening years. That is syllabus-validity-over-time, not global subject availability in every sitting."
   },
   "hostedInventoryNote": "Read-only hosted check 2026-08-29: nine subjects, one published DEFAULT version each, logical_revision_key null, content_sha256 null, applicability null. No second graph.",
   "subjects": [
@@ -73,18 +73,18 @@
       "asALevel": "both",
       "evidence": {
         "page": "cover / syllabus availability statement",
-        "section": "Use this syllabus for exams in\u2026",
-        "note": "CSV papers 1\u20134 (Further Pure 1/2, Further Mechanics, Further Probability & Statistics) match the official four-component structure. Consecutive 2028\u20132030 PDF uses the same component set; edition is not unique from CSV alone."
+        "section": "Use this syllabus for exams in…",
+        "note": "CSV papers 1–4 (Further Pure 1/2, Further Mechanics, Further Probability & Statistics) match the official four-component structure. Consecutive 2028–2030 PDF uses the same component set; edition is not unique from CSV alone."
       },
       "contentMatch": {
         "status": "PROBABLE",
-        "note": "Main topics and paper codes align with official Papers 1\u20134. No CSV year marker."
+        "note": "Main topics and paper codes align with official Papers 1–4. No CSV year marker."
       },
       "identityAdoptionReady": "YES",
-      "applicabilityPopulationReady": "NO",
+      "applicabilityPopulationReady": "YES_FOR_OWNER_REVIEW",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "Owner must confirm Lockdin graph is the 2026\u20132027 edition rather than 2028\u20132030 (official text: no significant teaching changes).",
+        "Owner must confirm Lockdin graph is the 2026–2027 edition rather than 2028–2030 (official text: no significant teaching changes).",
         "Confirm March is never offered for 9231 in any administrative zone Lockdin serves.",
         "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
         "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
@@ -92,13 +92,13 @@
       "previousMatchStatus": "PROBABLE",
       "forensicPass": {
         "date": "2026-08-29",
-        "bestMatchingEdition": "Cambridge International AS & A Level Further Mathematics 9231 for exams in 2026 and 2027 (Images 697357, official Version 3, published July 2025) \u2014 not uniquely proven vs 2028\u20132030 744603",
+        "bestMatchingEdition": "Cambridge International AS & A Level Further Mathematics 9231 for exams in 2026 and 2027 (Images 697357, official Version 3, published July 2025) — not uniquely proven vs 2028–2030 744603",
         "officialSyllabusVersion": "3",
         "officialPublished": "July 2025",
         "cambridgeImagesPublicationId": "697357",
         "discriminators": {
           "status": "NONE_UNIQUE",
-          "note": "Zero main-topic, subtopic, or learning-outcome strings in the CSV appear in only one of 697357 vs 744603. Both official PDFs state no significant teaching changes. Papers 1\u20134 titles, durations, and marks match both."
+          "note": "Zero main-topic, subtopic, or learning-outcome strings in the CSV appear in only one of 697357 vs 744603. Both official PDFs state no significant teaching changes. Papers 1–4 titles, durations, and marks match both."
         },
         "gitProvenance": {
           "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
@@ -124,6 +124,57 @@
         "logicalRevisionKey": null,
         "contentSha256": null,
         "definition": "hashCanonicalGraph / hashNormalizedSyllabus from scripts/src/syllabus/canonical-graph.ts; hosted via loadCanonicalGraphForVersion"
+      },
+      "previousExactEditionAssumption": "SUPERSEDED by content-family model",
+      "contentFamily": {
+        "officialContentFamily": [
+          "597381 2023-2025 v1",
+          "697357 2026-2027 v3",
+          "744603 2028-2030 v1"
+        ],
+        "materialEquivalenceByEdition": [
+          {
+            "id": "597381",
+            "years": "2023-2025",
+            "status": "EQUIVALENT VERIFIED"
+          },
+          {
+            "id": "697357",
+            "years": "2026-2027",
+            "status": "EQUIVALENT VERIFIED"
+          },
+          {
+            "id": "744603",
+            "years": "2028-2030",
+            "status": "EQUIVALENT VERIFIED"
+          }
+        ],
+        "proposedApplicableFromYear": 2023,
+        "proposedApplicableFromSeries": "May/June",
+        "proposedApplicableToYear": 2030,
+        "proposedApplicableToSeries": "Oct/Nov",
+        "juneSupportedThroughout": true,
+        "novemberSupportedThroughout": true,
+        "confidence": "EQUIVALENT VERIFIED",
+        "applicabilityReady": "YES",
+        "seriesPolicyReady": "YES",
+        "proposedSeriesPolicy": [
+          {
+            "series": "May/June",
+            "product_auto_assign": true
+          },
+          {
+            "series": "Oct/Nov",
+            "product_auto_assign": true
+          }
+        ],
+        "febMarAutomatic": "DO_NOT_CREATE_OR_FALSE",
+        "firstKnownNonEquivalentBefore": "No earlier official rewrite located in this pass; 2020-from textbooks cited across the family.",
+        "firstKnownNonEquivalentAfter": "No official 2031+ 9231 PDF located.",
+        "nextDistinctSnapshotRequired": "UNKNOWN",
+        "nextDistinctOfficialPeriod": null,
+        "changeNoteEvidence": "697357 v3 July 2025 typographical only (729291). 744603: no significant teaching changes; from-2020 textbooks suitable. 597381: no significant teaching changes.",
+        "hostedWrite": "NOT AUTHORIZED"
       }
     },
     {
@@ -180,7 +231,7 @@
       "rangeAloneSafe": "NO",
       "asALevel": "both",
       "evidence": {
-        "page": "cover; Content overview p.9; Assessment overview p.10; Changes pp.78\u201380",
+        "page": "cover; Content overview p.9; Assessment overview p.10; Changes pp.78–80",
         "section": "Use this syllabus for exams in 2027, 2028 and 2029",
         "note": "Report 96 Holocaust/France overlap is preserved as non-discriminating. Forensic pass uses 2027-only topics and assessment rename."
       },
@@ -189,12 +240,12 @@
         "note": "Option titles, Paper 1 Historical Sources naming, three-topic AS structure, and France key-question wording match official 718292 and contradict 697368 2026 structure."
       },
       "identityAdoptionReady": "YES",
-      "applicabilityPopulationReady": "NO",
+      "applicabilityPopulationReady": "YES_FOR_OWNER_REVIEW",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
         "Owner must still approve logical_revision_key 9489-2027-2029-v2 before hosted adopt.",
-        "Official 2027\u20132029 PDF: not available in all administrative zones; not available in the US from 2027. Lockdin has no zone model \u2014 record only.",
-        "Do not populate applicability until series-availability is modelled; May/June 2027\u2013Oct/Nov 2029 still contains Feb/Mar 2028 and 2029 in a continuous 0011 range."
+        "Official 2027–2029 PDF: not available in all administrative zones; not available in the US from 2027. Lockdin has no zone model — record only.",
+        "Do not populate applicability until series-availability is modelled; May/June 2027–Oct/Nov 2029 still contains Feb/Mar 2028 and 2029 in a continuous 0011 range."
       ],
       "previousMatchStatus": "PROBABLE",
       "forensicPass": {
@@ -207,12 +258,12 @@
           "status": "UNIQUE_VS_2026",
           "against": "697368 2026-only edition",
           "examples": [
-            "CSV main topic 'Russia from autocracy to revolution 1881-1924' is official 2027 wording; 2026 uses 'The Russian Revolution, 1894\u20131921'.",
+            "CSV main topic 'Russia from autocracy to revolution 1881-1924' is official 2027 wording; 2026 uses 'The Russian Revolution, 1894–1921'.",
             "CSV mains 'The Civil War and Reconstruction 1820-77', 'A time of challenges: the USA 1961-74', 'The route to independence: Malaysia and Indonesia c.1909-67', 'End of minority rule in South Africa and Zimbabwe 1948-94' appear in 718292 and not as 2026 option titles.",
             "CSV Paper 1 name is 'Paper 1 Historical Sources'; official 2026 assessment overview uses 'Document question'; official 2027 uses 'Historical Sources'.",
-            "CSV AS European option aligns with official 'Modern Europe, 1774\u20131924' (three topics), not 2026 'Modern Europe, 1750\u20131921' (four topics including Industrial Revolution in Britain, which is absent from the CSV).",
+            "CSV AS European option aligns with official 'Modern Europe, 1774–1924' (three topics), not 2026 'Modern Europe, 1750–1921' (four topics including Industrial Revolution in Britain, which is absent from the CSV).",
             "CSV France key question uses 'immediate consequences' (2027), not 2026 'immediate outcomes'.",
-            "Official 718292 pp. 78\u201380 lists those content/assessment changes for first examination in 2027."
+            "Official 718292 pp. 78–80 lists those content/assessment changes for first examination in 2027."
           ]
         },
         "gitProvenance": {
@@ -224,7 +275,7 @@
           "title": "Cambridge International AS & A Level History 9489 syllabus for examination in 2026",
           "url": "https://www.cambridgeinternational.org/Images/697368-2026-syllabus.pdf",
           "publicationId": "697368",
-          "note": "Report 96 treated this as the probable identity because France 1774\u20131814 and The Holocaust appear in both editions. Forensic pass: those topics are not unique. The Lockdin graph matches the 2027\u20132029 rewrite."
+          "note": "Report 96 treated this as the probable identity because France 1774–1814 and The Holocaust appear in both editions. Forensic pass: those topics are not unique. The Lockdin graph matches the 2027–2029 rewrite."
         }
       },
       "previousLogicalRevisionKeyCandidate": "9489-2026-2026",
@@ -245,6 +296,50 @@
         "logicalRevisionKey": null,
         "contentSha256": null,
         "definition": "hashCanonicalGraph / hashNormalizedSyllabus from scripts/src/syllabus/canonical-graph.ts; hosted via loadCanonicalGraphForVersion"
+      },
+      "previousExactEditionAssumption": "SUPERSEDED by content-family model",
+      "contentFamily": {
+        "officialContentFamily": [
+          "718292 2027-2029 v2"
+        ],
+        "materialEquivalenceByEdition": [
+          {
+            "id": "697368",
+            "years": "2026",
+            "status": "NOT EQUIVALENT"
+          },
+          {
+            "id": "718292",
+            "years": "2027-2029",
+            "status": "EQUIVALENT VERIFIED"
+          }
+        ],
+        "proposedApplicableFromYear": 2027,
+        "proposedApplicableFromSeries": "May/June",
+        "proposedApplicableToYear": 2029,
+        "proposedApplicableToSeries": "Oct/Nov",
+        "juneSupportedThroughout": true,
+        "novemberSupportedThroughout": true,
+        "confidence": "EQUIVALENT VERIFIED",
+        "applicabilityReady": "YES",
+        "seriesPolicyReady": "YES",
+        "proposedSeriesPolicy": [
+          {
+            "series": "May/June",
+            "product_auto_assign": true
+          },
+          {
+            "series": "Oct/Nov",
+            "product_auto_assign": true
+          }
+        ],
+        "febMarAutomatic": "DO_NOT_CREATE_OR_FALSE",
+        "firstKnownNonEquivalentBefore": "697368 2026 (and 697368-2026-2027 cover variant): different AS Europe range, Paper 1 Document question vs Historical Sources, option set.",
+        "firstKnownNonEquivalentAfter": "No official 2030+ 9489 PDF located.",
+        "nextDistinctSnapshotRequired": "YES",
+        "nextDistinctOfficialPeriod": "2026 sittings (predecessor official edition); 2030+ unknown",
+        "changeNoteEvidence": "718292 pp.78-80 first examination 2027 rewrite. Do not broaden into 2026.",
+        "hostedWrite": "NOT AUTHORIZED"
       }
     },
     {
@@ -294,18 +389,18 @@
       "asALevel": "both",
       "evidence": {
         "page": "cover; Making entries",
-        "section": "Use this syllabus for exams in\u2026",
-        "note": "CSV Papers 1\u20134 names (Business Concepts 1/2, Decision-Making, Strategy) and five main topic areas match the official 2026\u20132028 PDF. Prior 2023\u20132025 PDF uses the same paper titles; edition not unique from CSV."
+        "section": "Use this syllabus for exams in…",
+        "note": "CSV Papers 1–4 names (Business Concepts 1/2, Decision-Making, Strategy) and five main topic areas match the official 2026–2028 PDF. Prior 2023–2025 PDF uses the same paper titles; edition not unique from CSV."
       },
       "contentMatch": {
         "status": "PROBABLE",
-        "note": "Component names match official assessment overview. No significant-teaching-change statement on 2026\u20132028 vs endorsed-from-2023 textbooks."
+        "note": "Component names match official assessment overview. No significant-teaching-change statement on 2026–2028 vs endorsed-from-2023 textbooks."
       },
       "identityAdoptionReady": "YES",
-      "applicabilityPopulationReady": "NO",
+      "applicabilityPopulationReady": "YES_FOR_OWNER_REVIEW",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "Choose 2023\u20132025 vs 2026\u20132028 edition for adopt.",
+        "Choose 2023–2025 vs 2026–2028 edition for adopt.",
         "March is India-only; must not be treated as globally available if a continuous range includes Feb/Mar.",
         "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
         "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
@@ -313,13 +408,13 @@
       "previousMatchStatus": "PROBABLE",
       "forensicPass": {
         "date": "2026-08-29",
-        "bestMatchingEdition": "Not unique: 595459 (2023\u20132025) and 697371 (2026\u20132028 Version 2, December 2025) share the same five topic titles and Papers 1\u20134 names",
+        "bestMatchingEdition": "Not unique: 595459 (2023–2025) and 697371 (2026–2028 Version 2, December 2025) share the same five topic titles and Papers 1–4 names",
         "officialSyllabusVersion": "2",
         "officialPublished": "December 2025",
         "cambridgeImagesPublicationId": "697371",
         "discriminators": {
           "status": "INSUFFICIENT",
-          "note": "One CSV learning-outcome string matched 2023\u20132025 PDF extract and not 2026\u20132028 extract; likely hyphenation/wording, not a structural rewrite. Official 2026\u20132028 PDF: no significant teaching changes; textbooks from 2023 still suitable."
+          "note": "One CSV learning-outcome string matched 2023–2025 PDF extract and not 2026–2028 extract; likely hyphenation/wording, not a structural rewrite. Official 2026–2028 PDF: no significant teaching changes; textbooks from 2023 still suitable."
         },
         "gitProvenance": {
           "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
@@ -345,6 +440,51 @@
         "logicalRevisionKey": null,
         "contentSha256": null,
         "definition": "hashCanonicalGraph / hashNormalizedSyllabus from scripts/src/syllabus/canonical-graph.ts; hosted via loadCanonicalGraphForVersion"
+      },
+      "previousExactEditionAssumption": "SUPERSEDED by content-family model",
+      "contentFamily": {
+        "officialContentFamily": [
+          "595459 2023-2025",
+          "697371 2026-2028 v2"
+        ],
+        "materialEquivalenceByEdition": [
+          {
+            "id": "595459",
+            "years": "2023-2025",
+            "status": "EQUIVALENT VERIFIED"
+          },
+          {
+            "id": "697371",
+            "years": "2026-2028",
+            "status": "EQUIVALENT VERIFIED"
+          }
+        ],
+        "proposedApplicableFromYear": 2023,
+        "proposedApplicableFromSeries": "May/June",
+        "proposedApplicableToYear": 2028,
+        "proposedApplicableToSeries": "Oct/Nov",
+        "juneSupportedThroughout": true,
+        "novemberSupportedThroughout": true,
+        "confidence": "EQUIVALENT VERIFIED",
+        "applicabilityReady": "YES",
+        "seriesPolicyReady": "YES",
+        "proposedSeriesPolicy": [
+          {
+            "series": "May/June",
+            "product_auto_assign": true
+          },
+          {
+            "series": "Oct/Nov",
+            "product_auto_assign": true
+          }
+        ],
+        "febMarAutomatic": "DO_NOT_CREATE_OR_FALSE",
+        "firstKnownNonEquivalentBefore": "No earlier official 9609 rewrite compared in this pass.",
+        "firstKnownNonEquivalentAfter": "No official 2029+ 9609 PDF located.",
+        "nextDistinctSnapshotRequired": "UNKNOWN",
+        "nextDistinctOfficialPeriod": null,
+        "changeNoteEvidence": "697371: no significant teaching changes; from-2023 textbooks suitable. Papers 1-4 names and five topic titles match both PDFs.",
+        "hostedWrite": "NOT AUTHORIZED"
       }
     },
     {
@@ -401,17 +541,17 @@
       "evidence": {
         "page": "cover",
         "section": "Use this syllabus for exams in 2026",
-        "note": "CSV Papers 1\u20134 (Theory Fundamentals, Problem-solving and Programming, Advanced Theory, Practical) match official assessment. 2027\u20132029 is a separate official PDF; 2026 is a one-year document. Graph cannot uniquely pick 2026 vs 2027\u20132029 without owner review."
+        "note": "CSV Papers 1–4 (Theory Fundamentals, Problem-solving and Programming, Advanced Theory, Practical) match official assessment. 2027–2029 is a separate official PDF; 2026 is a one-year document. Graph cannot uniquely pick 2026 vs 2027–2029 without owner review."
       },
       "contentMatch": {
         "status": "PROBABLE",
         "note": "AS topic headings (Information representation, Communication, Hardware, etc.) align with official content overview."
       },
       "identityAdoptionReady": "YES",
-      "applicabilityPopulationReady": "NO",
+      "applicabilityPopulationReady": "YES_FOR_OWNER_REVIEW",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "Owner must choose 2026 vs 2027\u20132029 official edition.",
+        "Owner must choose 2026 vs 2027–2029 official edition.",
         "Confirm no March series for 9618 in Lockdin-served zones.",
         "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
         "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
@@ -419,13 +559,13 @@
       "previousMatchStatus": "PROBABLE",
       "forensicPass": {
         "date": "2026-08-29",
-        "bestMatchingEdition": "Not unique vs 697372 (2026 Version 2) and 721397 (2027\u20132029 Version 2); official 2027\u20132029 PDF states no significant teaching changes and from-2021 textbooks remain suitable",
+        "bestMatchingEdition": "Not unique vs 697372 (2026 Version 2) and 721397 (2027–2029 Version 2); official 2027–2029 PDF states no significant teaching changes and from-2021 textbooks remain suitable",
         "officialSyllabusVersion": "2",
         "officialPublished": "December 2025",
         "cambridgeImagesPublicationId": "697372",
         "discriminators": {
           "status": "NONE_UNIQUE",
-          "note": "All 19 CSV main topics appear in both official PDFs. Zero unique subtopic/LO hits. Papers 1\u20134 names, 150-minute Paper 4 Practical, and 75-mark papers match both. Official 2026 update 747145 is a version-2 clarification (papers/calculators), not a content rewrite."
+          "note": "All 19 CSV main topics appear in both official PDFs. Zero unique subtopic/LO hits. Papers 1–4 names, 150-minute Paper 4 Practical, and 75-mark papers match both. Official 2026 update 747145 is a version-2 clarification (papers/calculators), not a content rewrite."
         },
         "gitProvenance": {
           "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
@@ -451,6 +591,57 @@
         "logicalRevisionKey": null,
         "contentSha256": null,
         "definition": "hashCanonicalGraph / hashNormalizedSyllabus from scripts/src/syllabus/canonical-graph.ts; hosted via loadCanonicalGraphForVersion"
+      },
+      "previousExactEditionAssumption": "SUPERSEDED by content-family model",
+      "contentFamily": {
+        "officialContentFamily": [
+          "636089 2024-2025 v2",
+          "697372 2026 v2",
+          "721397 2027-2029 v2"
+        ],
+        "materialEquivalenceByEdition": [
+          {
+            "id": "636089",
+            "years": "2024-2025",
+            "status": "EQUIVALENT VERIFIED"
+          },
+          {
+            "id": "697372",
+            "years": "2026",
+            "status": "EQUIVALENT VERIFIED"
+          },
+          {
+            "id": "721397",
+            "years": "2027-2029",
+            "status": "EQUIVALENT VERIFIED"
+          }
+        ],
+        "proposedApplicableFromYear": 2024,
+        "proposedApplicableFromSeries": "May/June",
+        "proposedApplicableToYear": 2029,
+        "proposedApplicableToSeries": "Oct/Nov",
+        "juneSupportedThroughout": true,
+        "novemberSupportedThroughout": true,
+        "confidence": "EQUIVALENT VERIFIED",
+        "applicabilityReady": "YES",
+        "seriesPolicyReady": "YES",
+        "proposedSeriesPolicy": [
+          {
+            "series": "May/June",
+            "product_auto_assign": true
+          },
+          {
+            "series": "Oct/Nov",
+            "product_auto_assign": true
+          }
+        ],
+        "febMarAutomatic": "DO_NOT_CREATE_OR_FALSE",
+        "firstKnownNonEquivalentBefore": "502962 2021-2023 is the first 9618 (replaced 9608). Not used as the r001 window start; treat as earlier same-code lineage, not proven as a planning-meaning rewrite vs CSV.",
+        "firstKnownNonEquivalentAfter": "No official 2030+ 9618 PDF located.",
+        "nextDistinctSnapshotRequired": "UNKNOWN",
+        "nextDistinctOfficialPeriod": null,
+        "changeNoteEvidence": "721397: no significant teaching changes; from-2021 textbooks suitable. 747145/682969 are clarifications (calculators, Paper 4 source files), not content rewrites. All 19 CSV main topics in 697372 and 721397.",
+        "hostedWrite": "NOT AUTHORIZED"
       }
     },
     {
@@ -500,18 +691,18 @@
       "asALevel": "both",
       "evidence": {
         "page": "cover",
-        "section": "Use this syllabus for exams in\u2026",
-        "note": "CSV Papers 1\u20135 names match official assessment. Topic 1 Cell structure and subsequent AS topics match official content overview. CSV also stores Assessment objectives / Mathematical requirements as main topics \u2014 importer noise, not a different specification."
+        "section": "Use this syllabus for exams in…",
+        "note": "CSV Papers 1–5 names match official assessment. Topic 1 Cell structure and subsequent AS topics match official content overview. CSV also stores Assessment objectives / Mathematical requirements as main topics — importer noise, not a different specification."
       },
       "contentMatch": {
         "status": "PROBABLE",
         "note": "Core topic sequence matches official AS/A content. Extra CSV headings are not official units."
       },
       "identityAdoptionReady": "YES",
-      "applicabilityPopulationReady": "NO",
+      "applicabilityPopulationReady": "YES_FOR_OWNER_REVIEW",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "2028\u20132030 official PDF exists with no significant teaching changes; owner must pick edition.",
+        "2028–2030 official PDF exists with no significant teaching changes; owner must pick edition.",
         "March is India-only.",
         "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
         "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
@@ -519,13 +710,13 @@
       "previousMatchStatus": "PROBABLE",
       "forensicPass": {
         "date": "2026-08-29",
-        "bestMatchingEdition": "Not unique vs 664560 (2025\u20132027 Version 1) and 744622 (2028\u20132030 Version 1); both state no significant teaching changes",
+        "bestMatchingEdition": "Not unique vs 664560 (2025–2027 Version 1) and 744622 (2028–2030 Version 1); both state no significant teaching changes",
         "officialSyllabusVersion": "1",
         "officialPublished": "September 2022",
         "cambridgeImagesPublicationId": "664560",
         "discriminators": {
           "status": "NONE_UNIQUE",
-          "note": "AS/A topic titles 1\u201319 and Papers 1\u20135 weightings match both official PDFs. CSV also stores Assessment objectives / Mathematical requirements as main topics (importer noise)."
+          "note": "AS/A topic titles 1–19 and Papers 1–5 weightings match both official PDFs. CSV also stores Assessment objectives / Mathematical requirements as main topics (importer noise)."
         },
         "gitProvenance": {
           "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
@@ -551,6 +742,51 @@
         "logicalRevisionKey": null,
         "contentSha256": null,
         "definition": "hashCanonicalGraph / hashNormalizedSyllabus from scripts/src/syllabus/canonical-graph.ts; hosted via loadCanonicalGraphForVersion"
+      },
+      "previousExactEditionAssumption": "SUPERSEDED by content-family model",
+      "contentFamily": {
+        "officialContentFamily": [
+          "664560 2025-2027 v1",
+          "744622 2028-2030 v1"
+        ],
+        "materialEquivalenceByEdition": [
+          {
+            "id": "664560",
+            "years": "2025-2027",
+            "status": "EQUIVALENT VERIFIED"
+          },
+          {
+            "id": "744622",
+            "years": "2028-2030",
+            "status": "EQUIVALENT VERIFIED"
+          }
+        ],
+        "proposedApplicableFromYear": 2025,
+        "proposedApplicableFromSeries": "May/June",
+        "proposedApplicableToYear": 2030,
+        "proposedApplicableToSeries": "Oct/Nov",
+        "juneSupportedThroughout": true,
+        "novemberSupportedThroughout": true,
+        "confidence": "EQUIVALENT VERIFIED",
+        "applicabilityReady": "YES",
+        "seriesPolicyReady": "YES",
+        "proposedSeriesPolicy": [
+          {
+            "series": "May/June",
+            "product_auto_assign": true
+          },
+          {
+            "series": "Oct/Nov",
+            "product_auto_assign": true
+          }
+        ],
+        "febMarAutomatic": "DO_NOT_CREATE_OR_FALSE",
+        "firstKnownNonEquivalentBefore": "Official 2022-2024 science family (pre-2025 rewrite). Do not merge r001 backward across that change.",
+        "firstKnownNonEquivalentAfter": "No official 2031+ 9700 PDF located.",
+        "nextDistinctSnapshotRequired": "YES",
+        "nextDistinctOfficialPeriod": "2022-2024 official Biology sittings (predecessor family)",
+        "changeNoteEvidence": "Both 664560 and 744622: no significant teaching changes; topics 1-19 and Papers 1-5 match. CSV importer noise (Assessment objectives / Mathematical requirements) ignored.",
+        "hostedWrite": "NOT AUTHORIZED"
       }
     },
     {
@@ -592,18 +828,18 @@
       "asALevel": "both",
       "evidence": {
         "page": "cover; Making entries",
-        "section": "Use this syllabus for exams in\u2026",
-        "note": "CSV topic 1 Atomic structure and Papers 1\u20135 match official structure. Component display names in CSV are shorter (Paper 1 / Paper 2) than official titles; paper codes 9701/1\u20135 match."
+        "section": "Use this syllabus for exams in…",
+        "note": "CSV topic 1 Atomic structure and Papers 1–5 match official structure. Component display names in CSV are shorter (Paper 1 / Paper 2) than official titles; paper codes 9701/1–5 match."
       },
       "contentMatch": {
         "status": "PROBABLE",
         "note": "AS/A topic list aligns with official content. Owner should still confirm no later 2028+ edition is intended."
       },
       "identityAdoptionReady": "YES",
-      "applicabilityPopulationReady": "NO",
+      "applicabilityPopulationReady": "YES_FOR_OWNER_REVIEW",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "Search located the 2025\u20132027 official PDF; a later edition may exist and was not used as identity.",
+        "Search located the 2025–2027 official PDF; a later edition may exist and was not used as identity.",
         "March is India-only.",
         "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
         "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
@@ -611,7 +847,7 @@
       "previousMatchStatus": "PROBABLE",
       "forensicPass": {
         "date": "2026-08-29",
-        "bestMatchingEdition": "Not unique vs 664563 (2025\u20132027 Version 1) and 744624 (2028\u20132030 Version 1). Later edition confirmed official; both state no significant teaching changes.",
+        "bestMatchingEdition": "Not unique vs 664563 (2025–2027 Version 1) and 744624 (2028–2030 Version 1). Later edition confirmed official; both state no significant teaching changes.",
         "officialSyllabusVersion": "1",
         "officialPublished": "September 2022",
         "cambridgeImagesPublicationId": "664563",
@@ -651,6 +887,51 @@
         "logicalRevisionKey": null,
         "contentSha256": null,
         "definition": "hashCanonicalGraph / hashNormalizedSyllabus from scripts/src/syllabus/canonical-graph.ts; hosted via loadCanonicalGraphForVersion"
+      },
+      "previousExactEditionAssumption": "SUPERSEDED by content-family model",
+      "contentFamily": {
+        "officialContentFamily": [
+          "664563 2025-2027 v1",
+          "744624 2028-2030 v1"
+        ],
+        "materialEquivalenceByEdition": [
+          {
+            "id": "664563",
+            "years": "2025-2027",
+            "status": "EQUIVALENT VERIFIED"
+          },
+          {
+            "id": "744624",
+            "years": "2028-2030",
+            "status": "EQUIVALENT VERIFIED"
+          }
+        ],
+        "proposedApplicableFromYear": 2025,
+        "proposedApplicableFromSeries": "May/June",
+        "proposedApplicableToYear": 2030,
+        "proposedApplicableToSeries": "Oct/Nov",
+        "juneSupportedThroughout": true,
+        "novemberSupportedThroughout": true,
+        "confidence": "EQUIVALENT VERIFIED",
+        "applicabilityReady": "YES",
+        "seriesPolicyReady": "YES",
+        "proposedSeriesPolicy": [
+          {
+            "series": "May/June",
+            "product_auto_assign": true
+          },
+          {
+            "series": "Oct/Nov",
+            "product_auto_assign": true
+          }
+        ],
+        "febMarAutomatic": "DO_NOT_CREATE_OR_FALSE",
+        "firstKnownNonEquivalentBefore": "Official 2022-2024 Chemistry family (pre-2025 rewrite).",
+        "firstKnownNonEquivalentAfter": "No official 2031+ 9701 PDF located.",
+        "nextDistinctSnapshotRequired": "YES",
+        "nextDistinctOfficialPeriod": "2022-2024 official Chemistry sittings (predecessor family)",
+        "changeNoteEvidence": "Both editions: no significant teaching changes; from-2022 textbooks suitable. Papers 9701/1-5 match. Extract-only LO misses are not structural.",
+        "hostedWrite": "NOT AUTHORIZED"
       }
     },
     {
@@ -701,18 +982,18 @@
       "asALevel": "both",
       "evidence": {
         "page": "cover; Content overview",
-        "section": "AS Level topics 1\u201311 and A Level 12\u201325",
-        "note": "CSV main topics 1\u201325 plus practical papers match the official numbered topic list and Papers 1\u20135. 2028\u20132030 official PDF states no significant teaching changes; edition is not unique from CSV."
+        "section": "AS Level topics 1–11 and A Level 12–25",
+        "note": "CSV main topics 1–25 plus practical papers match the official numbered topic list and Papers 1–5. 2028–2030 official PDF states no significant teaching changes; edition is not unique from CSV."
       },
       "contentMatch": {
         "status": "PROBABLE",
         "note": "Strong structural match to official 9702 content overview. Not VERIFIED to a single examination-year PDF."
       },
       "identityAdoptionReady": "YES",
-      "applicabilityPopulationReady": "NO",
+      "applicabilityPopulationReady": "YES_FOR_OWNER_REVIEW",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "Owner must choose 2025\u20132027 vs 2028\u20132030 (and not the expired 2022\u20132024 PDF).",
+        "Owner must choose 2025–2027 vs 2028–2030 (and not the expired 2022–2024 PDF).",
         "March is India-only.",
         "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
         "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
@@ -720,13 +1001,13 @@
       "previousMatchStatus": "PROBABLE",
       "forensicPass": {
         "date": "2026-08-29",
-        "bestMatchingEdition": "Not unique vs 664565 (2025\u20132027 Version 1) and 744626 (2028\u20132030 Version 1); both state no significant teaching changes",
+        "bestMatchingEdition": "Not unique vs 664565 (2025–2027 Version 1) and 744626 (2028–2030 Version 1); both state no significant teaching changes",
         "officialSyllabusVersion": "1",
         "officialPublished": "September 2022",
         "cambridgeImagesPublicationId": "664565",
         "discriminators": {
           "status": "INSUFFICIENT",
-          "note": "Topics 1\u201325 match both. A few LO substring hits differed (LaTeX vs plain E=mc^2). Official 2028 PDF: no significant teaching changes."
+          "note": "Topics 1–25 match both. A few LO substring hits differed (LaTeX vs plain E=mc^2). Official 2028 PDF: no significant teaching changes."
         },
         "gitProvenance": {
           "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
@@ -752,6 +1033,56 @@
         "logicalRevisionKey": null,
         "contentSha256": null,
         "definition": "hashCanonicalGraph / hashNormalizedSyllabus from scripts/src/syllabus/canonical-graph.ts; hosted via loadCanonicalGraphForVersion"
+      },
+      "previousExactEditionAssumption": "SUPERSEDED by content-family model",
+      "contentFamily": {
+        "officialContentFamily": [
+          "664565 2025-2027 v1",
+          "744626 2028-2030 v1"
+        ],
+        "materialEquivalenceByEdition": [
+          {
+            "id": "554625",
+            "years": "2022-2024",
+            "status": "NOT EQUIVALENT"
+          },
+          {
+            "id": "664565",
+            "years": "2025-2027",
+            "status": "EQUIVALENT VERIFIED"
+          },
+          {
+            "id": "744626",
+            "years": "2028-2030",
+            "status": "EQUIVALENT VERIFIED"
+          }
+        ],
+        "proposedApplicableFromYear": 2025,
+        "proposedApplicableFromSeries": "May/June",
+        "proposedApplicableToYear": 2030,
+        "proposedApplicableToSeries": "Oct/Nov",
+        "juneSupportedThroughout": true,
+        "novemberSupportedThroughout": true,
+        "confidence": "EQUIVALENT VERIFIED",
+        "applicabilityReady": "YES",
+        "seriesPolicyReady": "YES",
+        "proposedSeriesPolicy": [
+          {
+            "series": "May/June",
+            "product_auto_assign": true
+          },
+          {
+            "series": "Oct/Nov",
+            "product_auto_assign": true
+          }
+        ],
+        "febMarAutomatic": "DO_NOT_CREATE_OR_FALSE",
+        "firstKnownNonEquivalentBefore": "554625 2022-2024 (Electric Fields / AS-A placement and other 2022 rewrite items on official change log p.60).",
+        "firstKnownNonEquivalentAfter": "No official 2031+ 9702 PDF located.",
+        "nextDistinctSnapshotRequired": "YES",
+        "nextDistinctOfficialPeriod": "2022-2024 official Physics sittings",
+        "changeNoteEvidence": "664565 and 744626: no significant teaching changes; topics 1-25 and Papers 1-5 match CSV. 2028-2030 does not start a new Lockdin graph.",
+        "hostedWrite": "NOT AUTHORIZED"
       }
     },
     {
@@ -794,14 +1125,14 @@
       "evidence": {
         "page": "cover; Content overview",
         "section": "1 Basic economic ideas and resource allocation",
-        "note": "CSV Papers 1\u20134 and first topic title match official 2026\u20132028 PDF. Official Papers 1\u20132 are AS; 3\u20134 are A Level. CSV component names are generic Paper 1\u20134."
+        "note": "CSV Papers 1–4 and first topic title match official 2026–2028 PDF. Official Papers 1–2 are AS; 3–4 are A Level. CSV component names are generic Paper 1–4."
       },
       "contentMatch": {
         "status": "PROBABLE",
         "note": "Topic family matches official AS/A split. A later or earlier edition with the same from-2023 textbook endorsement may exist."
       },
       "identityAdoptionReady": "YES",
-      "applicabilityPopulationReady": "NO",
+      "applicabilityPopulationReady": "YES_FOR_OWNER_REVIEW",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
         "Confirm no competing official edition should be the Lockdin identity.",
@@ -812,13 +1143,13 @@
       "previousMatchStatus": "PROBABLE",
       "forensicPass": {
         "date": "2026-08-29",
-        "bestMatchingEdition": "Not unique vs 595463 (2023\u20132025 Version 2) and 697423 (2026\u20132028 Version 2). Official 2026\u20132028 update 748950 is weblink-only (December 2025).",
+        "bestMatchingEdition": "Not unique vs 595463 (2023–2025 Version 2) and 697423 (2026–2028 Version 2). Official 2026–2028 update 748950 is weblink-only (December 2025).",
         "officialSyllabusVersion": "2",
         "officialPublished": "December 2025",
         "cambridgeImagesPublicationId": "697423",
         "discriminators": {
           "status": "INSUFFICIENT",
-          "note": "CSV Papers 1\u20134 timings/marks match both editions. Topic family is the same. CSV has both 'Government microeconomy intervention' and 'Government microeconomic intervention' \u2014 labelling noise, not an edition id."
+          "note": "CSV Papers 1–4 timings/marks match both editions. Topic family is the same. CSV has both 'Government microeconomy intervention' and 'Government microeconomic intervention' — labelling noise, not an edition id."
         },
         "gitProvenance": {
           "added": "a2ad506 2026-07-27 Added all 9 subjects raw data",
@@ -844,7 +1175,7 @@
           "url": "https://www.cambridgeinternational.org/Images/748950-2026-2028-syllabus-update.pdf",
           "publicationId": "748950",
           "retrievalDate": "2026-08-29",
-          "note": "Version 2, December 2025; weblink change only \u2014 evidence that same year-span can be amended."
+          "note": "Version 2, December 2025; weblink change only — evidence that same year-span can be amended."
         }
       ],
       "previousLogicalRevisionKeyCandidateExternalStyle": "9708-2026-2028-v2",
@@ -859,6 +1190,51 @@
         "logicalRevisionKey": null,
         "contentSha256": null,
         "definition": "hashCanonicalGraph / hashNormalizedSyllabus from scripts/src/syllabus/canonical-graph.ts; hosted via loadCanonicalGraphForVersion"
+      },
+      "previousExactEditionAssumption": "SUPERSEDED by content-family model",
+      "contentFamily": {
+        "officialContentFamily": [
+          "595463 2023-2025 v2",
+          "697423 2026-2028 v2"
+        ],
+        "materialEquivalenceByEdition": [
+          {
+            "id": "595463",
+            "years": "2023-2025",
+            "status": "EQUIVALENT VERIFIED"
+          },
+          {
+            "id": "697423",
+            "years": "2026-2028",
+            "status": "EQUIVALENT VERIFIED"
+          }
+        ],
+        "proposedApplicableFromYear": 2023,
+        "proposedApplicableFromSeries": "May/June",
+        "proposedApplicableToYear": 2028,
+        "proposedApplicableToSeries": "Oct/Nov",
+        "juneSupportedThroughout": true,
+        "novemberSupportedThroughout": true,
+        "confidence": "EQUIVALENT VERIFIED",
+        "applicabilityReady": "YES",
+        "seriesPolicyReady": "YES",
+        "proposedSeriesPolicy": [
+          {
+            "series": "May/June",
+            "product_auto_assign": true
+          },
+          {
+            "series": "Oct/Nov",
+            "product_auto_assign": true
+          }
+        ],
+        "febMarAutomatic": "DO_NOT_CREATE_OR_FALSE",
+        "firstKnownNonEquivalentBefore": "No earlier official 9708 rewrite compared in this pass.",
+        "firstKnownNonEquivalentAfter": "No official 2029+ 9708 PDF located.",
+        "nextDistinctSnapshotRequired": "UNKNOWN",
+        "nextDistinctOfficialPeriod": null,
+        "changeNoteEvidence": "748950 is weblink-only. Papers 1-4 timings/marks match both editions. Topic family unchanged.",
+        "hostedWrite": "NOT AUTHORIZED"
       }
     },
     {
@@ -915,18 +1291,18 @@
       "asALevel": "both",
       "evidence": {
         "page": "cover; Content overview",
-        "section": "Six components Paper 1\u20136",
-        "note": "CSV Papers 1\u20136 titles match official Pure Mathematics 1\u20133, Mechanics, Probability & Statistics 1\u20132. The same six-paper model appears in 2023\u20132025 and 2028\u20132030 official PDFs."
+        "section": "Six components Paper 1–6",
+        "note": "CSV Papers 1–6 titles match official Pure Mathematics 1–3, Mechanics, Probability & Statistics 1–2. The same six-paper model appears in 2023–2025 and 2028–2030 official PDFs."
       },
       "contentMatch": {
         "status": "PROBABLE",
         "note": "Strong paper-structure match; examination-year edition not unique."
       },
       "identityAdoptionReady": "YES",
-      "applicabilityPopulationReady": "NO",
+      "applicabilityPopulationReady": "YES_FOR_OWNER_REVIEW",
       "c2bStrictAssignmentReady": "NO",
       "openQuestions": [
-        "Owner must choose among 2023\u20132025, 2026\u20132027, and 2028\u20132030 official PDFs.",
+        "Owner must choose among 2023–2025, 2026–2027, and 2028–2030 official PDFs.",
         "March is India-only.",
         "Forensic pass found no unique edition discriminator against adjacent official PDFs.",
         "Owner must still choose which examination-year PDF Lockdin currently represents before adopt."
@@ -934,7 +1310,7 @@
       "previousMatchStatus": "PROBABLE",
       "forensicPass": {
         "date": "2026-08-29",
-        "bestMatchingEdition": "Not unique vs 597421 (2023\u20132025 Version 1), 697427 (2026\u20132027 Version 4, December 2025), and 744634 (2028\u20132030 Version 1). All six paper titles match.",
+        "bestMatchingEdition": "Not unique vs 597421 (2023–2025 Version 1), 697427 (2026–2027 Version 4, December 2025), and 744634 (2028–2030 Version 1). All six paper titles match.",
         "officialSyllabusVersion": "4",
         "officialPublished": "December 2025",
         "cambridgeImagesPublicationId": "697427",
@@ -966,6 +1342,57 @@
         "logicalRevisionKey": null,
         "contentSha256": null,
         "definition": "hashCanonicalGraph / hashNormalizedSyllabus from scripts/src/syllabus/canonical-graph.ts; hosted via loadCanonicalGraphForVersion"
+      },
+      "previousExactEditionAssumption": "SUPERSEDED by content-family model",
+      "contentFamily": {
+        "officialContentFamily": [
+          "597421 2023-2025 v1",
+          "697427 2026-2027 v4",
+          "744634 2028-2030 v1"
+        ],
+        "materialEquivalenceByEdition": [
+          {
+            "id": "597421",
+            "years": "2023-2025",
+            "status": "EQUIVALENT VERIFIED"
+          },
+          {
+            "id": "697427",
+            "years": "2026-2027",
+            "status": "EQUIVALENT VERIFIED"
+          },
+          {
+            "id": "744634",
+            "years": "2028-2030",
+            "status": "EQUIVALENT VERIFIED"
+          }
+        ],
+        "proposedApplicableFromYear": 2023,
+        "proposedApplicableFromSeries": "May/June",
+        "proposedApplicableToYear": 2030,
+        "proposedApplicableToSeries": "Oct/Nov",
+        "juneSupportedThroughout": true,
+        "novemberSupportedThroughout": true,
+        "confidence": "EQUIVALENT VERIFIED",
+        "applicabilityReady": "YES",
+        "seriesPolicyReady": "YES",
+        "proposedSeriesPolicy": [
+          {
+            "series": "May/June",
+            "product_auto_assign": true
+          },
+          {
+            "series": "Oct/Nov",
+            "product_auto_assign": true
+          }
+        ],
+        "febMarAutomatic": "DO_NOT_CREATE_OR_FALSE",
+        "firstKnownNonEquivalentBefore": "No earlier official 9709 rewrite compared in this pass (from-2020 textbooks cited).",
+        "firstKnownNonEquivalentAfter": "No official 2031+ 9709 PDF located.",
+        "nextDistinctSnapshotRequired": "UNKNOWN",
+        "nextDistinctOfficialPeriod": null,
+        "changeNoteEvidence": "All three: six-paper model; later editions no significant teaching changes; from-2020 textbooks suitable. Zero unique CSV LO hits across the three PDFs.",
+        "hostedWrite": "NOT AUTHORIZED"
       }
     }
   ],
@@ -1023,7 +1450,7 @@
       "example": "9489-2027-2029-v2",
       "previousPattern": "{subjectCode}-{firstExamYear}-{lastExamYear}",
       "rejected": [
-        "Year-span-only is insufficient: Cambridge issues version N updates for the same examination-year range (e.g. 9709 2026\u20132027 version 4; 9231 2026\u20132027 version 3; 9609/9708 2026\u20132028 version 2; 9618 2026 version 2; 9489 2026 version 3).",
+        "Year-span-only is insufficient: Cambridge issues version N updates for the same examination-year range (e.g. 9709 2026–2027 version 4; 9231 2026–2027 version 3; 9609/9708 2026–2028 version 2; 9618 2026 version 2; 9489 2026 version 3).",
         "Images publication id alone (e.g. 718292) is useful provenance but may be a CMS asset id, not a syllabus revision code printed as a stable product key."
       ],
       "storeSeparately": [
@@ -1059,17 +1486,94 @@
     "subjectVersionMismatches": 0,
     "missingReferencedVersions": 0,
     "pinAggregatesBySubjectCode": {
-      "9231": { "memberships": 0, "withVersionPin": 0 },
-      "9489": { "memberships": 1, "withVersionPin": 1 },
-      "9609": { "memberships": 0, "withVersionPin": 0 },
-      "9618": { "memberships": 0, "withVersionPin": 0 },
-      "9700": { "memberships": 1, "withVersionPin": 1 },
-      "9701": { "memberships": 3, "withVersionPin": 3 },
-      "9702": { "memberships": 3, "withVersionPin": 3 },
-      "9708": { "memberships": 1, "withVersionPin": 1 },
-      "9709": { "memberships": 3, "withVersionPin": 3 }
+      "9231": {
+        "memberships": 0,
+        "withVersionPin": 0
+      },
+      "9489": {
+        "memberships": 1,
+        "withVersionPin": 1
+      },
+      "9609": {
+        "memberships": 0,
+        "withVersionPin": 0
+      },
+      "9618": {
+        "memberships": 0,
+        "withVersionPin": 0
+      },
+      "9700": {
+        "memberships": 1,
+        "withVersionPin": 1
+      },
+      "9701": {
+        "memberships": 3,
+        "withVersionPin": 3
+      },
+      "9702": {
+        "memberships": 3,
+        "withVersionPin": 3
+      },
+      "9708": {
+        "memberships": 1,
+        "withVersionPin": 1
+      },
+      "9709": {
+        "memberships": 3,
+        "withVersionPin": 3
+      }
     },
     "previousIncorrect15of13": "Report 98 first draft used subjects LEFT JOIN user_subjects with count(*). That counted one phantom row for each of 9231, 9609, and 9618 (zero memberships). Real total is 12, all pinned. The '13' was a mis-sum of those mixed aggregates.",
     "note": "Aggregates only. No user identifiers. Reconciled 2026-08-29."
+  },
+  "contentEquivalencePassDate": "2026-08-29",
+  "previousExactEditionRequiredForApplicability": {
+    "status": "SUPERSEDED",
+    "supersededBy": "Owner content-family / material-equivalence model (Report 102)",
+    "note": "Applicability is the contiguous examination-session period where Lockdin r001 remains materially equivalent to official Cambridge content/assessment, not a 1:1 mapping from one snapshot to one PDF edition."
+  },
+  "materialEquivalenceCriteria": {
+    "mustRemainCompatible": [
+      "syllabus topics",
+      "subtopics",
+      "learning outcomes where represented",
+      "topic grouping/order where meaningful",
+      "assessment components",
+      "component codes",
+      "paper type",
+      "duration",
+      "marks",
+      "weighting where represented",
+      "AS/A Level structure"
+    ],
+    "breaksEquivalence": [
+      "added topic",
+      "removed topic",
+      "changed assessment structure",
+      "meaningfully changed outcome",
+      "component change"
+    ],
+    "minorEditorialMayBeNonMaterial": true,
+    "noSignificantTeachingChanges": "Strong supporting evidence; must still be checked against structure."
+  },
+  "contentFamilyModel": {
+    "logicalRevisionKey": "immutable Lockdin content snapshot",
+    "cambridgePdfs": "external provenance documents",
+    "applicability": "contiguous official sittings where r001 remains materially equivalent",
+    "officialGeography": "provenance only; not encoded for C2B v1"
+  },
+  "contentEquivalenceSummary": {
+    "verifiedFamilies": 9,
+    "probableFamilies": 0,
+    "unresolvedFamilies": 0,
+    "applicabilityReady": 9,
+    "seriesPolicyReady": 9,
+    "completeNineSubjectPopulationReady": "YES_FOR_OWNER_REVIEW",
+    "hostedMustRemain": {
+      "migration": "0014_perpetual_nighthawk",
+      "applicability": "0/9",
+      "seriesRows": 0,
+      "strictAssignment": "OFF"
+    }
   }
 }
