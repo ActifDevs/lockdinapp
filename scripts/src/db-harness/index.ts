@@ -30,6 +30,7 @@ import { proveSyllabusVersionLifecycle } from "./version-lifecycle-proof.js";
 import { provePinAwareReferenceContext } from "./pin-aware-reference-proof.js";
 import { proveSessionFoundation } from "./session-foundation-proof.js";
 import { proveSeriesPolicyFoundation } from "./series-policy-proof.js";
+import { proveApplicabilityPopulation } from "./applicability-population-proof.js";
 import { verifyFinalSchema, verifySyntheticFixturesRemoved } from "./verify.js";
 
 interface HarnessStep {
@@ -154,6 +155,9 @@ export async function runHarness(): Promise<HarnessResult> {
     );
     await step("Prove series policy foundation and assignment still DEFAULT", () =>
       proveSeriesPolicyFoundation(pool!),
+    );
+    await step("Prove applicability population operator", () =>
+      proveApplicabilityPopulation(pool!),
     );
     await step("Run syllabus DB integration", () =>
       executeSyllabusDbTests(verifiedStatus.dbUrl),

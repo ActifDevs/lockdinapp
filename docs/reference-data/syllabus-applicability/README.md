@@ -7,6 +7,7 @@ It is not an import source. It must not be applied to hosted `syllabus_versions`
 ## Files
 
 - `current-version-research.json` — per-subject mapping from Lockdin graphs to official Cambridge International syllabus PDFs.
+- `population-manifest.json` — version-controlled write set for the applicability operator. Do not apply hosted without a separate owner authorization.
 - Schema version **4** records the owner **content-family** model (Report 102): applicability is material equivalence of r001 across contiguous official editions, not a 1:1 snapshot-to-PDF identity. The previous “exact edition required for applicability” assumption is superseded, not erased.
 - Schema version **3** records the owner identity policy: `logical_revision_key` is `{subjectCode}-rNNN` (internal snapshot). Cambridge edition stays in this artifact. Year-span and year-span-plus-official-version key proposals are superseded, not erased.
 - Schema version **2** added the forensic edition-identification pass. Previous `matchStatus` values remain as `previousMatchStatus`.
