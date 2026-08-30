@@ -7,74 +7,17 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
 import request from "supertest";
 import { createClient } from "@supabase/supabase-js";
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { sql } from "drizzle-orm";
+import { loadCommittedMigrationJournal } from "../test/committed-migrations.js";
+import { loadHarnessSupabaseEnv } from "../test/harness-supabase.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../../..");
-const supabaseCliScript = path.join(
-  repoRoot,
-  "node_modules",
-  "supabase",
-  "dist",
-  "supabase.js",
-);
-
-const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
-
-function isLoopbackUrl(value: string | undefined): boolean {
-  if (!value?.trim()) return false;
-  try {
-    return LOOPBACK_HOSTNAMES.has(new URL(value).hostname.toLowerCase());
-  } catch {
-    return false;
-  }
-}
-
-function loadLocalSupabaseEnv(): {
-  url: string;
-  publishableKey: string;
-  serviceRoleKey: string;
-  dbUrl: string;
-} {
-  let raw: string;
-  try {
-    raw = execFileSync(
-      process.execPath,
-      [supabaseCliScript, "status", "-o", "json"],
-      {
-        cwd: repoRoot,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    );
-  } catch {
-    throw new Error(
-      "Local Supabase unavailable. Run the integration suite only with a local stack; " +
-        "never fall back to hosted Supabase.",
-    );
-  }
-
-  const status = JSON.parse(raw) as Record<string, string>;
-  const apiUrl = status.API_URL ?? "";
-  const dbUrl = status.DB_URL ?? "";
-  if (!isLoopbackUrl(apiUrl) || !isLoopbackUrl(dbUrl)) {
-    throw new Error(
-      "Exam-date integration targets must use exact loopback hostnames",
-    );
-  }
-
-  return {
-    url: apiUrl,
-    publishableKey: status.PUBLISHABLE_KEY || status.ANON_KEY,
-    serviceRoleKey: status.SERVICE_ROLE_KEY,
-    dbUrl,
-  };
-}
+const env = loadHarnessSupabaseEnv();
 
 function daysFromToday(offset: number): string {
   const date = new Date();
@@ -82,8 +25,6 @@ function daysFromToday(offset: number): string {
   date.setUTCDate(date.getUTCDate() + offset);
   return date.toISOString().slice(0, 10);
 }
-
-const env = loadLocalSupabaseEnv();
 
 describe("two-user local Supabase exam-date ownership", () => {
   let app: express.Express;
@@ -455,26 +396,16 @@ describe("two-user local Supabase exam-date ownership", () => {
     expect(migration).not.toContain("FOR UPDATE");
     expect(migration).not.toContain("GRANT UPDATE");
 
-    const migration0012Path = path.join(
-      repoRoot,
-      "lib",
-      "db",
-      "migrations",
-      "0012_ordinary_penance.sql",
-    );
-    const expectedLatestHash = createHash("sha256")
-      .update(readFileSync(migration0012Path))
-      .digest("hex");
-
+    const committed = loadCommittedMigrationJournal(repoRoot);
     const journal = await db.execute(sql`
       select count(*)::int as count, max(created_at)::text as latest,
         (array_agg(hash order by created_at desc))[1] as latest_hash
       from drizzle.__drizzle_migrations
     `);
     expect(journal.rows[0]).toEqual({
-      count: 13,
-      latest: "1788010369454",
-      latest_hash: expectedLatestHash,
+      count: committed.count,
+      latest: committed.latestWhen,
+      latest_hash: committed.latestHash,
     });
   });
 });

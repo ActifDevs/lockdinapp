@@ -7,76 +7,18 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
 import request from "supertest";
 import { createClient } from "@supabase/supabase-js";
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { eq, sql } from "drizzle-orm";
+import { VALID_MAY_JUNE_2027 } from "../test/assignment-session.js";
+import { loadCommittedMigrationJournal } from "../test/committed-migrations.js";
+import { loadHarnessSupabaseEnv } from "../test/harness-supabase.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../../..");
-const supabaseCliScript = path.join(
-  repoRoot,
-  "node_modules",
-  "supabase",
-  "dist",
-  "supabase.js",
-);
-
-const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
-
-function isLoopbackUrl(value: string | undefined): boolean {
-  if (!value?.trim()) return false;
-  try {
-    return LOOPBACK_HOSTNAMES.has(new URL(value).hostname.toLowerCase());
-  } catch {
-    return false;
-  }
-}
-
-function loadLocalSupabaseEnv(): {
-  url: string;
-  publishableKey: string;
-  serviceRoleKey: string;
-  dbUrl: string;
-} {
-  let raw: string;
-  try {
-    raw = execFileSync(
-      process.execPath,
-      [supabaseCliScript, "status", "-o", "json"],
-      {
-        cwd: repoRoot,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    );
-  } catch {
-    throw new Error(
-      "Local Supabase unavailable. Run the integration suite only with a local stack; " +
-        "never fall back to hosted Supabase.",
-    );
-  }
-
-  const status = JSON.parse(raw) as Record<string, string>;
-  const apiUrl = status.API_URL ?? "";
-  const dbUrl = status.DB_URL ?? "";
-  if (!isLoopbackUrl(apiUrl) || !isLoopbackUrl(dbUrl)) {
-    throw new Error(
-      "Past-paper integration targets must use exact loopback hostnames",
-    );
-  }
-
-  return {
-    url: apiUrl,
-    publishableKey: status.PUBLISHABLE_KEY || status.ANON_KEY,
-    serviceRoleKey: status.SERVICE_ROLE_KEY,
-    dbUrl,
-  };
-}
-
-const env = loadLocalSupabaseEnv();
+const env = loadHarnessSupabaseEnv();
 
 describe("two-user local Supabase past-paper ownership and year", () => {
   let app: express.Express;
@@ -188,6 +130,24 @@ describe("two-user local Supabase past-paper ownership and year", () => {
       );
     }
     foreignComponentId = foreignComponent.id;
+
+    for (const [token, label] of [
+      [tokenA, "a"],
+      [tokenB, "b"],
+    ] as const) {
+      const onboard = await request(app)
+        .post("/api/profile/complete-onboarding")
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          fullName: "Paper Tester",
+          username: `paper_${label}_${stamp}`,
+          level: "AS Level (Year 12)",
+          examSession: "May/June 2027",
+          intendedExamSession: VALID_MAY_JUNE_2027,
+          subjectIds: [subjectId],
+        });
+      expect([200, 409]).toContain(onboard.status);
+    }
   }, 120_000);
 
   afterAll(async () => {
@@ -581,7 +541,7 @@ describe("two-user local Supabase past-paper ownership and year", () => {
       from drizzle.__drizzle_migrations
     `);
     expect(journal.rows[0]).toEqual({
-      count: 13,
+      count: loadCommittedMigrationJournal(repoRoot).count,
       has_0008: true,
     });
   });

@@ -72,10 +72,10 @@ async function lockAndLoadTarget(
       `${entry.logicalRevisionKey} is not owned by ${entry.subjectCode}`,
     );
   }
-  if (version.lifecycle !== "published") {
+  if (version.lifecycle !== "published" && version.lifecycle !== "draft") {
     throw new SyllabusOperatorError(
       "applicability_requires_published",
-      `${entry.logicalRevisionKey} must be published`,
+      `${entry.logicalRevisionKey} must be draft or published`,
     );
   }
   if (version.contentSha256 !== entry.expectedContentSha256) {

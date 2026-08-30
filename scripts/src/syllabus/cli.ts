@@ -49,12 +49,14 @@ function parseArgs(args: string[]): {
   revision: string | null;
   makeDefault: boolean;
   retireRevision: string | null;
+  csvPath: string | null;
 } {
   const modeArg = args.find((a) => a.startsWith("--mode="))?.split("=")[1];
   const dryRun = args.includes("--dry-run");
   const filesArg = args.find((a) => a.startsWith("--files="))?.split("=")[1];
   const revisionArg = args.find((a) => a.startsWith("--revision="))?.split("=")[1];
   const retireArg = args.find((a) => a.startsWith("--retire-revision="))?.split("=")[1];
+  const csvArg = args.find((a) => a.startsWith("--csv="))?.split("=")[1];
   const allowed: Mode[] = ["validate", "import", "adopt", "publish"];
   const mode: Mode = allowed.includes(modeArg as Mode)
     ? (modeArg as Mode)
@@ -66,6 +68,7 @@ function parseArgs(args: string[]): {
     revision: revisionArg?.trim() || null,
     makeDefault: args.includes("--make-default"),
     retireRevision: retireArg?.trim() || null,
+    csvPath: csvArg?.trim() || null,
   };
 }
 
@@ -124,7 +127,7 @@ export async function runSyllabusCli(
   args: string[],
   options: RunSyllabusCliOptions = {},
 ): Promise<number> {
-  const { mode, dryRun, files, revision, makeDefault, retireRevision } =
+  const { mode, dryRun, files, revision, makeDefault, retireRevision, csvPath } =
     parseArgs(args);
   const output = options.output ?? console;
   const loadImporter = options.loadImporter ?? loadDatabaseImporter;
@@ -202,7 +205,9 @@ export async function runSyllabusCli(
       continue;
     }
 
-    const filePath = path.join(CSV_DIR, entry.csvFile);
+    const filePath = csvPath
+      ? path.resolve(csvPath)
+      : path.join(CSV_DIR, entry.csvFile);
     const result = parseAndValidateCsv(filePath);
 
     if (result.errors.length > 0) {

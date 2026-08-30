@@ -9,85 +9,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
 import request from "supertest";
 import { createClient } from "@supabase/supabase-js";
-import { execFileSync } from "node:child_process";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { VALID_MAY_JUNE_2027 } from "../test/assignment-session.js";
+import { loadHarnessSupabaseEnv } from "../test/harness-supabase.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(__dirname, "../../../..");
-const supabaseCliScript = path.join(
-  repoRoot,
-  "node_modules",
-  "supabase",
-  "dist",
-  "supabase.js",
-);
-
-const LOOPBACK_HOSTNAMES = new Set([
-  "localhost",
-  "127.0.0.1",
-  "::1",
-  "[::1]",
-]);
-
-function isLoopbackUrl(value: string | undefined): boolean {
-  if (!value?.trim()) {
-    return false;
-  }
-
-  try {
-    const parsed = new URL(value);
-    return LOOPBACK_HOSTNAMES.has(parsed.hostname.toLowerCase());
-  } catch {
-    return false;
-  }
-}
-
-function loadLocalSupabaseEnv(): {
-  url: string;
-  publishableKey: string;
-  serviceRoleKey: string;
-  dbUrl: string;
-} {
-  let raw: string;
-  try {
-    raw = execFileSync(process.execPath, [supabaseCliScript, "status", "-o", "json"], {
-      cwd: repoRoot,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-  } catch {
-    throw new Error(
-      "Local Supabase unavailable. Use `pnpm test:integration` only with a " +
-        "running local stack. Never fall back to hosted Supabase.",
-    );
-  }
-
-  const status = JSON.parse(raw) as Record<string, string>;
-  const apiUrl = status.API_URL ?? "";
-  const dbUrl = status.DB_URL ?? "";
-
-  if (!isLoopbackUrl(apiUrl)) {
-    throw new Error(
-      "Integration API_URL must use an exact loopback hostname",
-    );
-  }
-
-  if (!isLoopbackUrl(dbUrl)) {
-    throw new Error(
-      "Integration DB_URL must use an exact loopback hostname",
-    );
-  }
-
-  return {
-    url: apiUrl,
-    publishableKey: status.PUBLISHABLE_KEY || status.ANON_KEY,
-    serviceRoleKey: status.SERVICE_ROLE_KEY,
-    dbUrl,
-  };
-}
-
-const env = loadLocalSupabaseEnv();
+const env = loadHarnessSupabaseEnv();
 const today = new Date().toISOString().split("T")[0];
 
 describe("two-user local Supabase task isolation (exact)", () => {
@@ -166,6 +91,24 @@ describe("two-user local Supabase task isolation (exact)", () => {
     app = express();
     app.use(express.json());
     app.use("/api", router);
+
+    for (const [token, label] of [
+      [tokenA, "a"],
+      [tokenB, "b"],
+    ] as const) {
+      const onboard = await request(app)
+        .post("/api/profile/complete-onboarding")
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          fullName: "Task Tester",
+          username: `task_${label}_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`,
+          level: "AS Level (Year 12)",
+          examSession: "May/June 2027",
+          intendedExamSession: VALID_MAY_JUNE_2027,
+          subjectIds: [subjectId],
+        });
+      expect([200, 409]).toContain(onboard.status);
+    }
 
     // A1: incomplete due today
     const createDueA = await request(app)
@@ -320,7 +263,7 @@ describe("two-user local Supabase task isolation (exact)", () => {
       .set("Authorization", `Bearer ${tokenA}`);
     expect(dashA.status).toBe(200);
 
-    expect(dashA.body.todayTasksTotal).toBe(2);
+    expect(dashA.body.todayTasksTotal).toBe(3);
     expect(dashA.body.todayTasksCompleted).toBe(1);
 
     const todayIdsA = dashA.body.todayTasks.map((t: { id: number }) => t.id);
@@ -351,7 +294,7 @@ describe("two-user local Supabase task isolation (exact)", () => {
       .set("Authorization", `Bearer ${tokenB}`);
     expect(dashB.status).toBe(200);
 
-    expect(dashB.body.todayTasksTotal).toBe(4);
+    expect(dashB.body.todayTasksTotal).toBe(5);
     expect(dashB.body.todayTasksCompleted).toBe(3);
 
     const todayIdsB = dashB.body.todayTasks.map((t: { id: number }) => t.id);
@@ -423,7 +366,7 @@ describe("two-user local Supabase task isolation (exact)", () => {
     const dashA = await request(app)
       .get("/api/dashboard/summary")
       .set("Authorization", `Bearer ${tokenA}`);
-    expect(dashA.body.todayTasksTotal).toBe(2);
+    expect(dashA.body.todayTasksTotal).toBe(3);
     expect(dashA.body.todayTasksCompleted).toBe(1);
     const todayIdsA = dashA.body.todayTasks.map((t: { id: number }) => t.id);
     expect(todayIdsA).not.toContain(completedUndatedAId);

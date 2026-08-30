@@ -48,6 +48,8 @@ const CLI_STATE_PATHS = [
 export interface LocalStackStatus {
   apiUrl: string;
   dbUrl: string;
+  publishableKey: string;
+  serviceRoleKey: string;
 }
 
 function childEnvironment(): NodeJS.ProcessEnv {
@@ -117,13 +119,28 @@ export function getLocalStackStatus(): LocalStackStatus | undefined {
   try {
     const raw = runSupabase(["status", "-o", "json"]);
     const status = JSON.parse(raw) as Record<string, unknown>;
+    const publishableKey =
+      typeof status.PUBLISHABLE_KEY === "string"
+        ? status.PUBLISHABLE_KEY
+        : typeof status.ANON_KEY === "string"
+          ? status.ANON_KEY
+          : "";
+    const serviceRoleKey =
+      typeof status.SERVICE_ROLE_KEY === "string" ? status.SERVICE_ROLE_KEY : "";
     if (
       typeof status.API_URL !== "string" ||
-      typeof status.DB_URL !== "string"
+      typeof status.DB_URL !== "string" ||
+      !publishableKey ||
+      !serviceRoleKey
     ) {
       return undefined;
     }
-    return { apiUrl: status.API_URL, dbUrl: status.DB_URL };
+    return {
+      apiUrl: status.API_URL,
+      dbUrl: status.DB_URL,
+      publishableKey,
+      serviceRoleKey,
+    };
   } catch {
     return undefined;
   }

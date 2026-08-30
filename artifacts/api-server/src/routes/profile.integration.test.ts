@@ -6,67 +6,19 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
 import request from "supertest";
 import { createClient } from "@supabase/supabase-js";
-import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { sql } from "drizzle-orm";
+import {
+  VALID_MAY_JUNE_2027,
+  VALID_OCT_NOV_2027,
+} from "../test/assignment-session.js";
+import { loadCommittedMigrationJournal } from "../test/committed-migrations.js";
+import { loadHarnessSupabaseEnv } from "../test/harness-supabase.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../../..");
-const supabaseCliScript = path.join(
-  repoRoot,
-  "node_modules",
-  "supabase",
-  "dist",
-  "supabase.js",
-);
-
-const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
-
-function isLoopbackUrl(value: string | undefined): boolean {
-  if (!value?.trim()) return false;
-  try {
-    return LOOPBACK_HOSTNAMES.has(new URL(value).hostname.toLowerCase());
-  } catch {
-    return false;
-  }
-}
-
-function loadLocalSupabaseEnv() {
-  let raw: string;
-  try {
-    raw = execFileSync(
-      process.execPath,
-      [supabaseCliScript, "status", "-o", "json"],
-      {
-        cwd: repoRoot,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    );
-  } catch {
-    throw new Error(
-      "Local Supabase unavailable for profile integration tests.",
-    );
-  }
-  const status = JSON.parse(raw) as Record<string, string>;
-  const apiUrl = status.API_URL ?? "";
-  const dbUrl = status.DB_URL ?? "";
-  if (!isLoopbackUrl(apiUrl)) {
-    throw new Error("Integration API_URL must use an exact loopback hostname");
-  }
-  if (!isLoopbackUrl(dbUrl)) {
-    throw new Error("Integration DB_URL must use an exact loopback hostname");
-  }
-  return {
-    url: apiUrl,
-    publishableKey: status.PUBLISHABLE_KEY || status.ANON_KEY,
-    serviceRoleKey: status.SERVICE_ROLE_KEY,
-    dbUrl,
-  };
-}
-
-const env = loadLocalSupabaseEnv();
+const env = loadHarnessSupabaseEnv();
 
 describe("profile and atomic onboarding (local)", () => {
   let app: express.Express;
@@ -140,6 +92,15 @@ describe("profile and atomic onboarding (local)", () => {
       );
     }
     subjectIds = subjects.rows.map((subject) => Number(subject.id));
+    const committed = loadCommittedMigrationJournal(repoRoot);
+    const journal = await db.execute(sql`
+      select count(*)::int as n from drizzle.__drizzle_migrations
+    `);
+    if (Number(journal.rows[0].n) !== committed.count) {
+      throw new Error(
+        `Local integration database journal count ${journal.rows[0].n} does not match committed head ${committed.latestTag} (${committed.count}). Apply Drizzle migrations through the current journal; do not use hosted Production.`,
+      );
+    }
 
     const { default: router } = await import("../routes/index.js");
     app = express();
@@ -214,6 +175,7 @@ describe("profile and atomic onboarding (local)", () => {
         username: username.toUpperCase(),
         level: "AS Level (Year 12)",
         examSession: "May/June 2027",
+        intendedExamSession: VALID_MAY_JUNE_2027,
         subjectIds: pick,
       });
     expect(res.status).toBe(200);
@@ -262,6 +224,7 @@ describe("profile and atomic onboarding (local)", () => {
         username,
         level: "AS Level (Year 12)",
         examSession: "May/June 2027",
+        intendedExamSession: VALID_MAY_JUNE_2027,
         subjectIds: pick,
       });
     expect(retry.status).toBe(200);
@@ -287,6 +250,7 @@ describe("profile and atomic onboarding (local)", () => {
         username,
         level: "A2 Level (Year 13)",
         examSession: "Oct/Nov 2027",
+        intendedExamSession: VALID_OCT_NOV_2027,
         subjectIds: [pick[0]],
       });
     expect(clash.status).toBe(409);
@@ -302,6 +266,7 @@ describe("profile and atomic onboarding (local)", () => {
         username: bUsername,
         level: "A2 Level (Year 13)",
         examSession: "Oct/Nov 2027",
+        intendedExamSession: VALID_OCT_NOV_2027,
         subjectIds: [pick[0]],
       });
     expect(bOk.status).toBe(200);
@@ -360,6 +325,7 @@ describe("profile and atomic onboarding (local)", () => {
             username: c.username,
             level: "AS Level (Year 12)",
             examSession: "May/June 2027",
+            intendedExamSession: VALID_MAY_JUNE_2027,
             subjectIds: c.subjectIds,
           });
         expect([400, 409]).toContain(res.status);
@@ -376,6 +342,7 @@ describe("profile and atomic onboarding (local)", () => {
           username: "valid_blank",
           level: "AS Level (Year 12)",
           examSession: "May/June 2027",
+          intendedExamSession: VALID_MAY_JUNE_2027,
           subjectIds: [subjectIds[0]],
         });
       expect(blankName.status).toBe(400);
@@ -397,6 +364,7 @@ describe("profile and atomic onboarding (local)", () => {
             username: `boundary_${count}_${crypto.randomUUID().replace(/-/g, "").slice(0, 6)}`,
             level: "AS Level (Year 12)",
             examSession: "May/June 2027",
+            intendedExamSession: VALID_MAY_JUNE_2027,
             subjectIds: subjectIds.slice(0, count),
           });
         expect(response.status).toBe(200);
@@ -488,7 +456,10 @@ describe("profile and atomic onboarding (local)", () => {
       const response = await request(app)
         .put("/api/user-subjects")
         .set("Authorization", `Bearer ${token}`)
-        .send({ subjectIds: selected });
+        .send({
+          subjectIds: selected,
+          intendedExamSession: VALID_MAY_JUNE_2027,
+        });
       expect(response.status).toBe(200);
       expect(
         response.body.map(
@@ -581,6 +552,7 @@ describe("profile and atomic onboarding (local)", () => {
           username: `pin_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`,
           level: "AS Level (Year 12)",
           examSession: "May/June 2027",
+          intendedExamSession: VALID_MAY_JUNE_2027,
           subjectIds: [keptSubject, droppedSubject],
         });
       expect(onboard.status).toBe(200);
@@ -638,7 +610,10 @@ describe("profile and atomic onboarding (local)", () => {
       const replaced = await request(app)
         .put("/api/user-subjects")
         .set("Authorization", `Bearer ${user.token}`)
-        .send({ subjectIds: [keptSubject, newSubject] });
+        .send({
+          subjectIds: [keptSubject, newSubject],
+          intendedExamSession: VALID_MAY_JUNE_2027,
+        });
       expect(replaced.status).toBe(200);
       expect(
         replaced.body.map((item: { subject: { id: number } }) => item.subject.id),
@@ -877,8 +852,21 @@ describe("profile and atomic onboarding (local)", () => {
       "syllabus_version_id",
       "created_at",
       "updated_at",
+      "intended_exam_year",
+      "intended_exam_series",
     ]);
-    expect(columns.rows.every((row) => row.is_nullable === "NO")).toBe(true);
+    const required = new Set([
+      "user_id",
+      "subject_id",
+      "syllabus_version_id",
+      "created_at",
+      "updated_at",
+    ]);
+    expect(
+      columns.rows
+        .filter((row) => required.has(String(row.column_name)))
+        .every((row) => row.is_nullable === "NO"),
+    ).toBe(true);
 
     const constraints = await db.execute(sql`
       select conname
@@ -924,7 +912,9 @@ describe("profile and atomic onboarding (local)", () => {
     const journal = await db.execute(sql`
       select count(*)::int as n from drizzle.__drizzle_migrations
     `);
-    expect(Number(journal.rows[0].n)).toBe(13);
+    expect(Number(journal.rows[0].n)).toBe(
+      loadCommittedMigrationJournal(repoRoot).count,
+    );
   });
 
   it("function privileges and definition are correct", async () => {
@@ -934,14 +924,23 @@ describe("profile and atomic onboarding (local)", () => {
       join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public' and p.proname = 'lockdin_complete_onboarding'
     `);
-    const row = def.rows[0] as {
-      prosecdef: boolean;
-      proconfig: string[] | null;
-      pronargs: number;
-    };
-    expect(row.prosecdef).toBe(true);
-    expect(row.proconfig).toContain('search_path=""');
-    expect(Number(row.pronargs)).toBe(5);
+    expect(def.rows.length).toBeGreaterThan(0);
+    expect(
+      def.rows.every((row) => (row as { prosecdef: boolean }).prosecdef),
+    ).toBe(true);
+    expect(
+      def.rows.every((row) =>
+        ((row as { proconfig: string[] | null }).proconfig ?? []).includes(
+          'search_path=""',
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      def.rows.some((row) => Number((row as { pronargs: number }).pronargs) === 5),
+    ).toBe(true);
+    expect(
+      def.rows.some((row) => Number((row as { pronargs: number }).pronargs) === 10),
+    ).toBe(true);
 
     const grants = await db.execute(sql`
       select grantee, privilege_type
@@ -960,10 +959,23 @@ describe("profile and atomic onboarding (local)", () => {
       join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public' and p.proname = 'lockdin_replace_user_subjects'
     `);
-    expect(replaceDef.rows[0]).toMatchObject({ prosecdef: true, pronargs: 1 });
-    expect((replaceDef.rows[0] as { proconfig: string[] }).proconfig).toContain(
-      'search_path=""',
-    );
+    expect(replaceDef.rows.length).toBeGreaterThan(0);
+    expect(
+      replaceDef.rows.every((row) => (row as { prosecdef: boolean }).prosecdef),
+    ).toBe(true);
+    expect(
+      replaceDef.rows.some((row) => Number((row as { pronargs: number }).pronargs) === 1),
+    ).toBe(true);
+    expect(
+      replaceDef.rows.some((row) => Number((row as { pronargs: number }).pronargs) === 6),
+    ).toBe(true);
+    expect(
+      replaceDef.rows.every((row) =>
+        ((row as { proconfig: string[] | null }).proconfig ?? []).includes(
+          'search_path=""',
+        ),
+      ),
+    ).toBe(true);
 
     const replaceGrants = await db.execute(sql`
       select grantee
@@ -977,16 +989,128 @@ describe("profile and atomic onboarding (local)", () => {
     expect(replaceGrantees).not.toContain("anon");
 
     const replaceBody = await db.execute(sql`
-      select pg_get_functiondef(p.oid) as def
+      select p.proname, pg_get_functiondef(p.oid) as def
       from pg_proc p
       join pg_namespace n on n.oid = p.pronamespace
-      where n.nspname = 'public' and p.proname = 'lockdin_replace_user_subjects'
+      where n.nspname = 'public'
+        and p.proname in (
+          'lockdin_replace_user_subjects',
+          'lockdin_replace_user_subjects_apply'
+        )
     `);
-    expect(String(replaceBody.rows[0].def)).toContain(
-      "ON CONFLICT (user_id, subject_id) DO NOTHING",
-    );
-    expect(String(replaceBody.rows[0].def)).not.toContain(
-      "SET syllabus_version_id = EXCLUDED.syllabus_version_id",
-    );
+    const replaceDefs = replaceBody.rows.map((row) => String(row.def));
+    expect(
+      replaceDefs.some(
+        (def) =>
+          def.includes("ON CONFLICT (user_id, subject_id) DO NOTHING") ||
+          def.includes("AND NOT EXISTS"),
+      ),
+    ).toBe(true);
+    expect(
+      replaceDefs.every(
+        (def) => !def.includes("SET syllabus_version_id = EXCLUDED.syllabus_version_id"),
+      ),
+    ).toBe(true);
+  });
+
+  it("requires a structured intended session for new onboarding memberships", async () => {
+    const user = await mkUser("strict-session", "Strict Session");
+    try {
+      const missing = await request(app)
+        .post("/api/profile/complete-onboarding")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({
+          fullName: "Strict Session",
+          username: `strict_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`,
+          level: "AS Level (Year 12)",
+          examSession: "May/June 2027",
+          subjectIds: [subjectIds[0]],
+        });
+      expect(missing.status).toBe(400);
+      expect(missing.body.error).toBe("Choose a supported exam session.");
+      expect(JSON.stringify(missing.body)).not.toMatch(/P0001|sql|postgres/i);
+    } finally {
+      await admin.auth.admin.deleteUser(user.id);
+    }
+  });
+
+  it("denies Feb/Mar automatic assignment with a safe client error", async () => {
+    const user = await mkUser("feb-mar", "Feb Mar");
+    try {
+      const denied = await request(app)
+        .post("/api/profile/complete-onboarding")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({
+          fullName: "Feb Mar",
+          username: `febmar_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`,
+          level: "AS Level (Year 12)",
+          examSession: "Feb/Mar 2027",
+          intendedExamSession: {
+            year: 2027,
+            series: "Feb/Mar",
+          },
+          subjectIds: [subjectIds[0]],
+        });
+      expect(denied.status).toBe(400);
+      expect(denied.body.error).toBe("No syllabus matches that exam session.");
+      expect(JSON.stringify(denied.body)).not.toMatch(/P0001|sql|postgres/i);
+    } finally {
+      await admin.auth.admin.deleteUser(user.id);
+    }
+  });
+
+  it("denies an out-of-range session and accepts a per-subject override", async () => {
+    const user = await mkUser("override-range", "Override Range");
+    try {
+      const outOfRange = await request(app)
+        .post("/api/profile/complete-onboarding")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({
+          fullName: "Override Range",
+          username: `range_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`,
+          level: "AS Level (Year 12)",
+          examSession: "May/June 1999",
+          intendedExamSession: { year: 1999, series: "May/June" },
+          subjectIds: [subjectIds[0]],
+        });
+      expect(outOfRange.status).toBe(400);
+      expect(outOfRange.body.error).toBe("No syllabus matches that exam session.");
+
+      const mixed = await request(app)
+        .post("/api/profile/complete-onboarding")
+        .set("Authorization", `Bearer ${user.token}`)
+        .send({
+          fullName: "Override Range",
+          username: `mix_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`,
+          level: "AS Level (Year 12)",
+          examSession: "May/June 2027",
+          intendedExamSession: VALID_MAY_JUNE_2027,
+          subjectSessionOverrides: [
+            {
+              subjectId: subjectIds[1],
+              year: 2027,
+              series: "Oct/Nov",
+            },
+          ],
+          subjectIds: [subjectIds[0], subjectIds[1]],
+        });
+      expect(mixed.status).toBe(200);
+      const memberships = await db.execute(sql`
+        select subject_id, intended_exam_year, intended_exam_series
+        from public.user_subjects
+        where user_id = ${user.id}
+        order by subject_id
+      `);
+      const bySubject = new Map(
+        memberships.rows.map((row) => [
+          Number(row.subject_id),
+          row,
+        ]),
+      );
+      expect(bySubject.get(subjectIds[0])?.intended_exam_series).toBe("May/June");
+      expect(bySubject.get(subjectIds[1])?.intended_exam_series).toBe("Oct/Nov");
+    } finally {
+      await admin.auth.admin.deleteUser(user.id);
+    }
   });
 });

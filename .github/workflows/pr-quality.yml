@@ -1,0 +1,71 @@
+name: PR quality gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - phase6-slice4-release-operational-hardening
+
+jobs:
+  quality:
+    name: Typecheck, unit suites, drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ""
+      DIRECT_DATABASE_URL: ""
+      SUPABASE_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Workspace typecheck
+        run: pnpm run typecheck
+      - name: API unit tests
+        run: pnpm --filter @workspace/api-server test
+      - name: Frontend unit tests
+        run: pnpm --filter @workspace/revision-platform exec vitest run --config vitest.config.ts --pool=forks --maxWorkers=1
+      - name: Syllabus and reference-data unit tests
+        run: pnpm --filter @workspace/scripts test:unit
+      - name: Harness target-safety and migration integrity tests
+        run: pnpm --filter @workspace/scripts test:harness
+      - name: Migration drift check
+        run: pnpm run check:migrations
+      - name: OpenAPI codegen consistency
+        run: pnpm run check:codegen
+      - name: git diff --check
+        run: git diff --check
+
+  disposable-db:
+    name: Disposable empty-to-head + lifecycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Reject inherited hosted database URLs
+        run: |
+          if [ -n "${DATABASE_URL:-}" ] || [ -n "${DIRECT_DATABASE_URL:-}" ]; then
+            echo "CI must not inherit a hosted DATABASE_URL"
+            exit 1
+          fi
+      - name: Run dedicated disposable harness
+        run: pnpm --filter @workspace/scripts db-harness
