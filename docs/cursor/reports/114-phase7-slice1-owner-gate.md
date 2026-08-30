@@ -1,12 +1,34 @@
 # Phase 7 Slice 1 — Owner Gate
 
+## SLICE 7.1 OWNER DECISIONS: APPROVED
+
+- **Status:** APPROVED
+- **Date:** 2026-08-30
+- **Scope of this approval:** planning may proceed to Slice 7.2 after this documentation is merged.
+- **This approval does not authorize:** arbitrary hosted changes; Production DB writes; migration creation; beta invitations; restore execution; Phase 7 closeout. Each later hosted/config operation retains its own owner gate.
+
+Owner-approved Phase 7 posture (explicit modifications to the original recommendations are recorded in the sections below):
+
+- **Validation:** small controlled real-user beta (8–12 active Cambridge International AS/A-Level students; 10–14 days). Validate the **current** product. P0–P3 triage remains approved. Do not invite participants yet.
+- **Analytics:** PostHog Cloud EU. Product analytics only. Custom events only; **no** autocapture, Session Replay, heatmaps, surveys (unless separately approved later), advertising integrations, or automatic exception/error capture. Strict event/property allow-list. Preview and Production separated. Privacy disclosure required before live use. Sentry owns error monitoring.
+- **Events:** `account_created`, `onboarding_completed`, `task_created`, `past_paper_attempt_created`. **Do not** implement `first_task_created` / `first_past_paper_attempt`. Keep `streak_achieved` and `subject_completed` out of Phase 7. No migration 0016.
+- **Analytics privacy / identity:** allow-list only; anonymous or pseudonymous minimum necessary; never email/name/username; do not send raw Supabase UUID unless a later implementation review proves it necessary; if server-side identity is used, prefer a non-reversible keyed/HMAC alias with a server-held secret; **no** analytics identity column/table; logout/account switch must reset analytics identity/session; Preview ≠ Production; prefer ≤90 day retention unless later justified.
+- **Monitoring:** Sentry on React frontend + Express API. No Session Replay; no PII; no raw request bodies; no Auth headers/cookies; no user study content; no database credentials; sanitized stack traces; release = Git SHA; environment tagging; existing request ID where useful; actionable alerting; Preview and Production separated; ≤90 day retention target where configurable.
+- **Auth abuse:** real boundary is hosted Supabase Auth. Do **not** add an Express limiter. Inspect and record **actual hosted** settings (`supabase/config.toml` is not authoritative hosted evidence). No hosted setting change is authorized by Slice 7.1. Slice 7.4 must compare hosted settings against this posture before changing anything.
+- **CAPTCHA:** conditional. Isolated closed Preview: rate limits alone are acceptable initially. Production with publicly accessible signup: CAPTCHA must be enabled before invites. Before unrestricted public signup: CAPTCHA must be reviewed/configured unless later evidence supports a different strategy. Evaluate Cloudflare Turnstile first. Do not create credentials in this slice.
+- **Beta environment:** isolation of the backend matters more than the Preview label. See the approved isolation rule below.
+- **Restore:** temporary isolated Supabase project; **never** restore over Production. Preferred proof: Production backup/logical backup → isolated project → verify restored state → verify Production remained healthy → delete/pause isolated project. Fallback if clone/PITR unavailable: official logical-backup restore into an isolated project. Expected head: `0015_silent_sentinel` unless a later separately authorized migration changes it. Do not execute now.
+- **Beta privacy gate:** before invitations, review ages, possible under-18 participants, jurisdiction, vendors/processors, analytics and monitoring disclosure, deletion/removal expectations, and consent/parental expectations where applicable. Do not make legal guarantees. Formal/legal questions remain flagged.
+- **Past-paper framing:** current repository framing **ACCEPTED**. Past Papers remains a Lockdin feature, not a standalone product. Before Phase 7 closes, owner should confirm off-repository/social/marketing material follows the same framing.
+- **Post-Phase-7 boundary:** unchanged. Do not pull the listed product/growth work into Phase 7.
+
 ## Baseline
 
 - Repository: `https://github.com/ActifDevs/lockdinapp.git`
 - This slice: **DECISION / DESIGN ONLY**. No analytics SDK, monitoring SDK, hosted Auth change, CAPTCHA project, migration 0016, Vercel env change, restore, or beta start.
 - Work branch: `phase7-slice1-owner-gate`
 - Branch base / `origin/main` at branch creation: `bb8344461e8259c9e6ea138e33bf2fa4be36e43f`
-- Report 113 location: **NOT on `main`**. Present only on `origin/phase7-preimplementation-reconciliation` at `d6101afb7cbf85b95308c9fbe9de1fa84f4aa4f1` (`docs/cursor/reports/113-phase7-preimplementation-reconciliation.md`). This report does not copy or replace it.
+- Report 113: merged to `main` before this owner-approval update (`docs/cursor/reports/113-phase7-preimplementation-reconciliation.md`). This report does not copy or replace it. Original Slice 7.1 branch was created from the pre-113 main baseline; `origin/main` was merged into this branch so both reports remain in logical order (113 → 114).
 - Local difference vs the Slice 7.1 prompt: this machine’s `main` was behind at `707e9793506fe5707d1cd836f500b8d4bbc0c990` before a fast-forward to `origin/main`. After fast-forward, `HEAD` matches the expected main SHA.
 - Phase 6: **CLOSED** (Report 112). Migration head: **0015_silent_sentinel**. **0016 ABSENT**. No schema change is required for Phase 7 as currently defined.
 - Production closeout evidence (Report 112): healthy anonymous smoke; hosted project ref recorded there as `hazvcdrcvsxmuwdfiucx`. This slice did not query hosted Supabase or Vercel.
@@ -54,6 +76,8 @@ Accept reduced pre-launch validation. Use builder conviction, internal QA, and t
 
 Default reason: Phase 7 explicitly requires real-user evidence, and current QA is technical, not product validation. Option B remains a legitimate *conscious* choice, but it is not the default and must be written as a contract exception if chosen.
 
+**Owner decision (2026-08-30): APPROVED — Option A.** Run a small controlled real-user beta to validate the **current** Lockdin product, not as a feature-request exercise. Target **8–12** active Cambridge International AS/A-Level students for **10–14 days**. P0–P3 triage remains approved. Post-Phase-7 feature requests remain outside Phase 7. Do not invite participants yet.
+
 ## Beta design
 
 Do **not** invite anyone in this slice.
@@ -63,7 +87,7 @@ Do **not** invite anyone in this slice.
 | Participant type | Current or recent Cambridge International AS / A-Level students already doing syllabus revision and at least occasional past papers. Prefer 2–4 subjects. **Do not collect extra PII for recruitment in this design slice.** |
 | Cohort size | **8–12 active** (invite up to 15; expect drop-off). Large enough to see repeated journeys; small enough to support by hand. |
 | Duration | **10–14 days**, with a mid-point check at day 5–7. |
-| Environment | **Preview (preferred)** on a dedicated Preview deployment + matching Preview Supabase project if one exists; otherwise a **closed Production** posture (signup restricted to invited emails / signup disabled for the public). Do not run an open public signup “beta.” |
+| Environment | **Isolation rule (owner-approved 2026-08-30), not “Preview preferred” as a label.** IF Vercel Preview uses a genuinely isolated **non-Production** Supabase backend, THEN Preview is preferred. IF Preview points at Production Supabase, THEN that Preview configuration must **not** be used for the real-user beta. IF no genuinely isolated Preview stack exists, THEN Production may be used only after analytics is ready, monitoring is ready, Auth abuse controls are verified, signup exposure is appropriately controlled, and the owner explicitly authorizes beta start. Environment isolation matters more than whether the URL is labelled Preview. Do not run an open public signup “beta.” |
 | Onboarding | Written one-pager: create account → complete onboarding → pick real subjects/session → log one task → mark one topic → log one past-paper attempt → open dashboard. No live training required. |
 | Supported surfaces | Current desktop Chrome or Firefox, plus one Safari check if a participant uses it. Phone browsers are **best-effort only**; mobile performance is post-Phase-7. |
 | Core journey | Signup/login, onboarding/subject assignment, syllabus progress, create/complete a task, log a past-paper attempt, dashboard/progress, logout. Past papers must be used as **one Lockdin surface**, not a separate product. |
@@ -120,12 +144,14 @@ Prior team mention of Google Analytics is **not** authorization.
 | Environment separation | Separate measurement IDs | Separate projects or `environment` property + filters | N/A |
 | Cost | Free (data-quality / ToS cost) | Free tier is enough for beta + early launch if replay is off | £0 |
 | Vendor dependency | Google | PostHog | None |
-| Usefulness for beta / launch | Pageviews yes; milestone events possible but culturally noisy | Matches 3–5 milestone events and server-side `first_*` emission | Qualitative only |
+| Usefulness for beta / launch | Pageviews yes; milestone events possible but culturally noisy | Matches 3–5 milestone events and server-side occurrence emission | Qualitative only |
 | Tiny taxonomy | Possible, fights the product | Designed for this | N/A |
 
 **Plausible** is a credible second privacy option: cookieless pageviews, simple custom events, weaker user-level funnel and weaker first-class server emission than PostHog. Prefer Plausible only if the owner wants **strictly no distinct user id** and will accept counts without per-user funnels.
 
 **Recommendation:** **PostHog Cloud (EU), product analytics only** — no session replay, no autocapture, no heatmaps, no surveys, no exception autocapture (Sentry owns errors). Use a single internal `track(event, props)` wrapper with an allow-list. Separate Preview and Production projects.
+
+**Owner decision (2026-08-30): APPROVED — PostHog Cloud EU.** Phase 7 configuration constraints: custom events only; **NO** autocapture; **NO** Session Replay; **NO** heatmaps; **NO** surveys unless separately approved later; **NO** advertising integrations; **NO** automatic exception/error capture; strict event/property allow-list; Preview and Production separated; privacy disclosure required before live use. PostHog is for product analytics. Sentry will own error monitoring.
 
 Do **not** install in this slice.
 
@@ -138,8 +164,8 @@ Critical review:
 | Candidate | Verdict |
 | --- | --- |
 | `account_created` | **KEEP.** Durable Auth signup. Frontend is the only place that sees `signUp` success. |
-| `first_task_created` | **KEEP.** `POST` task API can know “this user now has exactly one task.” Reliable. |
-| `first_past_paper_attempt` | **KEEP.** Same pattern on `POST /api/past-paper-attempts`. Directly tests integrated paper use. |
+| `first_task_created` | **REJECTED by owner (2026-08-30).** 0→1 semantics are not guaranteed to mean lifetime-first if a user deletes their only task and later creates another. Do **not** create persistent database telemetry state just to support this name. Replace with occurrence event `task_created`. |
+| `first_past_paper_attempt` | **REJECTED by owner (2026-08-30).** Same 0→1 lifetime-first problem after delete-and-recreate. Do **not** add DB telemetry state. Replace with occurrence event `past_paper_attempt_created`. |
 | `streak_achieved` | **DROP for Phase 7.** Streak is derived on dashboard read from consecutive UTC days with a completed task (`dashboard.ts`). Longest streak is also mirrored in `localStorage`. No durable “achieved” write. Threshold is undefined (1 vs 7 vs 30). Would spam or lie. |
 | `subject_completed` | **DROP for Phase 7.** No first-class completion event. “100% syllabus” is an aggregate over topic progress and is unlikely in a 10–14 day beta. Definition (topics vs units vs papers) is product-ambiguous. |
 
@@ -147,9 +173,11 @@ Critical review:
 
 | `onboarding_completed` | **KEEP.** Account creation is not a workspace. The API already owns `lockdin_complete_onboarding`. This is the first real product milestone. |
 
-### Approved proposal (4 events)
+### Approved proposal (4 events) — owner-modified 2026-08-30
 
-Allow-list only. Properties not listed are forbidden.
+Allow-list only. Properties not listed are forbidden. These are **normal occurrence events**. PostHog may calculate first occurrence, funnels, frequency, and conversion from event history. Do **not** implement 0→1 “first_*” names or persistent database telemetry state to fake lifetime-first semantics. **No migration 0016.**
+
+Minimal event properties must be documented before Slice 7.2 implementation. The names below are approved; property lists remain the working minimum and must stay allow-listed.
 
 #### `account_created`
 
@@ -169,51 +197,55 @@ Allow-list only. Properties not listed are forbidden.
 - **Deduplication:** emit only when this call transitions `onboarded_at` from null to set (or RPC reports first completion). Never on profile updates.
 - **Why:** measures “got a real workspace,” which signup alone does not.
 
-#### `first_task_created`
+#### `task_created`
 
-- **Trigger:** successful task create when the caller previously had **zero** tasks.
+- **Trigger:** successful task create (each successful create is an occurrence).
 - **Owner of emission:** **API**.
 - **Allowed properties:** `environment`.
 - **Forbidden properties:** title, notes, topic text, due dates, subject/topic IDs.
-- **Deduplication:** server counts tasks for `auth.uid()` in the same request; emit only on 0→1. Ignore client retries that create a second task.
-- **Why:** first planning action.
+- **Deduplication:** none as a lifetime-first gate. Do not count remaining tasks to emit only on 0→1. Ignore true client retries that would double-POST the same create if that is already handled as a failed duplicate request; do not invent DB telemetry for “first.”
+- **Why:** planning action frequency and conversion from onboarding, without claiming lifetime-first.
 
-#### `first_past_paper_attempt`
+#### `past_paper_attempt_created`
 
-- **Trigger:** successful attempt create when the caller previously had **zero** attempts.
+- **Trigger:** successful attempt create (each successful create is an occurrence).
 - **Owner of emission:** **API**.
 - **Allowed properties:** `environment`.
 - **Forbidden properties:** score, marks, percentage, year, paper code, notes, component/subject IDs, syllabus text.
-- **Deduplication:** server count 0→1 only.
-- **Why:** proves integrated past-paper use, not a standalone tracker.
+- **Deduplication:** none as a lifetime-first gate (same rationale as `task_created`).
+- **Why:** proves integrated past-paper use, not a standalone tracker; frequency is useful; PostHog can derive first occurrence.
 
 ### Default forbid list (all events)
 
-Never send: email, full name, username, access/refresh tokens, Authorization headers, cookies, Supabase JWT, free-text notes, syllabus text, raw study content, exact paper scores, raw request/response bodies, database IDs unless a later owner proof says a specific id is required (**none are required in this taxonomy**), service-role key, database URL, raw SQL, or Auth error payloads that echo the email.
+Never send: email; full name; username; passwords; access tokens; refresh tokens; JWTs; cookies; Authorization headers; task title; task notes; syllabus text; learning-outcome text; raw study content; paper scores; marks; percentages; paper codes; raw database IDs unless separately proven necessary; database URLs; raw SQL; raw request bodies; raw response bodies; raw Auth payloads.
 
-Prefer **allow-list**. If a property is not named above, it does not ship.
+Prefer **allow-list**. If a property is not named above, it does not ship. Do not build an advertising profile.
 
 ## Analytics privacy / identity
 
 ### Identity model
 
-**Recommendation:** **pseudonymous, non-display identifier only where required for dedupe — not a Google-style user profile.**
+**Recommendation:** **pseudonymous, non-display identifier only where required for funnel joining — not a Google-style user profile.**
+
+**Owner decision (2026-08-30): APPROVED PRINCIPLE — anonymous or pseudonymous minimum necessary.**
 
 - **Do not** identify with email, name, or username.
-- **Do not** send the raw Supabase user UUID to the vendor if a hashed form is available. Preferred distinct id: HMAC-SHA256(user UUID, server-held salt) emitted **only from the API** for API-owned events.
+- **Do not** send the raw Supabase user UUID to the vendor unless a later implementation review proves it is necessary. Preferred distinct id if server-side identity is used: HMAC-SHA256 (or equivalent keyed alias) of the user UUID with a **server-held secret**, emitted **only from the API** for API-owned events. **Do not** add a database column or table for analytics identity.
 - Frontend `account_created`: use the vendor’s **anonymous distinct id** *or* the same HMAC if the API exposes a dedicated non-PII analytics alias later. Until that alias exists, frontend may use a **first-party cookie/local flag only for dedupe** and send the event **without** a stable user id (counts still work; cross-device funnel will not).
-- Fully anonymous (no distinct id) is acceptable if the owner chooses **Plausible** instead; then drop per-user funnel expectations.
+- Fully anonymous (no distinct id) is acceptable if the owner chooses **Plausible** instead; then drop per-user funnel expectations. PostHog Cloud EU is the approved provider; identity remains minimized.
 
 Minimum identity needed to answer real questions:
 
 - How many signups became onboarded workspaces? (counts; optional same-user link)
-- How many workspaces created a first task / first paper? (API 0→1; no user profile required)
+- How many workspaces created a task / paper attempt? (occurrence events; PostHog can derive first occurrence)
 
 We do **not** need identity to answer “average score” or “which syllabus topic is weak” — those are in-product, and sending them would be a privacy failure.
 
+Do not build an advertising profile.
+
 ### Login / logout / account switch
 
-- Logout: reset vendor session / distinct id; clear in-memory queue; do not flush pending events that might still hold the previous alias.
+- Logout: reset vendor session / distinct id; clear in-memory queue; do not flush pending events that might still hold the previous alias. Logout/account switching **must** reset analytics identity/session state.
 - Account switch: treat as logout then login. Existing React Query `previousUserId !== nextUserId` → `queryClient.clear()` is the pattern to mirror for analytics state.
 - Login of an already-onboarded user: **no** `account_created` / `onboarding_completed` re-fire.
 
@@ -224,11 +256,24 @@ We do **not** need identity to answer “average score” or “which syllabus t
 
 ### Retention principle
 
-Keep event payloads **≤ 90 days** unless a later legal review says otherwise. Do not export event streams into ad platforms.
+Keep event payloads **≤ 90 days** unless provider capability or later formal review determines a different justified setting. Do not export event streams into ad platforms.
 
 ### Consent / disclosure
 
-Wiring a vendor is a **material privacy-page change**. UK/EU student use may implicate UK GDPR / age-appropriate design. This report does **not** give legal advice.
+Wiring a vendor is a **material privacy-page change**. UK/EU student use may implicate UK GDPR / age-appropriate design. This report does **not** give legal advice. Do not make legal guarantees.
+
+**Owner decision (2026-08-30): APPROVED — beta privacy gate before invitations.** Review the privacy/consent posture for the actual beta cohort. In particular:
+
+- participant ages;
+- possibility of under-18 participants;
+- jurisdiction;
+- vendor/processors;
+- analytics disclosure;
+- monitoring disclosure;
+- data deletion/removal expectations;
+- appropriate consent/parental expectations where applicable.
+
+Formal/legal review questions must remain clearly flagged.
 
 **Flag for formal review (not resolved here):**
 
@@ -253,6 +298,8 @@ Wiring a vendor is a **material privacy-page change**. UK/EU student use may imp
 | Operational complexity | Low–medium | Medium (hosting) or low (their cloud) | None |
 
 **Recommendation:** **Sentry** for both React and Express. Disable Session Replay and user IP if the plan allows. One org, two environments, release = git SHA. Do not install in this slice.
+
+**Owner decision (2026-08-30): APPROVED — Sentry.** Scope: React frontend + Express API. Configuration principles: **NO** Session Replay; **NO** PII; **NO** raw request bodies; **NO** Auth headers/cookies; **NO** user study content; **NO** database credentials/details; sanitized stack traces; release = Git SHA; environment tagging; existing request ID attached where useful; actionable alerting; Preview and Production separated; ≤90 day retention target where configurable. Sentry is for errors/reliability. PostHog is for product behaviour.
 
 Do not use PostHog exception capture as a substitute. One error product.
 
@@ -287,6 +334,8 @@ Default Sentry retention on the chosen plan; prefer **≤ 90 days**. No raw body
 ## Auth abuse controls
 
 Real boundary: **hosted Supabase Auth**, not Express. An in-process Express limiter would never see signup/login/reset and would create false confidence (Report 113; current `auth-provider.tsx`).
+
+**Owner decision (2026-08-30): APPROVED.** Do **not** add an Express limiter for these flows. First inspect and record **actual hosted** Supabase Auth settings. Local `supabase/config.toml` is **not** authoritative hosted evidence. No hosted setting change is authorized by this slice. Future Slice 7.4 must compare hosted settings against the approved posture before changing anything.
 
 ### Local config is not hosted config
 
@@ -342,9 +391,15 @@ Map provider 429 and CAPTCHA-required errors to a calm, accessible message: wait
 
 **Recommendation:** **A for a closed Preview (or invite-only) beta; prepare B before any public/uninvited signup.**
 
-Reasons: cohort is tiny; CAPTCHA adds friction and accessibility work (widget, site keys, `captchaToken` on `signUp` / `signInWithPassword` / `resetPasswordForEmail`); Production URL is already reachable, so **if beta is Production with open signup, choose B before invites**. Do not create provider credentials in this slice.
+**Owner decision (2026-08-30): APPROVED CONDITIONALLY.**
 
-Cloudflare Turnstile is usually less hostile than checkbox hCaptcha; final provider is an owner pick at implementation time.
+- If beta runs on a genuinely isolated closed Preview environment: rate limits alone are acceptable initially.
+- If beta uses Production **and** signup is publicly accessible: CAPTCHA must be enabled before invites.
+- Before unrestricted public signup: CAPTCHA must be reviewed/configured unless later evidence supports a different abuse-control strategy.
+- Preferred CAPTCHA provider to evaluate first: **Cloudflare Turnstile**.
+- Do **not** create credentials/configuration in this slice.
+
+Reasons: cohort is tiny; CAPTCHA adds friction and accessibility work (widget, site keys, `captchaToken` on `signUp` / `signInWithPassword` / `resetPasswordForEmail`); Production URL is already reachable, so **if beta is Production with open signup, choose B before invites**.
 
 ## Recovery / restore design
 
@@ -352,7 +407,15 @@ A backup that exists is **not** Phase 7 done. Report 31-era evidence was `pg_dum
 
 ### Never restore over Production
 
-**Preferred target:** a **temporary isolated Supabase project** created for this proof, then destroyed. Alternative: another owner-approved disposable project. Not the local laptop as the sole proof (does not exercise hosted backup product). Not the Preview project if Preview is the beta database.
+**Owner decision (2026-08-30): APPROVED — temporary isolated Supabase project. NEVER restore over Production.**
+
+Preferred proof: Production backup/logical backup → temporary isolated Supabase project → verify restored state → verify Production remained healthy → delete/pause isolated restore project.
+
+If plan-level clone/PITR is unavailable: the approved fallback is an **official logical-backup restore into an isolated Supabase project**.
+
+Not the local laptop as the sole proof (does not exercise hosted backup product). Not the Preview project if Preview is the beta database.
+
+Do not execute this now.
 
 ### Human restore proof must verify
 
@@ -360,11 +423,11 @@ A backup that exists is **not** Phase 7 done. Report 31-era evidence was `pg_dum
 2. Restore/PITR (or official dashboard backup restore) **into that isolated project** completes.
 3. Database accepts a connection with a **non-Production** URL only.
 4. `supabase_migrations.schema_migrations` (or current journal table) is present.
-5. Head is the expected tag (**0015_silent_sentinel**, count 16) unless a later approved migration exists — **none should**.
+5. Head is the expected tag (**0015_silent_sentinel**, count 16) unless a later **separately authorized** migration legitimately changes it — **none should** as of this approval.
 6. Representative reference tables present: subjects, syllabus versions/topics, assessment components, applicability / series policy as expected.
 7. Representative user-owned structure present: profiles, memberships/pins, tasks, past_paper_attempts (row presence/shape — **do not export PII into the report**).
 8. RLS enabled on user-owned tables; policies/grants sampled (authenticated cannot read another user’s rows — use **synthetic** users in the restore copy, or a documented read-only policy inspect).
-9. Strict assignment functions present (`lockdin_complete_onboarding_apply`, `lockdin_replace_user_subjects_apply`, `lockdin_resolve_applicable_syllabus_version`).
+9. Strict assignment functions present (`lockdin_complete_onboarding_apply`, `lockdin_replace_user_subjects_apply`, `lockdin_resolve_applicable_syllabus_version`). Applicability/policy structure present.
 10. Production health unchanged (`/api/healthz`, `/api/healthz/db`) after the exercise.
 11. Isolated project **paused or deleted** after evidence is captured.
 
@@ -373,7 +436,7 @@ A backup that exists is **not** Phase 7 done. Report 31-era evidence was `pg_dum
 - Current Supabase **plan** for Production: daily backups vs **point-in-time recovery**.
 - Backup retention window.
 - Whether dashboard **restore to a new project** (or PITR clone) is available on that plan.
-- If PITR is **not** on the plan: either upgrade for the proof or use an official logical backup restore into a new project — still isolated, still not Production overwrite.
+- If PITR is **not** on the plan: use an official logical backup restore into a new isolated project — still not Production overwrite.
 - Who has billing + dashboard permission to run it.
 
 Do **not** execute the restore in this slice.
@@ -397,25 +460,27 @@ No repository copy contradiction found that requires a rewrite in this slice.
 
 **Recommendation:** **ACCEPT** current integrated framing.
 
+**Owner decision (2026-08-30): APPROVED.** Current repository framing is accepted. Past Papers remains a Lockdin feature, **not** a standalone product. Before Phase 7 closes, owner should confirm any off-repository/social/marketing material follows the same framing.
+
 ## Owner decision matrix
 
-| # | Decision | Options | Recommendation | Cost / risk | Owner approval required |
-| --- | --- | --- | --- | --- | --- |
-| 1 | Validation | RUN SMALL BETA / SKIP (conscious) | **RUN SMALL BETA** | Time vs shipping blind | **Yes** |
-| 2 | Analytics provider | PostHog EU (custom only) / Plausible / GA4 / Defer | **PostHog EU, custom events only** | Processor + privacy-page work; GA4 worse for minors | **Yes** |
-| 3 | Analytics events | 4 proposed / keep streak+subject / fewer / none | **`account_created`, `onboarding_completed`, `first_task_created`, `first_past_paper_attempt`** | Wrong events create junk or PII | **Yes** |
-| 4 | Analytics identity | Anonymous counts / HMAC alias / raw user UUID / email identify | **HMAC or anonymous; never email/name** | Under-18 / deletion questions | **Yes** |
-| 5 | Monitoring provider | Sentry / GlitchTip / Defer | **Sentry** (no replay) | Stack + route leakage if redaction is weak | **Yes** |
-| 6 | Monitoring retention / privacy | ≤90d, allow-list, no bodies / looser | **≤90d, allow-list, no replay, no PII** | Legal review still open | **Yes** |
-| 7 | Auth rate-limit posture | Verify hosted first / change now / Express limiter | **Verify hosted first; no Express limiter** | False confidence if Express is used | **Yes** (any hosted edit) |
-| 8 | CAPTCHA | A limits-only / B now / C after signal | **A if closed Preview; B if open Production signup** | UX/a11y vs bots | **Yes** |
-| 9 | Restore target | New isolated Supabase project / other disposable / restore over Prod | **New isolated project; never Prod** | Plan may lack PITR; billing | **Yes** |
-| 10 | Beta cohort / environment | 8–12 / 10–14 days / Preview preferred | **As designed above** | Support load; public URL risk | **Yes** |
-| 11 | Past-paper framing | ACCEPT / CHANGE | **ACCEPT** | External materials unknown | **Yes** (external check) |
+| # | Decision | Options | Recommendation | Owner decision (2026-08-30) | Cost / risk | Owner approval required |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | Validation | RUN SMALL BETA / SKIP (conscious) | **RUN SMALL BETA** | **APPROVED** — 8–12 / 10–14 days; current product; P0–P3; no invites yet | Time vs shipping blind | Recorded |
+| 2 | Analytics provider | PostHog EU (custom only) / Plausible / GA4 / Defer | **PostHog EU, custom events only** | **APPROVED** — PostHog Cloud EU; constraints in approval banner | Processor + privacy-page work; GA4 worse for minors | Recorded |
+| 3 | Analytics events | 4 proposed first_* / occurrence events / keep streak+subject / fewer / none | Original rec: `first_task_created` / `first_past_paper_attempt` | **APPROVED WITH MODIFICATION** — `account_created`, `onboarding_completed`, `task_created`, `past_paper_attempt_created`; no 0016 | Wrong events create junk or PII | Recorded |
+| 4 | Analytics identity | Anonymous counts / HMAC alias / raw user UUID / email identify | **HMAC or anonymous; never email/name** | **APPROVED** — min necessary; no raw UUID unless later proven; no analytics DB identity; reset on logout/switch | Under-18 / deletion questions | Recorded |
+| 5 | Monitoring provider | Sentry / GlitchTip / Defer | **Sentry** (no replay) | **APPROVED** — React + Express; no replay | Stack + route leakage if redaction is weak | Recorded |
+| 6 | Monitoring retention / privacy | ≤90d, allow-list, no bodies / looser | **≤90d, allow-list, no replay, no PII** | **APPROVED** | Legal review still open | Recorded |
+| 7 | Auth rate-limit posture | Verify hosted first / change now / Express limiter | **Verify hosted first; no Express limiter** | **APPROVED** — hosted inspect later; no Express limiter; no hosted change now | False confidence if Express is used | Recorded (any hosted edit still gated) |
+| 8 | CAPTCHA | A limits-only / B now / C after signal | **A if closed Preview; B if open Production signup** | **APPROVED CONDITIONALLY** — isolation-based; Turnstile first to evaluate | UX/a11y vs bots | Recorded |
+| 9 | Restore target | New isolated Supabase project / other disposable / restore over Prod | **New isolated project; never Prod** | **APPROVED** — isolated project; logical-backup fallback; expected head 0015 | Plan may lack PITR; billing | Recorded |
+| 10 | Beta cohort / environment | 8–12 / 10–14 days / Preview preferred | Original rec: Preview preferred | **APPROVED WITH MODIFICATION** — isolation rule (see Environment row); 8–12 / 10–14 | Support load; public URL risk | Recorded |
+| 11 | Past-paper framing | ACCEPT / CHANGE | **ACCEPT** | **APPROVED** — in-repo accepted; owner to confirm off-repo materials before Phase 7 close | External materials unknown | Recorded |
 
 ## Recommended defaults
 
-Do **not** apply these. They are the strongest evidence-based set for owner approval:
+Historical recommendations (evidence-based, pre-approval). **Owner decisions in the banner and matrix supersede these where they differ** (notably occurrence events vs `first_*`, and the beta isolation rule vs “Preview preferred”):
 
 1. **Validation:** RUN SMALL BETA.
 2. **Analytics:** PostHog Cloud (EU), custom events only; no replay, no autocapture. Not GA4 unless the owner overrules the minor/privacy fit.
@@ -426,14 +491,14 @@ Do **not** apply these. They are the strongest evidence-based set for owner appr
 7. **Auth:** inspect hosted Rate Limits and email/CAPTCHA toggles; keep abuse control on Supabase Auth.
 8. **CAPTCHA:** not for a closed Preview beta; required before uninvited public signup.
 9. **Restore:** temporary isolated Supabase project; full proof list; then delete/pause.
-10. **Beta:** 8–12 Cambridge AS/A-Level students, 10–14 days, Preview/invite-only, structured form, P0–P3 rubric.
+10. **Beta:** 8–12 Cambridge AS/A-Level students, 10–14 days, isolated-backend rule, structured form, P0–P3 rubric.
 11. **Past Papers:** retain integrated Lockdin framing.
 
 ## Hosted / config gates
 
 Manual owner work before implementation slices change anything live:
 
-- [ ] Read and approve or amend this decision matrix in writing.
+- [x] Read and approve or amend this decision matrix in writing. **Done 2026-08-30 (this report).** Remaining hosted/config boxes stay unchecked until their own slices.
 - [ ] Supabase Production (and Preview, if any): screenshot or write down Rate Limits, signup, confirmations, CAPTCHA, password policy, site URL. **Do not change yet unless a later approved slice says so.**
 - [ ] Confirm whether Production signup is currently open to the internet (affects CAPTCHA and beta environment).
 - [ ] Confirm backup / PITR capability on the current plan.
@@ -466,19 +531,23 @@ Keep **out** of Phase 7, including as “quick beta follow-ups”:
 - broader task editing
 - exam-date mutation UI
 - external calendar sync
+- real r002
+- Feb/Mar series work
+- automatic repin
+- DEFAULT promotion tooling
 - AI assistant, standalone focus blocker, server-side XP/achievement tables (architecture plan §11)
 
 Beta feedback that maps to this list is **P3 / backlog**, not ship-gate scope.
 
 ## Next-slice prerequisites
 
-Phase 7 **implementation must not begin** until the owner records decisions for matrix rows 1–11.
+Slice 7.1 owner decisions are **APPROVED** (2026-08-30). This authorizes **planning** to proceed to Slice 7.2 after this documentation is merged. It does **not** authorize SDK install, hosted changes, Production DB writes, migration creation, beta invitations, restore execution, or Phase 7 closeout.
 
-Suggested later slices (from Report 113, still valid; not started):
+Suggested later slices (from Report 113, still valid; 7.2 not started in this run):
 
-- **7.2** — Analytics wrapper + approved events + privacy disclosure + Preview proof (after vendor approval).
-- **7.3** — Sentry (or chosen monitor) on frontend + API, redaction, release tags (after provider approval).
-- **7.4** — Hosted Auth verification record, optional CAPTCHA **if approved**, 429/challenge UX.
+- **7.2** — Analytics wrapper + approved occurrence events + privacy disclosure + Preview proof (PostHog Cloud EU; allow-list; no first_* DB state).
+- **7.3** — Sentry on frontend + API, redaction, release tags (after provider approval — provider now approved; implementation still gated).
+- **7.4** — Hosted Auth verification record, optional CAPTCHA **if** the isolation/signup rule requires it, 429/challenge UX.
 - **7.5** — Beta run, isolated restore proof, framing confirmation on any new owner-supplied materials, closeout.
 
-Until then: no SDKs, no 0016, no hosted writes, no Vercel env, no restore, no invites.
+Until those slices run: no SDKs, no 0016, no hosted writes, no Vercel env, no restore, no invites.
