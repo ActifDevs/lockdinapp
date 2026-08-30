@@ -10,6 +10,7 @@ import { Check, ChevronRight, Loader2, Search } from "lucide-react";
 import { IllustCalm } from "@/components/illustrations";
 import {
   getUpcomingExamSessions,
+  isSupportedAssignmentSession,
   LEVEL_OPTIONS,
   structuredSessionFromPickerLabel,
 } from "@/lib/exam-sessions";
@@ -81,12 +82,21 @@ export default function Onboarding() {
         setError("Choose your level and exam session.");
         return;
       }
+      if (!isSupportedAssignmentSession(examSession)) {
+        setError("Choose a May/June or Oct/Nov session. Other cannot create subjects.");
+        return;
+      }
     }
     setStep((s) => Math.min(s + 1, 5));
   };
 
   const finish = async () => {
     if (isSubmitting) return;
+    const intendedExamSession = structuredSessionFromPickerLabel(examSession);
+    if (!intendedExamSession) {
+      setError("Choose a May/June or Oct/Nov session. Other cannot create subjects.");
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     try {
@@ -96,7 +106,7 @@ export default function Onboarding() {
         level: level!,
         examSession: examSession!,
         subjectIds: selectedIds,
-        intendedExamSession: structuredSessionFromPickerLabel(examSession),
+        intendedExamSession,
       });
     } catch (err) {
       const msg =
@@ -314,6 +324,10 @@ export default function Onboarding() {
               </div>
               <div className="space-y-2">
                 <Label>Exam session</Label>
+                <p className="text-xs text-muted-foreground">
+                  May/June and Oct/Nov create your subjects. Other is profile-only
+                  and cannot start onboarding.
+                </p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {examOptions.map((opt) => (
                     <button

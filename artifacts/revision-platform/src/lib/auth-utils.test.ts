@@ -4,7 +4,11 @@ import {
   __resetSupabaseBrowserClientForTests,
   getSupabaseBrowserClient,
 } from "./supabase-browser";
-import { getUpcomingExamSessions } from "./exam-sessions";
+import {
+  getUpcomingExamSessions,
+  isSupportedAssignmentSession,
+  structuredSessionFromPickerLabel,
+} from "./exam-sessions";
 
 describe("getAppUrl", () => {
   afterEach(() => {
@@ -46,6 +50,14 @@ describe("getUpcomingExamSessions", () => {
   it("rolls to next May/June after November", () => {
     const sessions = getUpcomingExamSessions(new Date("2026-12-01T12:00:00Z"));
     expect(sessions[0]).toBe("May/June 2027");
+  });
+
+  it("does not treat Other as an assignable session", () => {
+    const now = new Date("2026-03-15T12:00:00Z");
+    expect(isSupportedAssignmentSession("Other", now)).toBe(false);
+    expect(structuredSessionFromPickerLabel("Other", now)).toBeUndefined();
+    expect(isSupportedAssignmentSession("May/June 2026", now)).toBe(true);
+    expect(isSupportedAssignmentSession("Feb/Mar 2026", now)).toBe(false);
   });
 });
 

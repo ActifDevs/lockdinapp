@@ -325,7 +325,7 @@ export async function proveSeriesPolicyFoundation(pool: Pool): Promise<void> {
     VALUES (
       $1, 'Cambridge International', 'A Level', 'Chem DEFAULT',
       true, 'c2b1-chem.csv', 'published',
-      2028, 'May/June', 2029, 'Oct/Nov'
+      2026, 'May/June', 2029, 'Oct/Nov'
     )
     RETURNING id
     `,
@@ -395,7 +395,9 @@ export async function proveSeriesPolicyFoundation(pool: Pool): Promise<void> {
     `,
     [subjectId],
   );
-  const versionDefaultA = defaultA.rows[0]!.id;
+  if (defaultA.rows[0] == null) {
+    throw new Error("[db-harness] DEFAULT A fixture was not created.");
+  }
 
   if ((await resolve(2026, "May/June")) !== versionB) {
     throw new Error(
@@ -436,9 +438,9 @@ export async function proveSeriesPolicyFoundation(pool: Pool): Promise<void> {
     `,
     [USER_ID, subjectId],
   );
-  if (onboarded.rows[0]?.syllabus_version_id !== versionDefaultA) {
+  if (onboarded.rows[0]?.syllabus_version_id !== versionB) {
     throw new Error(
-      "[db-harness] ASSIGNMENT-STILL-DEFAULT: onboarding pinned resolver B instead of DEFAULT A.",
+      "[db-harness] C2B2 assignment: onboarding pinned DEFAULT A instead of resolver B.",
     );
   }
   if (
@@ -469,7 +471,7 @@ export async function proveSeriesPolicyFoundation(pool: Pool): Promise<void> {
     [USER_ID, subjectId],
   );
   if (
-    legacy.rows[0]?.syllabus_version_id !== versionDefaultA ||
+    legacy.rows[0]?.syllabus_version_id !== versionB ||
     legacy.rows[0]?.intended_exam_year !== null ||
     legacy.rows[0]?.intended_exam_series !== null
   ) {
@@ -505,14 +507,14 @@ export async function proveSeriesPolicyFoundation(pool: Pool): Promise<void> {
   );
   const physicsPin = afterReplace.rows.find((row) => row.subject_id === subjectId);
   const chemPin = afterReplace.rows.find((row) => row.subject_id === subjectB);
-  if (physicsPin?.syllabus_version_id !== versionDefaultA) {
+  if (physicsPin?.syllabus_version_id !== versionB) {
     throw new Error(
-      "[db-harness] ASSIGNMENT-STILL-DEFAULT: replace mutated the retained Physics pin.",
+      "[db-harness] C2B2 assignment: replace mutated the retained Physics pin.",
     );
   }
   if (chemPin?.syllabus_version_id !== chemDefault) {
     throw new Error(
-      "[db-harness] Settings addition did not pin Chemistry DEFAULT.",
+      "[db-harness] Settings addition did not pin Chemistry via the resolver.",
     );
   }
 

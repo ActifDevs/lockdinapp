@@ -330,10 +330,6 @@ export async function proveApplicabilityPopulation(pool: Pool): Promise<void> {
   ) {
     throw new Error("[db-harness] Assignment-still-DEFAULT setup resolver missed B.");
   }
-  const defaultA = await pool.query<{ id: number }>(
-    `SELECT id FROM public.syllabus_versions WHERE subject_id = $1 AND is_current`,
-    [subjectId],
-  );
   await pool.query(
     `
     INSERT INTO auth.users (
@@ -377,8 +373,8 @@ export async function proveApplicabilityPopulation(pool: Pool): Promise<void> {
     `SELECT syllabus_version_id FROM public.user_subjects WHERE user_id = $1::uuid AND subject_id = $2`,
     [USER_ID, subjectId],
   );
-  if (pin.rows[0]?.syllabus_version_id !== defaultA.rows[0]!.id) {
-    throw new Error("[db-harness] ASSIGNMENT-STILL-DEFAULT: onboarding pinned resolver B.");
+  if (pin.rows[0]?.syllabus_version_id !== versionB.rows[0]!.id) {
+    throw new Error("[db-harness] C2B2 assignment: onboarding pinned DEFAULT A instead of B.");
   }
 
   await pool.query(`DELETE FROM public.user_subjects WHERE user_id = $1::uuid`, [

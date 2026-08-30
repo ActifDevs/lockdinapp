@@ -499,7 +499,7 @@ export const ListCurrentUserSubjectsResponseItem = zod.object({
   "intendedExamSession": zod.object({
   "year": zod.number().min(listCurrentUserSubjectsResponseIntendedExamSessionOneYearMin).max(listCurrentUserSubjectsResponseIntendedExamSessionOneYearMax),
   "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
-}).describe('Structured intended final exam sitting. Not used for version assignment in 6.3C2A.').nullable(),
+}).describe('Structured intended final exam sitting. Required at runtime when the request creates a new membership. Optional for retained-only or removal-only Settings replacement. Clients never send a version id.\n').nullable(),
   "createdAt": zod.string().datetime({"offset":true}),
   "updatedAt": zod.string().datetime({"offset":true})
 })
@@ -528,7 +528,7 @@ export const ReplaceCurrentUserSubjectsBody = zod.object({
   "intendedExamSession": zod.object({
   "year": zod.number().min(replaceCurrentUserSubjectsBodyIntendedExamSessionYearMin).max(replaceCurrentUserSubjectsBodyIntendedExamSessionYearMax),
   "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
-}).optional().describe('Structured intended final exam sitting. Not used for version assignment in 6.3C2A.'),
+}).optional().describe('Structured intended final exam sitting. Required at runtime when the request creates a new membership. Optional for retained-only or removal-only Settings replacement. Clients never send a version id.\n'),
   "subjectSessionOverrides": zod.array(zod.object({
   "subjectId": zod.number().min(1),
   "year": zod.number().min(replaceCurrentUserSubjectsBodySubjectSessionOverridesItemYearMin).max(replaceCurrentUserSubjectsBodySubjectSessionOverridesItemYearMax),
@@ -558,7 +558,7 @@ export const ReplaceCurrentUserSubjectsResponseItem = zod.object({
   "intendedExamSession": zod.object({
   "year": zod.number().min(replaceCurrentUserSubjectsResponseIntendedExamSessionOneYearMin).max(replaceCurrentUserSubjectsResponseIntendedExamSessionOneYearMax),
   "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
-}).describe('Structured intended final exam sitting. Not used for version assignment in 6.3C2A.').nullable(),
+}).describe('Structured intended final exam sitting. Required at runtime when the request creates a new membership. Optional for retained-only or removal-only Settings replacement. Clients never send a version id.\n').nullable(),
   "createdAt": zod.string().datetime({"offset":true}),
   "updatedAt": zod.string().datetime({"offset":true})
 })
@@ -650,7 +650,7 @@ export const CompleteCurrentUserOnboardingBody = zod.object({
   "intendedExamSession": zod.object({
   "year": zod.number().min(completeCurrentUserOnboardingBodyIntendedExamSessionYearMin).max(completeCurrentUserOnboardingBodyIntendedExamSessionYearMax),
   "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
-}).optional().describe('Structured intended final exam sitting. Not used for version assignment in 6.3C2A.'),
+}).optional().describe('Structured intended final exam sitting. Required at runtime when the request creates a new membership. Optional for retained-only or removal-only Settings replacement. Clients never send a version id.\n'),
   "subjectIds": zod.array(zod.number().min(1)).min(1).max(completeCurrentUserOnboardingBodySubjectIdsMax),
   "subjectSessionOverrides": zod.array(zod.object({
   "subjectId": zod.number().min(1),

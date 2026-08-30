@@ -19,6 +19,7 @@ import { createUserScopedSupabaseClient } from "../lib/supabase-user-client";
 import {
   buildMembershipSessionRpcArgs,
   hasStructuredSessionInput,
+  mapMembershipAssignmentRpcError,
   mapStoredIntendedExamSession,
 } from "../lib/intended-exam-session";
 import { logger } from "../lib/logger";
@@ -219,6 +220,14 @@ router.put("/user-subjects", requireAuth, async (req, res): Promise<void> => {
 
   if (error) {
     const message = error.message ?? "";
+    const assignmentError = mapMembershipAssignmentRpcError(
+      error.code ?? "",
+      message,
+    );
+    if (assignmentError) {
+      res.status(assignmentError.status).json({ error: assignmentError.error });
+      return;
+    }
     if (
       error.code === "22023" ||
       message.includes("invalid_subject_selection")

@@ -166,17 +166,29 @@ export async function proveSessionFoundation(pool: Pool): Promise<void> {
     [versionA.id, versionB.id],
   );
 
-  await pool.query(
+  const mathsVersion = await pool.query<{ id: number }>(
     `
     INSERT INTO public.syllabus_versions (
-      subject_id, exam_board, qualification, label, is_current, source_file, lifecycle
+      subject_id, exam_board, qualification, label, is_current, source_file,
+      lifecycle, applicable_from_year, applicable_from_series,
+      applicable_to_year, applicable_to_series
     )
     VALUES (
       $1, 'Cambridge International', 'A Level', 'Maths default',
-      true, 'c2a-m.csv', 'published'
+      true, 'c2a-m.csv', 'published',
+      2028, 'May/June', 2029, 'Oct/Nov'
     )
+    RETURNING id
     `,
     [subjectB.id],
+  );
+  await pool.query(
+    `
+    INSERT INTO public.syllabus_version_exam_series (
+      syllabus_version_id, series, product_auto_assign
+    ) VALUES ($1, 'Oct/Nov', true)
+    `,
+    [mathsVersion.rows[0]!.id],
   );
 
   const resolve = async (year: number, series: string) => {
@@ -317,8 +329,8 @@ export async function proveSessionFoundation(pool: Pool): Promise<void> {
   if (!physics || !maths) {
     throw new Error("[db-harness] Onboarding did not create both memberships.");
   }
-  if (physics.syllabus_version_id !== versionB.id) {
-    throw new Error("[db-harness] C2A onboarding did not pin Physics to DEFAULT.");
+  if (physics.syllabus_version_id !== versionA.id) {
+    throw new Error("[db-harness] C2A onboarding did not pin Physics to resolver A.");
   }
   if (maths.syllabus_version_id !== mathsDefaultId) {
     throw new Error("[db-harness] C2A onboarding did not pin Maths to DEFAULT.");
@@ -351,7 +363,7 @@ export async function proveSessionFoundation(pool: Pool): Promise<void> {
     [USER_ID, subjectA.id],
   );
   if (
-    afterPatch.rows[0]?.syllabus_version_id !== versionB.id ||
+    afterPatch.rows[0]?.syllabus_version_id !== versionA.id ||
     afterPatch.rows[0]?.intended_exam_year !== 2027 ||
     afterPatch.rows[0]?.intended_exam_series !== "May/June"
   ) {
@@ -387,7 +399,7 @@ export async function proveSessionFoundation(pool: Pool): Promise<void> {
     [USER_ID, subjectA.id],
   );
   if (
-    retained.rows[0]?.syllabus_version_id !== versionB.id ||
+    retained.rows[0]?.syllabus_version_id !== versionA.id ||
     retained.rows[0]?.intended_exam_year !== 2027 ||
     retained.rows[0]?.intended_exam_series !== "May/June"
   ) {
@@ -436,42 +448,25 @@ export async function proveSessionFoundation(pool: Pool): Promise<void> {
     [USER_ID],
   );
 
-  await withJwt(pool, USER_ID, async (client) => {
-    await client.query(
-      `
-      SELECT public.lockdin_complete_onboarding(
-        'C2A Legacy',
-        'c2a_legacy',
-        'A2 Level (Year 13)',
-        'Other',
-        ARRAY[$1]::integer[]
-      )
-      `,
-      [subjectA.id],
-    );
-  });
-
-  const legacy = await pool.query<{
-    syllabus_version_id: number;
-    intended_exam_year: number | null;
-    intended_exam_series: string | null;
-  }>(
-    `
-    SELECT syllabus_version_id, intended_exam_year, intended_exam_series
-    FROM public.user_subjects
-    WHERE user_id = $1::uuid AND subject_id = $2
-    `,
-    [USER_ID, subjectA.id],
+  await expectRejected(
+    () =>
+      withJwt(pool, USER_ID, (client) =>
+        client.query(
+          `
+          SELECT public.lockdin_complete_onboarding(
+            'C2A Legacy',
+            'c2a_legacy',
+            'A2 Level (Year 13)',
+            'Other',
+            ARRAY[$1]::integer[]
+          )
+          `,
+          [subjectA.id],
+        ),
+      ),
+    "intended_exam_session_required",
+    "[db-harness] Legacy 5-arg onboarding was accepted without a session.",
   );
-  if (legacy.rows[0]?.syllabus_version_id !== versionB.id) {
-    throw new Error("[db-harness] Legacy 5-arg onboarding did not pin DEFAULT.");
-  }
-  if (
-    legacy.rows[0]?.intended_exam_year !== null ||
-    legacy.rows[0]?.intended_exam_series !== null
-  ) {
-    throw new Error("[db-harness] Legacy onboarding stored a structured session.");
-  }
 
   await pool.query(`DELETE FROM public.user_subjects WHERE user_id = $1::uuid`, [
     USER_ID,

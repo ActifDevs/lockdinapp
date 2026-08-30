@@ -53,7 +53,7 @@ export const ExamSittingSeries = {
 } as const;
 
 /**
- * Structured intended final exam sitting. Not used for version assignment in 6.3C2A.
+ * Structured intended final exam sitting. Required at runtime when the request creates a new membership. Optional for retained-only or removal-only Settings replacement. Clients never send a version id.
  */
 export interface IntendedExamSession {
   /**

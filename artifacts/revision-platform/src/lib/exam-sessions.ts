@@ -76,6 +76,13 @@ export function structuredSessionFromPickerLabel(
   return { year: match.year, series: match.series };
 }
 
+export function isSupportedAssignmentSession(
+  label: string | null | undefined,
+  referenceDate: Date = new Date(),
+): boolean {
+  return structuredSessionFromPickerLabel(label, referenceDate) != null;
+}
+
 export const LEVEL_OPTIONS = [
   "AS Level (Year 12)",
   "A2 Level (Year 13)",
