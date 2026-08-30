@@ -6,7 +6,7 @@
 - Branch: `phase7-slice2-product-analytics`
 - Base / `origin/main` at branch creation: `897427501595ae6c6582ea99851c9832c17f76ec`
 - Phase 7 Slice 7.1: **CLOSED** (Reports 113 and 114 on main)
-- This slice: **7.2A local implementation + 7.2B hosted Preview proof**, including identity remediation and documentation of the owner-approved hosted topology modification. Preview analytics is configured; Production analytics is not configured. No Supabase changes, no migration 0016, and no merge to main.
+- This slice: **7.2A local implementation + 7.2B hosted Preview proof + 7.2C Production rollout/proof**, including identity remediation and the owner-approved hosted topology modification. Preview and Production analytics are configured with mandatory environment separation and different alias secrets. No Supabase changes and no migration 0016. The approved feature branch was merged to main at `8dadaa5155187c097688d338cdc14798f1514cab`.
 - Migration head: **0015_silent_sentinel**. **0016 ABSENT**.
 - SDK: `posthog-node` only (API). **`posthog-js` was removed** after owner review: a browser anonymous distinct id cannot join to API HMAC aliases, so a connected activation funnel was not possible.
 
@@ -159,9 +159,9 @@ Mitigations:
 
 - The allow-listed `environment` property is mandatory.
 - Preview Vercel variables remain Preview-scoped.
-- Production will use `environment=production`.
+- Production uses `environment=production`.
 - Preview and Production use different HMAC alias secrets.
-- Production wiring remains separately gated.
+- Production wiring passed a separate owner-authorized rollout gate.
 
 ## Hosted Preview configuration
 
@@ -170,9 +170,9 @@ Preview analytics is **CONFIGURED** on `lockdinapp-web`, restricted to the `phas
 - `POSTHOG_PROJECT_TOKEN` — Preview, feature-branch restricted
 - `POSTHOG_HOST` — Preview, feature-branch restricted
 - `LOCKDIN_ANALYTICS_ENV` — Preview, feature-branch restricted; logical value `preview`
-- `LOCKDIN_ANALYTICS_ALIAS_SECRET` — Preview, feature-branch restricted; separate from the future Production secret
+- `LOCKDIN_ANALYTICS_ALIAS_SECRET` — Preview, feature-branch restricted; separate from the Production secret
 
-There are no `VITE_POSTHOG_*` variables and no browser PostHog SDK. Production analytics wiring is **NONE**.
+There are no `VITE_POSTHOG_*` variables and no browser PostHog SDK. At the time of this Preview proof, Production analytics wiring was **NONE**; the later Production rollout is recorded below.
 
 ### Preview backend classification
 
@@ -212,7 +212,7 @@ Occurrence semantics:
 
 Repeated hosted occurrence proof is not claimed.
 
-### Hosted state and safety
+### Hosted state and safety at Preview proof
 
 - Preview PostHog: **CONFIGURED**
 - Production PostHog: **NOT WIRED / OFF**
@@ -221,24 +221,91 @@ Repeated hosted occurrence proof is not claimed.
 - Migration: **NONE**
 - 0016: **ABSENT**
 
-## Remaining Production gate
+## Production rollout
 
-Production analytics remains **NOT CONFIGURED**. Before any Production wiring:
+Status: **PASS** (2026-08-30). The owner authorized the final Slice 7.2 Production rollout.
 
-1. Use the same `Lockdin Analytics` PostHog project token.
-2. Set `LOCKDIN_ANALYTICS_ENV=production`.
-3. Generate a new Production-only `LOCKDIN_ANALYTICS_ALIAS_SECRET`; do not reuse the Preview alias secret.
-4. Scope Production Vercel values to Production only.
-5. Perform a separate owner-authorized Production rollout after merge review.
+### Production configuration
 
-Because Preview and Production share one project, all Production analytics views, dashboards, funnels, and queries must explicitly separate or filter `environment` wherever relevant.
+Production-only analytics variables were configured on `lockdinapp-web`. Names and scopes only are recorded; no values are recorded:
+
+- `POSTHOG_PROJECT_TOKEN` — Production, Sensitive; same `Lockdin Analytics` project
+- `POSTHOG_HOST` — Production, Sensitive
+- `LOCKDIN_ANALYTICS_ENV` — Production, Sensitive; logical value `production`
+- `LOCKDIN_ANALYTICS_ALIAS_SECRET` — Production, Sensitive; newly generated and different from Preview
+
+The existing Preview variables remained restricted to `phase7-slice2-product-analytics` and were not altered. The one-project PostHog Cloud EU topology was retained. No `VITE_POSTHOG_*` variables were added.
+
+### Merge and deployment
+
+- Feature SHA: `f88fbc5f672e89882b3155ed1b546fab555bb60f`
+- Starting `origin/main`: `897427501595ae6c6582ea99851c9832c17f76ec`
+- Merge SHA: `8dadaa5155187c097688d338cdc14798f1514cab`
+- Merge type: normal no-fast-forward merge
+- Vercel project: `lockdinapp-web`
+- Deployment ID: `dpl_5p2BBu4Es5Dy1nCkA3tHSGQSYEGG`
+- Immutable URL: `https://lockdinapp-gh4i540zu-actif-devs.vercel.app`
+- Source SHA: `8dadaa5155187c097688d338cdc14798f1514cab`
+- State: **READY**
+- Canonical URL: `https://lockdinapp-web.vercel.app`
+
+Production smoke results:
+
+- `GET /api/healthz`: **PASS** — HTTP 200, `status=ok`
+- `GET /api/healthz/db`: **PASS** — HTTP 200, `status=ok`, `database=ok`
+- `GET /api/subjects`: **PASS** — HTTP 200, successful subject response
+- No 5xx or raw error was observed.
+
+### Production analytics proof
+
+One synthetic task named `Production Analytics QA` was created through the existing controlled Production account. PostHog Activity showed exactly one resulting Production event in the proof window:
+
+| Evidence | Result |
+| --- | --- |
+| `task_created` | **PASS** |
+| `library=posthog-node` | **PASS** |
+| `environment=production` | **PASS** |
+| Pseudonymous identity | **PASS** — **REDACTED PSEUDONYMOUS HMAC ID** |
+| Person profile processing | **FALSE** |
+| GeoIP | **DISABLED** |
+| Raw Supabase UUID | **NOT OBSERVED** |
+| Email, name, or username | **NOT OBSERVED** |
+| Task title or notes | **NOT OBSERVED** |
+| Subject/topic or syllabus content | **NOT OBSERVED** |
+| Scores or marks | **NOT OBSERVED** |
+| Token, request body, or database detail | **NOT OBSERVED** |
+
+The full pseudonymous identifier is intentionally not recorded. The event contained only the expected server/PostHog delivery metadata and the allow-listed `environment` product property.
+
+### Environment separation proof
+
+The shared project was filtered by the `environment` event property over the same 24-hour Activity window:
+
+- `environment=preview`: **PASS** — returned the two previously proven Preview events (`task_created` and `past_paper_attempt_created`).
+- `environment=production`: **PASS** — returned only the new Production `task_created` event.
+- Preview/Production filtering: **PASS**.
+
+This proves operational property filtering, not separate-project isolation. All Production analytics views, dashboards, funnels, and queries must continue to explicitly separate or filter `environment` wherever relevant.
+
+### Cleanup and safety
+
+- Temporary `Production Analytics QA` task deletion: **PASS** — absent after reload.
+- Additional analytics mutations: **NONE**.
+- Production failure injection: **NONE**.
+- Supabase schema changes: **NONE**.
+- Production DB structure changes: **NONE**.
+- Migration head: **0015_silent_sentinel**.
+- 0016: **ABSENT**.
+- Membership pin/applicability changes: **NONE**.
+- Analytics secrets exposed in Git or this report: **NONE**.
 
 ## Verdict
 
 - Slice 7.2 local implementation: **PASS**
 - Slice 7.2 hosted Preview proof: **PASS**
+- Slice 7.2 Production rollout and proof: **PASS**
 - PostHog topology: **ONE EU PROJECT — OWNER APPROVED**
-- Production analytics: **NOT CONFIGURED**
-- Slice 7.2: **NOT CLOSED YET / IN PROGRESS**
-- Merge: **HOLD**
-- Next: **OWNER REVIEW → PRODUCTION ANALYTICS WIRING + MERGE/PRODUCTION PROOF**
+- Production analytics: **CONFIGURED**
+- Slice 7.2: **CLOSED**
+- Phase 7: **IN PROGRESS**
+- Next: **SLICE 7.3 — SENTRY FRONTEND + API ERROR MONITORING**
