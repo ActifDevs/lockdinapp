@@ -6,19 +6,19 @@
 - Branch: `phase7-slice2-product-analytics`
 - Base / `origin/main` at branch creation: `897427501595ae6c6582ea99851c9832c17f76ec`
 - Phase 7 Slice 7.1: **CLOSED** (Reports 113 and 114 on main)
-- This slice: **7.2A local implementation + hosted-config gate**, including identity remediation. No PostHog projects created, no Vercel env changes, no Supabase changes, no migration 0016, no merge to main.
+- This slice: **7.2A local implementation + 7.2B hosted Preview proof**, including identity remediation and documentation of the owner-approved hosted topology modification. Preview analytics is configured; Production analytics is not configured. No Supabase changes, no migration 0016, and no merge to main.
 - Migration head: **0015_silent_sentinel**. **0016 ABSENT**.
 - SDK: `posthog-node` only (API). **`posthog-js` was removed** after owner review: a browser anonymous distinct id cannot join to API HMAC aliases, so a connected activation funnel was not possible.
 
 ## Approved contract
 
-Owner-approved (Report 114, 2026-08-30), unchanged except identity delivery:
+Owner-approved in Report 114 (2026-08-30), with the later identity and hosted-topology modifications documented in this report:
 
 - Provider: **PostHog Cloud EU**
 - Custom events only: `account_created`, `onboarding_completed`, `task_created`, `past_paper_attempt_created`
 - Not implemented: `first_task_created`, `first_past_paper_attempt`, `streak_achieved`, `subject_completed`
 - No autocapture, Session Replay, heatmaps, surveys, advertising integrations, or automatic exception capture
-- Allow-list properties only; Preview and Production separated by **separate projects** plus an `environment` property
+- Allow-list properties only; Preview and Production separated within **one PostHog Cloud EU project** by the mandatory `environment` property. This owner-approved topology modification supersedes the earlier separate-project design.
 - Analytics failure must not fail product writes or session establishment
 - Missing configuration = safe no-op
 
@@ -76,7 +76,7 @@ This implementation:
 - Sends a **deterministic UUID v5-shaped id** derived from HMAC(alias + `account_created`), not the raw user UUID, on `account_created` only (occurrence events keep auto UUIDs).
 - Relies on local pending/emitted flags as the primary once-per-signup guard.
 - Does **not** invent database telemetry state.
-- Remaining risk: a retried first-party call before the local emitted flag is set could still produce a duplicate ingest; PostHog may eventually collapse matching uuids. Treat funnel counts as best-effort until Preview proof.
+- Remaining risk: a retried first-party call before the local emitted flag is set could still produce a duplicate ingest; PostHog may eventually collapse matching uuids. Treat `account_created` funnel counts as best-effort; that event was not tested in the hosted Preview proof.
 
 ## Privacy controls
 
@@ -127,105 +127,118 @@ Recorded after identity remediation:
 | --- | --- |
 | **BLOCKER** | The previous mixed identity is **fixed**. |
 | **HIGH** | Local pending-signup storage may hold a Supabase user id **in the browser only**; it is not sent to PostHog. |
-| **MEDIUM** | PostHog `uuid` dedup is eventual/best-effort. Preview/Production token mix remains an operational risk. |
+| **MEDIUM** | PostHog `uuid` dedup is eventual/best-effort. Because Preview and Production share one project, queries that omit the mandatory environment filter could mix their data. |
 | **LOW** | Serverless freeze can still drop an event. `$process_person_profile` is a control flag. |
 
-## Hosted-config requirements
+## Owner-approved hosted topology modification
 
-Do **not** create these in this slice.
+The earlier design used separate `Lockdin Preview` and `Lockdin Production` PostHog projects. During hosted setup, the current PostHog free account allowed only one project without billing details. The owner decided not to add billing solely to unlock a second project at this stage.
 
-### POSTHOG PREVIEW PROJECT
+That two-project requirement is therefore **SUPERSEDED** by the owner-approved use of one PostHog Cloud EU project:
 
-- Region: **EU**
-- Suggested name: `Lockdin Preview`
-- Token: Project API key (`phc_…`)
+- Project: **Lockdin Analytics**
+- Cloud: **EU**
 - Host: `https://eu.i.posthog.com`
-- Settings: autocapture/replay/heatmaps/surveys/exception capture off; retention prefer ≤90 days
+- Projects used: **ONE**
+- Environment separation: **MANDATORY** through the existing allow-listed `environment=preview` or `environment=production` event property
 
-### POSTHOG PRODUCTION PROJECT
+This is a deliberate cost/operational trade-off, not equivalent isolation to separate projects.
 
-- Separate EU project, separate token, same host and settings.
+Advantages:
 
-### VERCEL PREVIEW ENV (all server-only)
+- Remains within the current free account setup.
+- Requires no billing method.
+- Uses the `environment` property already carried by the implementation.
+- Keeps the analytics architecture minimal.
 
-- `POSTHOG_PROJECT_TOKEN`
-- `POSTHOG_HOST` (`https://eu.i.posthog.com`)
-- `LOCKDIN_ANALYTICS_ENV=preview` (optional if `VERCEL_ENV` is preview)
-- `LOCKDIN_ANALYTICS_ALIAS_SECRET`
+Risk:
 
-### VERCEL PRODUCTION ENV (all server-only)
+- Preview and Production events share one PostHog project, so a dashboard, funnel, or query that is not filtered correctly could mix environment data.
 
-Same names; Production project token; `LOCKDIN_ANALYTICS_ENV=production`.
+Mitigations:
 
-### HMAC SECRET
+- The allow-listed `environment` property is mandatory.
+- Preview Vercel variables remain Preview-scoped.
+- Production will use `environment=production`.
+- Preview and Production use different HMAC alias secrets.
+- Production wiring remains separately gated.
 
-Generate with `openssl rand -hex 32`. Store in Vercel only. Never print the value. Same secret within an environment; do not share Production into Preview.
+## Hosted Preview configuration
 
-### Dashboard verify/disable
+Preview analytics is **CONFIGURED** on `lockdinapp-web`, restricted to the `phase7-slice2-product-analytics` branch. Only these server-side variable names and scopes are recorded; no values are recorded:
 
-Session replay, autocapture, heatmaps, surveys, error tracking.
+- `POSTHOG_PROJECT_TOKEN` — Preview, feature-branch restricted
+- `POSTHOG_HOST` — Preview, feature-branch restricted
+- `LOCKDIN_ANALYTICS_ENV` — Preview, feature-branch restricted; logical value `preview`
+- `LOCKDIN_ANALYTICS_ALIAS_SECRET` — Preview, feature-branch restricted; separate from the future Production secret
 
-## Hosted Preview Proof
-
-Status: **BLOCKED** (2026-08-30). Implementation SHA unchanged. No application code change.
-
-### PostHog
-
-- PostHog Preview project: **NOT CREATED** — Cloud EU dashboard required login; no owner PostHog session, personal API key, or project token was available in this environment.
-- PostHog Production project: **NOT CREATED**, **NOT WIRED**.
-- EU region confirmed: **N/A (projects absent)**. Ingest host remains `https://eu.i.posthog.com` when projects exist.
-- Privacy settings confirmed: **NOT INSPECTED** (no project access).
-- Token type: **N/A**. No token values recorded.
-
-### Vercel
-
-- Topology inspected (do not guess):
-  - `actif-devs/lockdinapp-web` (`prj_yHc7KMBuw3tftu3VC1z5xVs7tr9S`) — Vite SPA + serverless Express `/api` (`api/index.mjs` + `vercel.json` rewrites). **This is where Preview product analytics executes.**
-  - `actif-devs/lockdinapp` (`prj_mAJNDRGExffevfYDKc7oj3xowPV6`) — parallel Express Git Preview. No PostHog vars. Not used for this proof.
-- Preview env configured: **NO**. Neither project lists `POSTHOG_PROJECT_TOKEN`, `POSTHOG_HOST`, `LOCKDIN_ANALYTICS_ENV`, or `LOCKDIN_ANALYTICS_ALIAS_SECRET`.
-- Production analytics env: **NOT CONFIGURED**.
-- Preview-only alias secret: **NOT STORED** (not generated into Vercel; would be Preview-only once PostHog token exists).
-- Existing Preview deployment (pre-env-change; not a proof redeploy):
-  - Project: `lockdinapp-web`
-  - Deployment ID: `dpl_GAQCCeDnsS1XJpWF79ThMx4HdAEG`
-  - Immutable URL: `https://lockdinapp-mfj5yoeuj-actif-devs.vercel.app`
-  - Branch alias: `https://lockdinapp-web-git-phase7-slice2-product-analytics-actif-devs.vercel.app`
-  - Source: `47c50dac402844902c130bad3386c1a006f0b6df`
-  - State: **READY**
-- Production was not redeployed.
+There are no `VITE_POSTHOG_*` variables and no browser PostHog SDK. Production analytics wiring is **NONE**.
 
 ### Preview backend classification
 
 PREVIEW DATABASE: **PRODUCTION-BACKED**
 
-- `lockdinapp-web` has shared **Production and Preview** `DATABASE_URL` / `SUPABASE_URL` (updated Aug 27). No `phase7-slice2-product-analytics` branch override.
-- Preview client bundle for the SHA above contains the known Production Supabase project ref (same as Report 112). Connection strings not recorded.
-- Mutation QA must stay minimal, synthetic, and reversible. **Not started** because PostHog ingest is not wired.
+The owner therefore performed only the minimal synthetic successful mutations needed for proof. No failure injection or additional hosted mutation was performed for this reconciliation.
 
-### Telemetry
+## Hosted Preview proof
 
-Not executed. Hosted capture cannot be proven without Preview PostHog token + redeploy.
+Status: **PASS** (2026-08-30). The owner manually verified PostHog Activity after using the hosted Preview deployment.
 
-- events proven: **NONE**
-- unified identity: **NOT TESTED**
-- property privacy: **NOT TESTED**
-- occurrence semantics: **NOT TESTED**
-- cleanup: **N/A**
-- no secrets in this report: **YES**
+| Evidence | Result |
+| --- | --- |
+| `task_created` | **PASS** |
+| `past_paper_attempt_created` | **PASS** |
+| `account_created` | **NOT TESTED HOSTED** — no account was created solely for telemetry proof |
+| `onboarding_completed` | **NOT TESTED HOSTED** — no onboarding mutation was performed solely for telemetry proof |
+| `environment=preview` | **PASS** |
+| Unified HMAC identity | **PASS** — both observed events used the same **REDACTED PSEUDONYMOUS HMAC ID** for the controlled account |
+| Approved event names only | **PASS** for observed events |
+| Person profile processing | **FALSE** |
+| GeoIP | **DISABLED** |
+| Raw Supabase UUID | **NOT OBSERVED** |
+| Email, name, or username | **NOT OBSERVED** |
+| Study content | **NOT OBSERVED** |
+| Scores or marks | **NOT OBSERVED** |
+| Browser SDK | **NONE** |
 
-### Hosted changes this run
+Both observed events reported `library=posthog-node`. No visible task title, task notes, subject/topic content, syllabus content, paper score, marks, percentage, or other study-content leakage was observed. The full pseudonymous identifier is intentionally not recorded.
 
-- Supabase: **NONE**
-- Production DB schema: **NONE**
+The two untested hosted events are acceptable for this Preview gate because focused automated tests cover both, the hosted delivery path has been proven through the same server analytics client, Preview is Production-database-backed, and unnecessary hosted mutations were deliberately avoided. This does not manufacture hosted evidence for those events.
+
+Occurrence semantics:
+
+- `task_created`: **AUTOMATED TEST PASS + HOSTED SINGLE-EVENT DELIVERY PASS**
+- `past_paper_attempt_created`: **AUTOMATED TEST PASS + HOSTED SINGLE-EVENT DELIVERY PASS**
+
+Repeated hosted occurrence proof is not claimed.
+
+### Hosted state and safety
+
+- Preview PostHog: **CONFIGURED**
+- Production PostHog: **NOT WIRED / OFF**
+- Supabase changes: **NONE**
+- Production DB schema changes: **NONE**
 - Migration: **NONE**
 - 0016: **ABSENT**
-- Production PostHog wiring: **NONE**
 
-### Unblock
+## Remaining Production gate
 
-1. Owner logs into PostHog Cloud EU and creates **Lockdin Preview** + **Lockdin Production** (EU). Production project create-only; do not wire Production Vercel vars.
-2. Apply Preview-only vars on **`lockdinapp-web`** (server analytics execution).
-3. Redeploy the feature-branch Preview (not Production).
-4. Repeat bounded synthetic QA on Production-backed Preview.
+Production analytics remains **NOT CONFIGURED**. Before any Production wiring:
 
-**MERGE: HOLD.**
+1. Use the same `Lockdin Analytics` PostHog project token.
+2. Set `LOCKDIN_ANALYTICS_ENV=production`.
+3. Generate a new Production-only `LOCKDIN_ANALYTICS_ALIAS_SECRET`; do not reuse the Preview alias secret.
+4. Scope Production Vercel values to Production only.
+5. Perform a separate owner-authorized Production rollout after merge review.
+
+Because Preview and Production share one project, all Production analytics views, dashboards, funnels, and queries must explicitly separate or filter `environment` wherever relevant.
+
+## Verdict
+
+- Slice 7.2 local implementation: **PASS**
+- Slice 7.2 hosted Preview proof: **PASS**
+- PostHog topology: **ONE EU PROJECT — OWNER APPROVED**
+- Production analytics: **NOT CONFIGURED**
+- Slice 7.2: **NOT CLOSED YET / IN PROGRESS**
+- Merge: **HOLD**
+- Next: **OWNER REVIEW → PRODUCTION ANALYTICS WIRING + MERGE/PRODUCTION PROOF**
