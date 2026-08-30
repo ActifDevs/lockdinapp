@@ -696,6 +696,20 @@ export const CompleteCurrentUserOnboardingResponse = zod.object({
 
 
 /**
+ * First-party signal after a local signup obtains a session. The API derives
+ * the user from the verified Bearer token and captures account_created with
+ * the server HMAC alias. The body must be empty — callers cannot choose a
+ * user or send identity fields. Analytics failure still returns 204.
+ * @summary Record account_created for the authenticated caller
+ */
+export const ReportAccountCreatedBody = zod.object({
+
+}).describe('Empty object. User identity is taken from the verified session.')
+
+export const ReportAccountCreatedResponse = zod.void()
+
+
+/**
  * The profile name, tasks, memberships, topic progress, paper performance,
  * and exam dates are scoped to the authenticated caller. subjectProgressSummary
  * contains only current memberships and uses the same topic-completion formula

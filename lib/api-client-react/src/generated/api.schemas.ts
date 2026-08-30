@@ -9,6 +9,11 @@ export interface ErrorMessage {
   error: string;
 }
 
+/**
+ * Empty object. User identity is taken from the verified session.
+ */
+export interface ReportAccountCreatedInput { [key: string]: unknown }
+
 export interface Profile {
   id: string;
   /** @nullable */

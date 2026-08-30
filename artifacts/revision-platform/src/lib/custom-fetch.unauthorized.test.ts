@@ -33,6 +33,32 @@ describe("customFetch unauthorized handler", () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
+  it("does not schedule the handler on 401 when skipUnauthorizedHandler is set", async () => {
+    const handler = vi.fn(async () => undefined);
+    setUnauthorizedHandler(handler);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            statusText: "Unauthorized",
+            headers: { "content-type": "application/json" },
+          }),
+      ),
+    );
+
+    await expect(
+      customFetch("/api/analytics/account-created", {
+        method: "POST",
+        skipUnauthorizedHandler: true,
+      }),
+    ).rejects.toBeInstanceOf(ApiError);
+    await new Promise((r) => queueMicrotask(r));
+    expect(handler).not.toHaveBeenCalled();
+  });
+
   it("does not call the handler on 403", async () => {
     const handler = vi.fn(async () => undefined);
     setUnauthorizedHandler(handler);

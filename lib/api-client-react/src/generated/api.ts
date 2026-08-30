@@ -34,6 +34,7 @@ import type {
   Profile,
   ProfileUpdate,
   ProgressOverview,
+  ReportAccountCreatedInput,
   Subject,
   SubjectAssignmentSessions,
   SubjectInput,
@@ -2062,6 +2063,81 @@ export const useCompleteCurrentUserOnboarding = <TError = ErrorType<ErrorMessage
         TContext
       > => {
       return useMutation(getCompleteCurrentUserOnboardingMutationOptions(options));
+    }
+
+export const getReportAccountCreatedUrl = () => {
+
+
+
+
+  return `/api/analytics/account-created`
+}
+
+/**
+ * First-party signal after a local signup obtains a session. The API derives
+ * the user from the verified Bearer token and captures account_created with
+ * the server HMAC alias. The body must be empty — callers cannot choose a
+ * user or send identity fields. Analytics failure still returns 204.
+ * @summary Record account_created for the authenticated caller
+ */
+export const reportAccountCreated = async (reportAccountCreatedInput?: ReportAccountCreatedInput, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getReportAccountCreatedUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reportAccountCreatedInput)
+  }
+);}
+
+
+
+
+
+export const getReportAccountCreatedMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportAccountCreated>>, TError,{data?: BodyType<ReportAccountCreatedInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportAccountCreated>>, TError,{data?: BodyType<ReportAccountCreatedInput>}, TContext> => {
+
+const mutationKey = ['reportAccountCreated'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportAccountCreated>>, {data?: BodyType<ReportAccountCreatedInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  reportAccountCreated(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportAccountCreatedMutationResult = NonNullable<Awaited<ReturnType<typeof reportAccountCreated>>>
+    export type ReportAccountCreatedMutationBody = BodyType<ReportAccountCreatedInput> | undefined
+    export type ReportAccountCreatedMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary Record account_created for the authenticated caller
+ */
+export const useReportAccountCreated = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportAccountCreated>>, TError,{data?: BodyType<ReportAccountCreatedInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reportAccountCreated>>,
+        TError,
+        {data?: BodyType<ReportAccountCreatedInput>},
+        TContext
+      > => {
+      return useMutation(getReportAccountCreatedMutationOptions(options));
     }
 
 export const getGetDashboardSummaryUrl = () => {

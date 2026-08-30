@@ -24,6 +24,10 @@ import {
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { getAppUrl } from "@/lib/app-url";
 import { LEGACY_PERSONAL_STORAGE_KEYS } from "@/lib/user-scoped-storage";
+import {
+  emitAccountCreatedIfPending,
+  noteLocalSignup,
+} from "@/lib/analytics";
 
 export type AuthUser = {
   id: string;
@@ -230,6 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       }
       sessionUserIdRef.current = nextUserId;
+      void emitAccountCreatedIfPending(nextUserId);
 
       // Keep onAuthStateChange synchronous; resolve outside the callback.
       queueMicrotask(() => {
@@ -330,6 +335,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       });
       if (error) throw error;
+      noteLocalSignup(data.user?.id ?? null);
+      if (data.session?.user?.id) {
+        void emitAccountCreatedIfPending(data.session.user.id);
+      }
       const sessionAvailable = Boolean(data.session);
       return {
         sessionAvailable,

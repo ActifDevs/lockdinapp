@@ -1,5 +1,7 @@
 export type CustomFetchOptions = RequestInit & {
   responseType?: "json" | "text" | "blob" | "auto";
+  /** When true, 401 does not invoke the global unauthorized handler. */
+  skipUnauthorizedHandler?: boolean;
 };
 
 export type ErrorType<T = unknown> = ApiError<T>;
@@ -338,7 +340,12 @@ export async function customFetch<T = unknown>(
   options: CustomFetchOptions = {},
 ): Promise<T> {
   input = applyBaseUrl(input);
-  const { responseType = "auto", headers: headersInit, ...init } = options;
+  const {
+    responseType = "auto",
+    headers: headersInit,
+    skipUnauthorizedHandler = false,
+    ...init
+  } = options;
 
   const method = resolveMethod(input, init.method);
 
@@ -376,7 +383,11 @@ export async function customFetch<T = unknown>(
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
     const apiError = new ApiError(response, errorData, requestInfo);
-    if (response.status === 401 && _unauthorizedHandler) {
+    if (
+      response.status === 401 &&
+      _unauthorizedHandler &&
+      !skipUnauthorizedHandler
+    ) {
       const handler = _unauthorizedHandler;
       queueMicrotask(() => {
         void Promise.resolve()

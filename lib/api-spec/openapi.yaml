@@ -28,6 +28,8 @@ tags:
     description: Authenticated profile and atomic onboarding operations
   - name: userSubjects
     description: Authenticated durable subject membership for the current user
+  - name: analytics
+    description: Authenticated first-party product-analytics signals (server capture only)
 
 paths:
   /healthz:
@@ -850,6 +852,40 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorMessage"
 
+  /analytics/account-created:
+    post:
+      operationId: reportAccountCreated
+      tags: [analytics]
+      summary: Record account_created for the authenticated caller
+      description: |
+        First-party signal after a local signup obtains a session. The API derives
+        the user from the verified Bearer token and captures account_created with
+        the server HMAC alias. The body must be empty — callers cannot choose a
+        user or send identity fields. Analytics failure still returns 204.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportAccountCreatedInput"
+      responses:
+        "204":
+          description: Accepted or safely no-op
+        "400":
+          description: Non-empty or identity-bearing body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -918,6 +954,12 @@ components:
           type: string
       required:
         - error
+
+    ReportAccountCreatedInput:
+      type: object
+      additionalProperties: false
+      description: Empty object. User identity is taken from the verified session.
+      properties: {}
 
     Profile:
       type: object

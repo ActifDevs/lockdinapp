@@ -54,6 +54,15 @@ vi.mock("@/lib/app-url", () => ({
   getAppUrl: (path: string) => `http://localhost:5173${path}`,
 }));
 
+const noteLocalSignup = vi.fn();
+const emitAccountCreatedIfPending = vi.fn();
+
+vi.mock("@/lib/analytics", () => ({
+  noteLocalSignup: (...args: unknown[]) => noteLocalSignup(...args),
+  emitAccountCreatedIfPending: (...args: unknown[]) =>
+    emitAccountCreatedIfPending(...args),
+}));
+
 function Probe() {
   const auth = useAuth();
   return (
@@ -143,6 +152,7 @@ describe("AuthProvider", () => {
   beforeEach(() => {
     authListener = null;
     localStorage.clear();
+    sessionStorage.clear();
     localStorage.setItem("lockdin_auth", "1");
     localStorage.setItem("lockdin_user", "{}");
     localStorage.setItem("onboarded", "true");
@@ -332,6 +342,41 @@ describe("AuthProvider", () => {
         emailRedirectTo: "http://localhost:5173/auth/callback",
       },
     });
+    expect(noteLocalSignup).toHaveBeenCalled();
+  });
+
+  it("pending signup plus authenticated session requests account_created", async () => {
+    signUp.mockResolvedValue({
+      data: {
+        user: { id: "user-a" },
+        session: null,
+      },
+      error: null,
+    });
+    renderAuth();
+    await waitFor(() =>
+      expect(screen.getByTestId("loading").textContent).toBe("false"),
+    );
+    await act(async () => {
+      screen.getByText("signup").click();
+    });
+    expect(noteLocalSignup).toHaveBeenCalledWith("user-a");
+    await act(async () => {
+      authListener?.("SIGNED_IN", sessionFor("user-a"));
+    });
+    expect(emitAccountCreatedIfPending).toHaveBeenCalledWith("user-a");
+  });
+
+  it("login does not mark account_created pending", async () => {
+    renderAuth();
+    await waitFor(() =>
+      expect(screen.getByTestId("loading").textContent).toBe("false"),
+    );
+    await act(async () => {
+      screen.getByText("login").click();
+    });
+    expect(signInWithPassword).toHaveBeenCalled();
+    expect(noteLocalSignup).not.toHaveBeenCalled();
   });
 
   it("login calls signInWithPassword", async () => {
