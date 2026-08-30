@@ -5,8 +5,9 @@
 - Base and `origin/main`: `b07d91cbb83fb6547726c3679aee305e525d263d`
 - Feature branch: `phase6-slice3d-multi-session-ux`
 - Implementation commit: `7e2914da96558d18bb5be6ed64693f02f0b9882e`
-- Pre-QA / runtime source: `f5f28850f8327e27fbac25b222da6013dafe9bd8`
-- The `7e2914d..f5f288` delta adds only this report; no runtime file changed.
+- Pre-authenticated-QA HEAD: `02ba678aaeb9f41a0b23c58cb5602a7586b9fa87`
+- Runtime implementation source: `7e2914da96558d18bb5be6ed64693f02f0b9882e`.
+- The `7e2914d..02ba678` delta changes only this report; no runtime file changed.
 - Hosted migration head remains `0015_silent_sentinel`.
 
 ## Product model
@@ -108,10 +109,12 @@ saves; safe error presentation; and absence of `syllabusVersionId`.
 
 ## Preview
 
-- Deployment: `dpl_GdXcXp4RGMrJn34NCnCpK9zNmxn4`
-- Immutable URL: `https://lockdinapp-3qj5o6n3f-actif-devs.vercel.app`
-- Source: `f5f28850f8327e27fbac25b222da6013dafe9bd8`
-- State: READY
+- API deployment: `dpl_671HYEZkkUdsnXan8DqkC2UGD2N4`
+- API immutable URL: `https://lockdinapp-hi7fn1dez-actif-devs.vercel.app`
+- Frontend deployment: `dpl_C2vL2eZAR4aH68o2y2oZa29qnwT1`
+- Frontend immutable URL: `https://lockdinapp-lquvs44kh-actif-devs.vercel.app`
+- Source: `02ba678aaeb9f41a0b23c58cb5602a7586b9fa87`
+- State: READY for both deployments.
 
 ### Preview environment repair
 
@@ -162,21 +165,94 @@ detail, auth leakage, duplicate write, or repeating request loop.
 
 ## Authenticated QA status
 
-BLOCKED — NO AUTHORIZED QA SESSION. Vercel deployment protection redirected the
-only connected browser to login, and no alternate connected browser or authorized
-controlled Lockdin QA account/session was available. No account was created and no
-credentials were requested or exposed.
+PASS. Vercel deployment protection was temporarily disabled manually for this QA.
+No other Vercel setting was changed during authenticated QA. The connected browser
+then reached the exact-source frontend Preview and used an already-authorized
+controlled Lockdin QA session. No account was created, and no credentials, tokens,
+user identifiers, or database secrets were recorded.
 
-Onboarding interactive/write QA: NOT CHECKED. It was not safe to reset an
-established user.
+Onboarding authenticated write QA was not executed because resetting the
+established controlled account would have been unsafe and unnecessary. Automated
+onboarding coverage remains PASS; Settings supplied the live mixed-session write
+proof.
 
-Settings mixed-session, retained-display, retain-only, removal-only, resolver-pin,
-and cleanup QA: NOT CHECKED. No membership baseline was captured because there was
-no authorized user session, and no hosted membership write was attempted.
+## Final authenticated Preview QA
 
-Write behavior remains covered locally by browser-level frontend tests plus the
-retained C2B2 strict-resolver evidence. Authenticated Preview QA remains required
-before merge.
+### Preview source
+
+- Frontend deployment: `dpl_C2vL2eZAR4aH68o2y2oZa29qnwT1`.
+- Immutable URL: `https://lockdinapp-lquvs44kh-actif-devs.vercel.app`.
+- Source: `02ba678aaeb9f41a0b23c58cb5602a7586b9fa87`.
+- State: READY.
+- Database health and catalogue/availability routes: PASS.
+
+### Controlled session and baseline
+
+- Controlled Lockdin QA session: AVAILABLE / AUTHORIZED.
+- Baseline memberships: 3.
+- Baseline subject, stored-session, and pin-context fingerprint: captured
+  privately; no identity or raw pin was recorded in this report.
+- Baseline intended sessions: three legacy `NULL` values, rendered as
+  `Not recorded`.
+- Retained session controls: read-only.
+- Syllabus version selector: absent.
+- Repin/session-edit control: absent.
+
+### Two-subject mixed-session proof
+
+- Temporary subject A: Further Mathematics 9231, May/June 2027.
+- Temporary subject B: History 9489, Oct/Nov 2027.
+- Both choices were live server-projected and supported.
+- Both explicit overrides were visible simultaneously while the global default
+  remained Oct/Nov 2026.
+- One add submission succeeded and created both memberships exactly once.
+- Reloaded Settings displayed both stored sessions as retained and read-only.
+- The three original membership sessions remained `Not recorded`.
+- The three original pin-aware subject contexts remained valid and unchanged.
+- Resolver-pin result: MATCH. New membership creation can only use the strict
+  resolver; both valid writes completed, both pin-aware subject reads succeeded,
+  and each subject has one hosted r001 identity with no second graph or alternate
+  candidate.
+
+### Retain-only and invalid-session proof
+
+- One unchanged retain-only save succeeded.
+- Both temporary stored sessions remained unchanged.
+- All original memberships remained unchanged.
+- History with inherited Oct/Nov 2026 was visibly invalid before write; the option
+  was disabled and the inline message identified History and required an available
+  May/June or Oct/Nov session.
+- `Other` was absent from new-membership assignment choices.
+- No invalid Feb/Mar, out-of-range, or unsupported database mutation was sent.
+
+### Cleanup and restoration
+
+- One cleanup save removed only Further Mathematics and History.
+- Temporary memberships after cleanup: 0.
+- Restored membership count: 3.
+- Original subject set: exact match.
+- Original intended sessions: exact match (`NULL` / `Not recorded`).
+- Original pins: unchanged. Pin-aware reads remained valid, and the stable
+  subject/session/r001 fingerprint matched the pre-QA baseline.
+- Profile fields and profile/default session: unchanged.
+
+### Runtime
+
+- Membership mutations: exactly 3 distinct `PUT /api/user-subjects` requests
+  (mixed add, retain-only, cleanup), all HTTP 200.
+- Unexpected 5xx: 0.
+- Error/fatal runtime logs: 0.
+- Pool guard failure: none.
+- Raw SQL/Postgres detail: none.
+- RPC/internal function detail shown to the user: none.
+- Authentication leakage: none detected.
+- Duplicate membership write or repeating mutation loop: none.
+
+### Merge clearance
+
+Authenticated Preview QA: PASS. The controlled account was restored exactly, and
+Slice 3D is ready for owner-authorized merge. No merge or Production deployment was
+performed.
 
 ## Hosted state
 
@@ -184,11 +260,11 @@ SCHEMA CHANGE: NONE
 
 MIGRATION 0016: NOT CREATED
 
-HOSTED DATABASE MUTATION: NONE
+HOSTED DATABASE MUTATION: CONTROLLED QA ADD / RETAIN / REMOVE ONLY
 
 TEMPORARY MEMBERSHIPS: NONE
 
-RESTORATION: NOT NEEDED
+RESTORATION: PASS — EXACT BASELINE RESTORED
 
 EXISTING PINS: UNCHANGED
 
@@ -201,14 +277,16 @@ REPIN: NOT IMPLEMENTED
 ## Rollout boundary
 
 No Production deployment was performed. No Supabase schema, applicability, policy,
-membership, pin, or profile data was changed. The only infrastructure mutation was
-the authorized branch-specific sensitive Preview `DATABASE_URL` override. Before
-merge, complete authenticated read/UI QA with an already-authorized controlled
-account. Do not use ordinary user memberships for Preview writes.
+pin, or profile data was changed. Two temporary controlled-account memberships were
+added and later removed; the original membership baseline was restored exactly.
+Infrastructure changes were limited to the previously authorized branch-specific
+sensitive Preview `DATABASE_URL` override and the owner's temporary manual disabling
+of Preview deployment protection for QA.
 
 ## Final verdict
 
-Implementation, local verification, Preview environment repair, public smoke, and
-availability API QA: PASS.
+Implementation, local verification, Preview environment repair, public smoke,
+availability API QA, authenticated mixed-session Settings QA, retain-only proof,
+cleanup, restoration, and runtime review: PASS.
 
-Merge clearance: BLOCKED pending authenticated QA with a controlled account.
+Merge clearance: READY FOR OWNER AUTHORIZATION.
