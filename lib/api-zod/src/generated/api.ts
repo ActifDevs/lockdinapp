@@ -95,6 +95,30 @@ export const DeleteSubjectResponse = zod.void()
 
 
 /**
+ * Public, read-only product availability for new subject memberships.
+ * Choices are derived from published applicability and enabled series policy.
+ * The database resolver remains authoritative when a membership is written.
+ * Internal syllabus version identities are never exposed.
+ * @summary List safe upcoming assignment sessions by subject
+ */
+
+export const listSubjectAssignmentSessionsResponseSessionsItemYearMin = 1000;
+export const listSubjectAssignmentSessionsResponseSessionsItemYearMax = 9999;
+
+
+
+export const ListSubjectAssignmentSessionsResponseItem = zod.object({
+  "subjectId": zod.number().min(1),
+  "sessions": zod.array(zod.object({
+  "year": zod.number().min(listSubjectAssignmentSessionsResponseSessionsItemYearMin).max(listSubjectAssignmentSessionsResponseSessionsItemYearMax),
+  "series": zod.enum(['May/June', 'Oct/Nov']),
+  "label": zod.string()
+}).describe('Product-safe intended sitting available for new membership assignment.'))
+})
+export const ListSubjectAssignmentSessionsResponse = zod.array(ListSubjectAssignmentSessionsResponseItem)
+
+
+/**
  * Returns units, topic titles, and learning outcomes from shared reference data.
  * When a valid Bearer token is provided, each topic's status and notes are merged
  * from the caller's topic_progress rows. Missing progress rows default to

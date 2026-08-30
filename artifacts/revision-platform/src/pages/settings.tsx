@@ -8,6 +8,8 @@ import {
   getGetProgressOverviewQueryKey,
   getGetSubjectSyllabusQueryKey,
   getListAssessmentComponentsQueryKey,
+  useListSubjectAssignmentSessions,
+  ApiError,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -40,11 +42,16 @@ import { PageHeader } from "@/components/page-header";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { cn } from "@/lib/utils";
 import { Link, useSearchParams } from "wouter";
+import { LEVEL_OPTIONS, getUpcomingExamSessions } from "@/lib/exam-sessions";
 import {
-  LEVEL_OPTIONS,
-  getUpcomingExamSessions,
-  structuredSessionFromPickerLabel,
-} from "@/lib/exam-sessions";
+  assignmentPayloadSessions,
+  availableSessionOptions,
+  effectiveSessionLabel,
+  invalidSessionSubjectIds,
+  productSafeAssignmentError,
+  subjectSupportsSession,
+  type SubjectSessionOverrides,
+} from "@/lib/membership-session-selection";
 import { ReadStateNotice } from "@/components/read-state-notice";
 import {
   omitDefaultQueryValue,
@@ -171,15 +178,30 @@ export default function Settings() {
   } = useListCurrentUserSubjects({
     query: { queryKey: getListCurrentUserSubjectsQueryKey() },
   });
+  const {
+    data: assignmentAvailability,
+    isLoading: availabilityLoading,
+    isError: availabilityError,
+    error: availabilityLoadError,
+    refetch: refetchAvailability,
+  } = useListSubjectAssignmentSessions();
   const [name, setName] = useState(user?.name || "");
   const [level, setLevel] = useState(user?.level || "");
   const [examSession, setExamSession] = useState(user?.examSession || "");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<number[]>([]);
+  const [newSubjectDefaultSession, setNewSubjectDefaultSession] = useState(
+    user?.examSession || "",
+  );
+  const [newSubjectSessionOverrides, setNewSubjectSessionOverrides] =
+    useState<SubjectSessionOverrides>({});
   const catalogueUnavailable = subjectsError && subjects === undefined;
   const catalogueRefreshFailed = subjectsError && subjects !== undefined;
   const examOptions = [...getUpcomingExamSessions(), "Other"];
+  const assignmentOptions = availableSessionOptions(
+    assignmentAvailability ?? [],
+  );
 
   useEffect(() => {
     if (!tabNeedsNormalization) return;
@@ -225,10 +247,28 @@ export default function Settings() {
   }, [membershipKey, memberships]);
 
   const replaceSubjects = useReplaceCurrentUserSubjects();
+  const retainedSubjectIds = new Set(
+    (memberships ?? []).map((membership) => membership.subject.id),
+  );
+  const membershipBySubjectId = new Map(
+    (memberships ?? []).map((membership) => [
+      membership.subject.id,
+      membership,
+    ]),
+  );
+  const newSubjectIds = selectedSubjectIds.filter(
+    (subjectId) => !retainedSubjectIds.has(subjectId),
+  );
   const toggleSelectedSubject = (subjectId: number) => {
     setSelectedSubjectIds((current) => {
-      if (current.includes(subjectId))
+      if (current.includes(subjectId)) {
+        setNewSubjectSessionOverrides((overrides) => {
+          const next = { ...overrides };
+          delete next[subjectId];
+          return next;
+        });
         return current.filter((id) => id !== subjectId);
+      }
       if (current.length >= 5) {
         toast({
           title: "Five subjects selected",
@@ -242,25 +282,47 @@ export default function Settings() {
 
   const saveSubjects = async () => {
     if (selectedSubjectIds.length < 1 || selectedSubjectIds.length > 5) return;
-    const currentIds = new Set(
-      (memberships ?? []).map((membership) => membership.subject.id),
-    );
-    const addsSubjects = selectedSubjectIds.some((id) => !currentIds.has(id));
-    const intendedExamSession = structuredSessionFromPickerLabel(examSession);
-    if (addsSubjects && !intendedExamSession) {
+    if (
+      newSubjectIds.length > 0 &&
+      (availabilityLoading || availabilityError)
+    ) {
       toast({
-        title: "Choose a supported exam session",
+        title: "Session availability is unavailable",
         description:
-          "Adding a subject needs May/June or Oct/Nov. Other is profile-only.",
+          "Retry before adding a subject. Existing subjects have not changed.",
         variant: "destructive",
       });
       return;
     }
+    const invalidIds = invalidSessionSubjectIds(
+      newSubjectIds,
+      newSubjectDefaultSession,
+      newSubjectSessionOverrides,
+      assignmentAvailability ?? [],
+    );
+    if (invalidIds.length > 0) {
+      const names = (subjects ?? [])
+        .filter(({ id }) => invalidIds.includes(id))
+        .map(({ name }) => name)
+        .join(", ");
+      toast({
+        title: "Choose a supported exam session",
+        description: `Choose an available May/June or Oct/Nov session for: ${names}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    const sessionPayload = assignmentPayloadSessions(
+      newSubjectIds,
+      newSubjectDefaultSession,
+      newSubjectSessionOverrides,
+      assignmentOptions,
+    );
     try {
       const updated = await replaceSubjects.mutateAsync({
         data: {
           subjectIds: selectedSubjectIds,
-          ...(intendedExamSession ? { intendedExamSession } : {}),
+          ...(newSubjectIds.length > 0 ? sessionPayload : {}),
         },
       });
       queryClient.setQueryData(getListCurrentUserSubjectsQueryKey(), updated);
@@ -292,10 +354,21 @@ export default function Settings() {
         title: "Subjects updated",
         description: `${updated.length} subject${updated.length === 1 ? "" : "s"} selected.`,
       });
-    } catch {
+    } catch (error) {
+      const message =
+        error instanceof ApiError &&
+        typeof error.data === "object" &&
+        error.data &&
+        "error" in error.data &&
+        typeof (error.data as { error: unknown }).error === "string"
+          ? (error.data as { error: string }).error
+          : "";
+      const safeReason = productSafeAssignmentError(message);
       toast({
         title: "Could not update subjects",
-        description: "Your previous selection is unchanged. Please try again.",
+        description: safeReason
+          ? `${safeReason} Your subject selection was not changed.`
+          : "Your previous selection is unchanged. Please try again.",
         variant: "destructive",
       });
     }
@@ -397,7 +470,7 @@ export default function Settings() {
           <SettingsSectionCard
             icon={User}
             title="Profile"
-            description="Update your personal information and exam session details."
+            description="Update personal information and the default session shown for future subject choices."
           >
             <div className="space-y-4">
               <div className="space-y-2">
@@ -458,8 +531,9 @@ export default function Settings() {
               <div className="space-y-2">
                 <Label htmlFor="examSession">Exam session</Label>
                 <p className="text-xs text-muted-foreground">
-                  May/June and Oct/Nov are used when adding subjects. Other updates
-                  profile text only and does not create memberships.
+                  This is profile/default text for future choices. It does not
+                  change any existing subject’s recorded session or syllabus.
+                  Other updates profile text only and cannot create memberships.
                 </p>
                 <select
                   id="examSession"
@@ -496,7 +570,7 @@ export default function Settings() {
           <SettingsSectionCard
             icon={BookOpen}
             title="My subjects"
-            description="Choose between 1 and 5 A-Level subjects. Your selection is saved to your account."
+            description="Choose between 1 and 5 A-Level subjects. Existing sessions stay read-only; new subjects can use different sittings."
             tint="teal"
           >
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -516,6 +590,45 @@ export default function Settings() {
               >
                 {replaceSubjects.isPending ? "Saving…" : "Save subjects"}
               </Button>
+            </div>
+            <div className="mb-5 space-y-2 rounded-xl border border-border/60 bg-background/60 p-4">
+              <Label htmlFor="new-subject-default-session">
+                Default session for newly added subjects
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                New subjects inherit this unless you choose an override. This
+                never rewrites retained subjects.
+              </p>
+              <select
+                id="new-subject-default-session"
+                value={newSubjectDefaultSession}
+                onChange={(event) =>
+                  setNewSubjectDefaultSession(event.target.value)
+                }
+                disabled={availabilityLoading || availabilityError}
+                className="flex h-10 w-full max-w-md rounded-md border border-input bg-background px-3 text-sm disabled:opacity-50"
+              >
+                <option value="">Choose a default session</option>
+                {assignmentOptions.map((option) => (
+                  <option key={option.label} value={option.label}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {availabilityLoading && (
+                <p className="text-xs text-muted-foreground">
+                  Checking available sessions…
+                </p>
+              )}
+              {availabilityError && (
+                <ReadStateNotice
+                  compact
+                  title="New-subject sessions are unavailable"
+                  error={availabilityLoadError}
+                  description="You can still retain or remove subjects. Retry before adding one."
+                  onRetry={() => void refetchAvailability()}
+                />
+              )}
             </div>
             {membershipsError ? (
               <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
@@ -568,6 +681,23 @@ export default function Settings() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   {subjects.map((subject) => {
                     const selected = selectedSubjectIds.includes(subject.id);
+                    const membership = membershipBySubjectId.get(subject.id);
+                    const retained = Boolean(membership);
+                    const override =
+                      newSubjectSessionOverrides[subject.id] ?? "";
+                    const effective = effectiveSessionLabel(
+                      subject.id,
+                      newSubjectDefaultSession,
+                      newSubjectSessionOverrides,
+                    );
+                    const valid =
+                      retained ||
+                      !selected ||
+                      subjectSupportsSession(
+                        assignmentAvailability ?? [],
+                        subject.id,
+                        effective,
+                      );
                     const disabled =
                       !selected && selectedSubjectIds.length >= 5;
                     const accent = resolveSubjectAccent({
@@ -579,42 +709,129 @@ export default function Settings() {
                       <div
                         key={subject.id}
                         className={cn(
-                          "dash-list-row !items-center rounded-xl border px-3 py-3",
+                          "rounded-xl border px-3 py-3",
                           selected
                             ? "border-primary/40 bg-primary/5"
                             : "border-border/50 bg-muted/20",
+                          selected &&
+                            !valid &&
+                            "border-destructive/40 bg-destructive/5",
                         )}
                       >
-                        <button
-                          type="button"
-                          aria-pressed={selected}
-                          disabled={disabled}
-                          onClick={() => toggleSelectedSubject(subject.id)}
-                          className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <div
-                            className="h-3 w-3 shrink-0 rounded-full"
-                            style={{ backgroundColor: accent }}
-                            aria-hidden
-                          />
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium">
-                              {subject.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {subject.code}
-                            </p>
-                          </div>
-                          {selected && (
-                            <Check
-                              className="ml-auto h-4 w-4 shrink-0 text-primary"
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            aria-pressed={selected}
+                            disabled={disabled}
+                            onClick={() => toggleSelectedSubject(subject.id)}
+                            className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <div
+                              className="h-3 w-3 shrink-0 rounded-full"
+                              style={{ backgroundColor: accent }}
                               aria-hidden
                             />
-                          )}
-                        </button>
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/subjects/${subject.id}`}>View</Link>
-                        </Button>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">
+                                {subject.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {subject.code}
+                              </p>
+                            </div>
+                            {selected && (
+                              <Check
+                                className="ml-auto h-4 w-4 shrink-0 text-primary"
+                                aria-hidden
+                              />
+                            )}
+                          </button>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/subjects/${subject.id}`}>View</Link>
+                          </Button>
+                        </div>
+                        {selected && retained && (
+                          <div className="mt-3 border-t border-border/50 pt-3">
+                            <p className="text-xs text-muted-foreground">
+                              Recorded exam session · read-only
+                            </p>
+                            <p className="mt-1 text-sm font-medium">
+                              {membership?.intendedExamSession
+                                ? `${membership.intendedExamSession.series} ${membership.intendedExamSession.year}`
+                                : "Not recorded"}
+                            </p>
+                          </div>
+                        )}
+                        {selected && !retained && (
+                          <div className="mt-3 space-y-2 border-t border-border/50 pt-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <Label
+                                htmlFor={`new-subject-session-${subject.id}`}
+                                className="text-xs"
+                              >
+                                Session for {subject.name}
+                              </Label>
+                              <Badge
+                                variant={override ? "default" : "secondary"}
+                              >
+                                {override ? "Override" : "Uses default"}
+                              </Badge>
+                            </div>
+                            <select
+                              id={`new-subject-session-${subject.id}`}
+                              value={override}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                setNewSubjectSessionOverrides((current) => {
+                                  const next = { ...current };
+                                  if (value) next[subject.id] = value;
+                                  else delete next[subject.id];
+                                  return next;
+                                });
+                              }}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                              <option value="">
+                                Use default
+                                {newSubjectDefaultSession
+                                  ? ` — ${newSubjectDefaultSession}`
+                                  : ""}
+                              </option>
+                              {assignmentOptions.map((option) => {
+                                const supported = subjectSupportsSession(
+                                  assignmentAvailability ?? [],
+                                  subject.id,
+                                  option.label,
+                                );
+                                return (
+                                  <option
+                                    key={option.label}
+                                    value={option.label}
+                                    disabled={!supported}
+                                  >
+                                    {option.label}
+                                    {!supported
+                                      ? ` — not available for ${subject.name}`
+                                      : ""}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            <p
+                              className={cn(
+                                "text-xs",
+                                valid
+                                  ? "text-muted-foreground"
+                                  : "font-medium text-destructive",
+                              )}
+                              role={valid ? undefined : "alert"}
+                            >
+                              {valid
+                                ? `Effective session: ${effective}`
+                                : `Choose an available session for ${subject.name}.`}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

@@ -64,6 +64,33 @@ export interface IntendedExamSession {
   series: ExamSittingSeries;
 }
 
+export type AssignmentSessionChoiceSeries = typeof AssignmentSessionChoiceSeries[keyof typeof AssignmentSessionChoiceSeries];
+
+
+export const AssignmentSessionChoiceSeries = {
+  'May/June': 'May/June',
+  'Oct/Nov': 'Oct/Nov',
+} as const;
+
+/**
+ * Product-safe intended sitting available for new membership assignment.
+ */
+export interface AssignmentSessionChoice {
+  /**
+     * @minimum 1000
+     * @maximum 9999
+     */
+  year: number;
+  series: AssignmentSessionChoiceSeries;
+  label: string;
+}
+
+export interface SubjectAssignmentSessions {
+  /** @minimum 1 */
+  subjectId: number;
+  sessions: AssignmentSessionChoice[];
+}
+
 export interface SubjectSessionOverride {
   /** @minimum 1 */
   subjectId: number;

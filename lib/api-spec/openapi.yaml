@@ -126,6 +126,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorMessage"
 
+  /subjects/assignment-sessions:
+    get:
+      operationId: listSubjectAssignmentSessions
+      tags: [subjects]
+      summary: List safe upcoming assignment sessions by subject
+      description: |
+        Public, read-only product availability for new subject memberships.
+        Choices are derived from published applicability and enabled series policy.
+        The database resolver remains authoritative when a membership is written.
+        Internal syllabus version identities are never exposed.
+      responses:
+        "200":
+          description: Product-safe assignment choices for every catalogue subject
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SubjectAssignmentSessions"
+
   /subjects/{subjectId}/syllabus:
     get:
       operationId: getSubjectSyllabus
@@ -971,6 +991,42 @@ components:
       required:
         - year
         - series
+      additionalProperties: false
+
+    AssignmentSessionChoice:
+      type: object
+      description: Product-safe intended sitting available for new membership assignment.
+      properties:
+        year:
+          type: integer
+          minimum: 1000
+          maximum: 9999
+        series:
+          type: string
+          enum:
+            - May/June
+            - Oct/Nov
+        label:
+          type: string
+      required:
+        - year
+        - series
+        - label
+      additionalProperties: false
+
+    SubjectAssignmentSessions:
+      type: object
+      properties:
+        subjectId:
+          type: integer
+          minimum: 1
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssignmentSessionChoice"
+      required:
+        - subjectId
+        - sessions
       additionalProperties: false
 
     SubjectSessionOverride:

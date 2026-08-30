@@ -60,6 +60,7 @@ describe("global API authentication policy", () => {
     "/healthz",
     "/healthz/db",
     "/subjects",
+    "/subjects/assignment-sessions",
     "/subjects/1",
   ])("allows anonymous GET %s", async (path) => {
     const response = await request(app).get(`/api${path}`);

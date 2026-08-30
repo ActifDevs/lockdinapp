@@ -7,6 +7,8 @@
  */
 
 export * from './assessmentComponent';
+export * from './assignmentSessionChoice';
+export * from './assignmentSessionChoiceSeries';
 export * from './attentionItem';
 export * from './completeOnboardingInput';
 export * from './componentBreakdown';
@@ -30,6 +32,7 @@ export * from './profileUpdate';
 export * from './progressOverview';
 export * from './recentPerformanceItem';
 export * from './subject';
+export * from './subjectAssignmentSessions';
 export * from './subjectInput';
 export * from './subjectPerformance';
 export * from './subjectProgressItem';
