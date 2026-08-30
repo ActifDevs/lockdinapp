@@ -1,4 +1,5 @@
-import { Component, Suspense, lazy, type ReactNode } from "react";
+import { Suspense, lazy, type ReactNode } from "react";
+import { RouteErrorBoundary } from "@/components/route-error-boundary";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -38,36 +39,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-class RouteErrorBoundary extends Component<
-  { children: ReactNode; label: string },
-  { error: Error | null }
-> {
-  state = { error: null as Error | null };
-
-  static getDerivedStateFromError(error: Error) {
-    return { error };
-  }
-
-  render() {
-    if (this.state.error) {
-      return (
-        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center">
-          <h2 className="text-xl font-bold tracking-tight">Something went wrong on {this.props.label}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{this.state.error.message}</p>
-          <button
-            type="button"
-            className="mt-4 text-sm font-medium text-primary underline-offset-4 hover:underline"
-            onClick={() => this.setState({ error: null })}
-          >
-            Try again
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 function AuthenticatedPage({ children, label }: { children: ReactNode; label?: string }) {
   return (

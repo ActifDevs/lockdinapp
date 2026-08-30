@@ -28,6 +28,17 @@ export default function PrivacyPage() {
         does not give legal advice. Questions about under-18 participants, lawful basis, and processor
         agreements remain for formal privacy review.
       </p>
+      <h2>Error and reliability monitoring</h2>
+      <p>
+        When monitoring is configured, Lockdin may use Sentry to record application errors from the
+        React workspace and the Express API. This is reliability monitoring, not product analytics
+        and not Session Replay. Events are meant to include a sanitized stack, release (Git SHA),
+        environment, and a server request id where useful. They are not intended to include email,
+        name, username, study-task or syllabus text, paper scores, raw request or response bodies,
+        Authorization headers, cookies, or database credentials. Monitoring is optional: if it is
+        not configured, Lockdin still works. Hosted capture is not claimed until it is separately
+        proven. This is not legal advice.
+      </p>
       <h2>How we use it</h2>
       <p>
         Your data powers dashboard summaries, study plans, and progress views inside your workspace.

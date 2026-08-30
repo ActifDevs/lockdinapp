@@ -1,5 +1,6 @@
 import type { ErrorRequestHandler } from "express";
 import { logger } from "./logger";
+import { reportApiException } from "./monitoring";
 
 /**
  * Final Express error middleware. Unhandled route/async failures used to surface
@@ -28,6 +29,12 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
     },
     "Unhandled API error",
   );
+
+  try {
+    reportApiException(error, { requestId: String(req.id ?? "") });
+  } catch {
+    // Reporting must not change the HTTP contract.
+  }
 
   if (res.headersSent) {
     return;

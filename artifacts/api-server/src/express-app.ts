@@ -6,6 +6,9 @@ import { logger } from "./lib/logger";
 import { errorHandler } from "./lib/error-handler";
 import globalAuthPolicy from "./middlewares/global-auth-policy";
 import { generateRequestId, requestIdHeader } from "./middlewares/request-id";
+import { initApiSentry } from "./lib/monitoring";
+
+initApiSentry();
 
 const app: Express = express();
 

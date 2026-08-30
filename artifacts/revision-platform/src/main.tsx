@@ -1,9 +1,21 @@
-import { createRoot } from 'react-dom/client';
+import { createRoot } from "react-dom/client";
 
-import App from './App';
+import App from "./App";
+import {
+  createUncaughtErrorHandler,
+  initFrontendSentry,
+} from "./lib/monitoring";
 
-import './index.css';
+import "./index.css";
 
-document.body.classList.add('app-grain');
+document.body.classList.add("app-grain");
 
-createRoot(document.getElementById('root')!).render(<App />);
+async function boot() {
+  await initFrontendSentry();
+  const uncaught = createUncaughtErrorHandler();
+  createRoot(document.getElementById("root")!, {
+    ...(uncaught ? { onUncaughtError: uncaught } : {}),
+  }).render(<App />);
+}
+
+void boot();
