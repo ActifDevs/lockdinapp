@@ -227,4 +227,44 @@ Build-only: `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`. Never commit. N
 
 ## Merge readiness
 
-**MERGE: HOLD.** Local implementation only. Hosted Sentry and Vercel Sentry env are out of scope until owner-authorized 7.3B.
+**MERGE: HOLD.** Local implementation is approved. Hosted Preview proof is **BLOCKED** (2026-08-30) until owner Sentry Cloud + Vercel Preview env can be applied in a session with dashboard access.
+
+## Hosted Preview Configuration
+
+Status: **BLOCKED** (2026-08-30). Implementation SHA unchanged: `4f219e31739cc87683214d95b4b7a015f300b917`. No application code change.
+
+- Sentry org/project: **NOT CREATED**. This agent session had no Sentry Cloud login, no `~/.sentryclirc`, and no Sentry API token. The Sentry wizard was not run.
+- Topology: still the approved **ONE organization / ONE project** (`Lockdin` / `Lockdin App`), environments `preview`/`production`, tags `runtime=frontend|api`.
+- Preview DSN configured: **NO**
+- Production DSN: **NOT CONFIGURED**
+- Privacy toggles: **NOT INSPECTED** (no project). Replay remains off in the SDK (`replaysSessionSampleRate` / `replaysOnErrorSampleRate` = 0; no `replayIntegration`). Hosted Replay cannot be removed from the Sentry plan; it is disabled by not sending replay data.
+- Alerting: **NOT CONFIGURED** (no paging).
+- Source-map status: **NOT CONFIGURED**. Deferred until event delivery is proven. No `SENTRY_AUTH_TOKEN`.
+- Vercel: this session had no ActifDevs Vercel MCP/CLI write access. Preview-only vars were **not** written on `lockdinapp-web`. PostHog vars were not touched.
+
+Existing Git Preview for the implementation SHA (pre-Sentry-env; not a proof redeploy):
+
+- GitHub deployment: `6172051643`
+- Immutable URL: `https://lockdinapp-okfnc6tah-actif-devs.vercel.app`
+- Vercel status: `https://vercel.com/actif-devs/lockdinapp-web/CqFSTFf79egqpHWpVUxxLaWi5iLG`
+- Source: `4f219e31739cc87683214d95b4b7a015f300b917`
+- State: **READY**
+- Preview client bundle contains sanitizer/`[redacted-message]` but **no** `ingest.sentry.io` host (DSN not baked in).
+
+## Hosted Preview Proof
+
+Preview is **PRODUCTION-BACKED**. No Production failure injection was performed. No synthetic API 500 was invented.
+
+- Frontend hosted proof: **BLOCKED** (no Preview DSN / no captured event)
+- API hosted proof: **SAFE-TEST BLOCKED** — no safe existing non-destructive Preview 500 that avoids Production-backed mutation; local mocked proof remains the API evidence
+- environment=preview: **NOT TESTED**
+- runtime tags: **NOT TESTED**
+- release: **NOT TESTED**
+- request_id: **NOT TESTED**
+- stacktrace: **NOT TESTED** hosted
+- redaction: **NOT TESTED** hosted
+- duplicate capture: **NOT TESTED** hosted
+
+Unblock: owner creates org/project in Sentry Cloud (no wizard rewrite of the repo), sets Preview-only vars on `lockdinapp-web` (prefer branch `phase7-slice3-error-monitoring`), redeploys this SHA, then one controlled frontend throw in Preview only.
+
+**MERGE: HOLD.**
