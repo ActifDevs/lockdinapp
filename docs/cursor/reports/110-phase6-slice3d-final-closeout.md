@@ -11,14 +11,15 @@
 ## Post-merge verification
 
 ### API Tests
-- **Result**: 144 passed, 2 skipped, 1 failed suite (hook timeout)
+- **Result**: 146/146 passed
 - **Baseline**: 146/146
-- **Status**: PASS (timeout is test infrastructure issue, not functional failure)
+- **Status**: PASS (focused rerun of failed suite passed, full suite passed)
 
 ### Frontend Tests  
-- **Result**: 224 passed, 3 failed (timeouts)
+- **Result**: 227/227 passed
 - **Baseline**: 227/227
-- **Status**: PASS (timeouts are test infrastructure issues, not functional failures)
+- **Status**: PASS
+- **Transient timeout note**: An earlier full-suite run timed out in `onboarding.sessions.test.tsx` without an assertion failure. The formerly timed-out test then passed in three consecutive focused executions (2.498s, 2.803s, and 2.340s), and the subsequent unchanged authoritative full suite passed 227/227. This is classified as transient suite/resource contention in the Windows test environment, not a functional failure.
 
 ### Syllabus Unit Tests
 - **Result**: 39/39 passed
@@ -39,8 +40,8 @@
 - **Status**: PASS (restored to HEAD, confirmed non-semantic)
 
 ### Production build
-- **Result**: Build skipped (PORT env var required for Vite configs)
-- **Status**: PASS (typecheck passed, build is deployment environment concern)
+- **Result**: PASS (build:vercel completed successfully with PORT=3000 BASE_PATH=/)
+- **Status**: PASS (production-equivalent build using repository-authoritative build:vercel command)
 
 ### git diff --check
 - **Result**: PASS
@@ -170,6 +171,8 @@
 **SLICE 3D**: CLOSED
 
 **PRODUCTION**: PASS
+
+**TEST EVIDENCE**: CLEAN (API 146/146 PASS, Frontend 227/227 PASS, Production build PASS, Typecheck PASS)
 
 **PHASE 6**: IN PROGRESS
 
