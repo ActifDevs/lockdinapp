@@ -14,6 +14,10 @@ import {
   mapMembershipAssignmentRpcError,
 } from "../lib/intended-exam-session";
 import { logger } from "../lib/logger";
+import {
+  fireAndForgetAnalytics,
+  trackOnboardingCompleted,
+} from "../lib/analytics/index.js";
 
 const router: IRouter = Router();
 
@@ -306,6 +310,12 @@ router.post("/profile/complete-onboarding", requireAuth, async (req, res): Promi
 
   res.json(
     CompleteCurrentUserOnboardingResponse.parse(mapProfile(data as ProfileRow)),
+  );
+  await fireAndForgetAnalytics(() =>
+    trackOnboardingCompleted({
+      userId: req.userId!,
+      subjectCount: subjectIds.length,
+    }),
   );
 });
 

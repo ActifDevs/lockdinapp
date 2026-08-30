@@ -17,6 +17,10 @@ import { listUserTaskRows, mappedUserTasks } from "../lib/user-tasks";
 import { sendSupabaseError } from "../lib/supabase-errors";
 import { hasOwnershipField } from "../lib/topic-progress";
 import { assertTopicOnCallerPin } from "../lib/pin-reference-writes";
+import {
+  fireAndForgetAnalytics,
+  trackTaskCreated,
+} from "../lib/analytics/index.js";
 
 const router: IRouter = Router();
 
@@ -124,6 +128,7 @@ router.post("/tasks", requireAuth, async (req, res): Promise<void> => {
 
   const enriched = await enrichTask(mapTaskRow(data as TaskRow));
   res.status(201).json(CreateTaskResponse.parse(enriched));
+  await fireAndForgetAnalytics(() => trackTaskCreated({ userId }));
 });
 router.patch("/tasks/:taskId", requireAuth, async (req, res): Promise<void> => {
   const params = UpdateTaskParams.safeParse(req.params);

@@ -54,6 +54,17 @@ vi.mock("@/lib/app-url", () => ({
   getAppUrl: (path: string) => `http://localhost:5173${path}`,
 }));
 
+const noteLocalSignup = vi.fn();
+const emitAccountCreatedIfPending = vi.fn();
+const resetAnalyticsIdentity = vi.fn();
+
+vi.mock("@/lib/analytics", () => ({
+  noteLocalSignup: (...args: unknown[]) => noteLocalSignup(...args),
+  emitAccountCreatedIfPending: (...args: unknown[]) =>
+    emitAccountCreatedIfPending(...args),
+  resetAnalyticsIdentity: (...args: unknown[]) => resetAnalyticsIdentity(...args),
+}));
+
 function Probe() {
   const auth = useAuth();
   return (
@@ -143,6 +154,7 @@ describe("AuthProvider", () => {
   beforeEach(() => {
     authListener = null;
     localStorage.clear();
+    sessionStorage.clear();
     localStorage.setItem("lockdin_auth", "1");
     localStorage.setItem("lockdin_user", "{}");
     localStorage.setItem("onboarded", "true");
@@ -332,6 +344,19 @@ describe("AuthProvider", () => {
         emailRedirectTo: "http://localhost:5173/auth/callback",
       },
     });
+    expect(noteLocalSignup).toHaveBeenCalled();
+  });
+
+  it("login does not mark account_created pending", async () => {
+    renderAuth();
+    await waitFor(() =>
+      expect(screen.getByTestId("loading").textContent).toBe("false"),
+    );
+    await act(async () => {
+      screen.getByText("login").click();
+    });
+    expect(signInWithPassword).toHaveBeenCalled();
+    expect(noteLocalSignup).not.toHaveBeenCalled();
   });
 
   it("login calls signInWithPassword", async () => {
@@ -378,6 +403,7 @@ describe("AuthProvider", () => {
     });
     expect(queryClient.getQueryData(["tasks"])).toBeUndefined();
     expect(signOut).toHaveBeenCalled();
+    expect(resetAnalyticsIdentity).toHaveBeenCalled();
   });
 
   it("SIGNED_OUT clears user state", async () => {
@@ -461,6 +487,7 @@ describe("AuthProvider", () => {
       expect(screen.getByTestId("user-id").textContent).toBe("user-b");
     });
     expect(queryClient.getQueryData(examDatesKey)).toBeUndefined();
+    expect(resetAnalyticsIdentity).toHaveBeenCalled();
   });
 
   it("stale profile from User A cannot replace User B", async () => {

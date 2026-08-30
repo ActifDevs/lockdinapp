@@ -19,6 +19,10 @@ import { sendSupabaseError } from "../lib/supabase-errors";
 import { hasOwnershipField } from "../lib/topic-progress";
 import { assertComponentOnCallerPin } from "../lib/pin-reference-writes";
 import {
+  fireAndForgetAnalytics,
+  trackPastPaperAttemptCreated,
+} from "../lib/analytics/index.js";
+import {
   enrichPastPaperRows,
   listUserPastPaperRows,
   PAST_PAPER_ATTEMPT_SELECT,
@@ -240,6 +244,9 @@ router.post(
 
     const [attempt] = await enrichPastPaperRows([row]);
     res.status(201).json(CreatePastPaperAttemptResponse.parse(attempt));
+    await fireAndForgetAnalytics(() =>
+      trackPastPaperAttemptCreated({ userId }),
+    );
   },
 );
 
