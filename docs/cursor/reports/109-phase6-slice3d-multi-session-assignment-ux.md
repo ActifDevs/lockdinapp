@@ -5,6 +5,8 @@
 - Base and `origin/main`: `b07d91cbb83fb6547726c3679aee305e525d263d`
 - Feature branch: `phase6-slice3d-multi-session-ux`
 - Implementation commit: `7e2914da96558d18bb5be6ed64693f02f0b9882e`
+- Pre-QA / runtime source: `f5f28850f8327e27fbac25b222da6013dafe9bd8`
+- The `7e2914d..f5f288` delta adds only this report; no runtime file changed.
 - Hosted migration head remains `0015_silent_sentinel`.
 
 ## Product model
@@ -106,26 +108,75 @@ saves; safe error presentation; and absence of `syllabusVersionId`.
 
 ## Preview
 
-- Deployment: `dpl_HCtmBdTgduvoze24GVNHGBb9HYJY`
-- Immutable URL: `https://lockdinapp-jp0cw9u07-actif-devs.vercel.app`
-- Source: `7e2914da96558d18bb5be6ed64693f02f0b9882e`
+- Deployment: `dpl_GdXcXp4RGMrJn34NCnCpK9zNmxn4`
+- Immutable URL: `https://lockdinapp-3qj5o6n3f-actif-devs.vercel.app`
+- Source: `f5f28850f8327e27fbac25b222da6013dafe9bd8`
 - State: READY
 
-Vercel deployment protection requires an authorized Vercel session for browser
-access. Read-only CLI checks show `/api/healthz` passing, but both the pre-existing
-`/api/subjects` route and the new availability route return 500 because the Preview
-`DATABASE_URL` uses Supabase session pooling on port 5432. The runtime correctly
-requires transaction pooling on port 6543. This is a Preview environment
-configuration blocker, not a feature-specific projection failure. No Vercel setting
-was changed in this slice.
+### Preview environment repair
+
+The failed Preview used the shared sensitive `DATABASE_URL`, a Supabase Session
+Pooler connection on port 5432. Vercel metadata confirmed no prior branch-specific
+variables. A single sensitive branch-specific Preview override was added for
+`phase6-slice3d-multi-session-ux`. It preserves the existing authorized Supabase
+pooler host and database identity while using Transaction Pooler port 6543.
+
+- Scope: Preview / `phase6-slice3d-multi-session-ux` only.
+- Host family: Supabase transaction pooler.
+- Port: 6543.
+- Production environment changed: NO.
+- Shared Preview variable changed: NO.
+- Other variables changed: NO.
+- Credential or connection string exposed: NO.
+
+### Public Preview smoke
+
+The repaired immutable Preview returned:
+
+- `GET /api/healthz`: 200.
+- `GET /api/healthz/db`: 200.
+- `GET /api/subjects`: 200 (nine catalogue subjects).
+- `GET /api/subjects/assignment-sessions`: 200 (nine subject projections).
+- `GET /api/subjects/2`: 200.
+- `GET /api/subjects/2/syllabus`: 200.
+- `GET /api/subjects/2/assessment-components`: 200.
+- anonymous `GET /api/profile`: 401.
+
+No smoke request returned 5xx or exposed database detail.
+
+### Availability API verification
+
+- May/June: present where valid.
+- Oct/Nov: present where valid.
+- Feb/Mar: absent.
+- History 9489 Oct/Nov 2026: absent.
+- History 9489 May/June 2027: present.
+- `syllabusVersionId`: absent.
+- `logicalRevisionKey`: absent.
+- `contentSha256`: absent.
+- internal candidate identities: absent.
+
+Runtime logs around the smoke contained only expected 200 responses and the
+anonymous 401. There was no pool guard failure, unexpected 5xx, raw SQL/Postgres
+detail, auth leakage, duplicate write, or repeating request loop.
 
 ## Authenticated QA status
 
-NOT CHECKED on Preview. No authorized Preview/browser session or controlled QA
-account was available, and no real Production-backed memberships were mutated.
-Write behavior is covered locally by browser-level frontend tests plus the retained
-C2B2 strict-resolver evidence. Authenticated Preview QA remains required before
-merge.
+BLOCKED — NO AUTHORIZED QA SESSION. Vercel deployment protection redirected the
+only connected browser to login, and no alternate connected browser or authorized
+controlled Lockdin QA account/session was available. No account was created and no
+credentials were requested or exposed.
+
+Onboarding interactive/write QA: NOT CHECKED. It was not safe to reset an
+established user.
+
+Settings mixed-session, retained-display, retain-only, removal-only, resolver-pin,
+and cleanup QA: NOT CHECKED. No membership baseline was captured because there was
+no authorized user session, and no hosted membership write was attempted.
+
+Write behavior remains covered locally by browser-level frontend tests plus the
+retained C2B2 strict-resolver evidence. Authenticated Preview QA remains required
+before merge.
 
 ## Hosted state
 
@@ -133,7 +184,11 @@ SCHEMA CHANGE: NONE
 
 MIGRATION 0016: NOT CREATED
 
-HOSTED MUTATION: NONE
+HOSTED DATABASE MUTATION: NONE
+
+TEMPORARY MEMBERSHIPS: NONE
+
+RESTORATION: NOT NEEDED
 
 EXISTING PINS: UNCHANGED
 
@@ -145,13 +200,15 @@ REPIN: NOT IMPLEMENTED
 
 ## Rollout boundary
 
-No Production deployment was performed. No Supabase, applicability, policy,
-membership, pin, or profile data was changed. Before merge, repair or supply a
-valid Preview transaction-pool connection and complete authenticated read/UI QA
-with a controlled account. Do not use ordinary user memberships for Preview writes.
+No Production deployment was performed. No Supabase schema, applicability, policy,
+membership, pin, or profile data was changed. The only infrastructure mutation was
+the authorized branch-specific sensitive Preview `DATABASE_URL` override. Before
+merge, complete authenticated read/UI QA with an already-authorized controlled
+account. Do not use ordinary user memberships for Preview writes.
 
 ## Final verdict
 
-Implementation and local verification: PASS.
+Implementation, local verification, Preview environment repair, public smoke, and
+availability API QA: PASS.
 
-Merge clearance: BLOCKED pending a database-capable Preview and authenticated QA.
+Merge clearance: BLOCKED pending authenticated QA with a controlled account.
