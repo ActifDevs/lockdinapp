@@ -8,6 +8,8 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "check:migrations": "pnpm --filter @workspace/scripts check:migrations",
+    "check:codegen": "pnpm --filter @workspace/api-spec codegen && git diff --exit-code -- lib/api-zod lib/api-client-react",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:status": "supabase status"
