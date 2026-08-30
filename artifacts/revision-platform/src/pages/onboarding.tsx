@@ -3,17 +3,26 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { useListSubjects, ApiError } from "@workspace/api-client-react";
+import {
+  useListSubjects,
+  useListSubjectAssignmentSessions,
+  ApiError,
+} from "@workspace/api-client-react";
 import { Check, ChevronRight, Loader2, Search } from "lucide-react";
 import { IllustCalm } from "@/components/illustrations";
+import { LEVEL_OPTIONS } from "@/lib/exam-sessions";
 import {
-  getUpcomingExamSessions,
-  isSupportedAssignmentSession,
-  LEVEL_OPTIONS,
-  structuredSessionFromPickerLabel,
-} from "@/lib/exam-sessions";
+  assignmentPayloadSessions,
+  availableSessionOptions,
+  effectiveSessionLabel,
+  invalidSessionSubjectIds,
+  productSafeAssignmentError,
+  subjectSupportsSession,
+  type SubjectSessionOverrides,
+} from "@/lib/membership-session-selection";
 import {
   canProceedWithSubjects,
   filterSubjectsByQuery,
@@ -32,7 +41,20 @@ export default function Onboarding() {
     isError: subjectsError,
     refetch: refetchSubjects,
   } = useListSubjects();
-  const examOptions = useMemo(() => [...getUpcomingExamSessions(), "Other"], []);
+  const {
+    data: assignmentAvailability = [],
+    isLoading: availabilityLoading,
+    isError: availabilityError,
+    refetch: refetchAvailability,
+  } = useListSubjectAssignmentSessions();
+  const assignmentOptions = useMemo(
+    () => availableSessionOptions(assignmentAvailability),
+    [assignmentAvailability],
+  );
+  const examOptions = useMemo(
+    () => [...assignmentOptions.map(({ label }) => label), "Other"],
+    [assignmentOptions],
+  );
 
   const [step, setStep] = useState(1);
   const [fullName, setFullName] = useState(user?.name || "");
@@ -42,6 +64,8 @@ export default function Onboarding() {
   const [search, setSearch] = useState("");
   const [level, setLevel] = useState<string | null>(null);
   const [examSession, setExamSession] = useState<string | null>(null);
+  const [subjectSessionOverrides, setSubjectSessionOverrides] =
+    useState<SubjectSessionOverrides>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,12 +80,26 @@ export default function Onboarding() {
 
   const toggleSubject = (id: number) => {
     setSelectedIds((prev) => toggleSubjectSelection(prev, id));
+    setSubjectSessionOverrides((current) => {
+      if (!(id in current)) return current;
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
   };
+
+  const invalidSubjectIds = invalidSessionSubjectIds(
+    selectedIds,
+    examSession,
+    subjectSessionOverrides,
+    assignmentAvailability,
+  );
 
   const goNext = () => {
     setError(null);
     if (step === 2) {
-      const nameOk = fullName.trim().length >= 2 && fullName.trim().length <= 100;
+      const nameOk =
+        fullName.trim().length >= 2 && fullName.trim().length <= 100;
       const uErr = validateUsername(username);
       setUsernameError(uErr);
       if (!nameOk) {
@@ -82,8 +120,30 @@ export default function Onboarding() {
         setError("Choose your level and exam session.");
         return;
       }
-      if (!isSupportedAssignmentSession(examSession)) {
-        setError("Choose a May/June or Oct/Nov session. Other cannot create subjects.");
+      if (examSession === "Other") {
+        setError(
+          "Choose a May/June or Oct/Nov session. Other cannot create subjects.",
+        );
+        return;
+      }
+      if (availabilityLoading) {
+        setError(
+          "Session availability is still loading. Please wait a moment.",
+        );
+        return;
+      }
+      if (availabilityError) {
+        setError(
+          "We couldn’t check session availability. Retry before continuing.",
+        );
+        return;
+      }
+      if (invalidSubjectIds.length > 0) {
+        const names = selectedSubjects
+          .filter(({ id }) => invalidSubjectIds.includes(id))
+          .map(({ name }) => name)
+          .join(", ");
+        setError(`Choose an available exam session for: ${names}.`);
         return;
       }
     }
@@ -92,11 +152,16 @@ export default function Onboarding() {
 
   const finish = async () => {
     if (isSubmitting) return;
-    const intendedExamSession = structuredSessionFromPickerLabel(examSession);
-    if (!intendedExamSession) {
-      setError("Choose a May/June or Oct/Nov session. Other cannot create subjects.");
+    if (invalidSubjectIds.length > 0) {
+      setError("Every subject needs an available May/June or Oct/Nov session.");
       return;
     }
+    const sessionPayload = assignmentPayloadSessions(
+      selectedIds,
+      examSession,
+      subjectSessionOverrides,
+      assignmentOptions,
+    );
     setIsSubmitting(true);
     setError(null);
     try {
@@ -106,7 +171,7 @@ export default function Onboarding() {
         level: level!,
         examSession: examSession!,
         subjectIds: selectedIds,
-        intendedExamSession,
+        ...sessionPayload,
       });
     } catch (err) {
       const msg =
@@ -126,7 +191,10 @@ export default function Onboarding() {
         setStep(2);
         setError(null);
       } else {
-        setError("Onboarding could not be completed. Please try again.");
+        setError(
+          productSafeAssignmentError(msg) ??
+            "Onboarding could not be completed. Please try again.",
+        );
       }
       setIsSubmitting(false);
     }
@@ -153,10 +221,13 @@ export default function Onboarding() {
                 Welcome{greetingName !== "there" ? `, ${greetingName}` : ""}
               </h1>
               <p className="text-muted-foreground">
-                We’ll set up your username and select between 1 and 5 subjects for your first revision
-                tasks, and choose your exam session.
+                We’ll set up your username and select between 1 and 5 subjects
+                for your first revision tasks, and choose your exam session.
               </p>
-              <Button className="h-11 cursor-pointer" onClick={() => setStep(2)}>
+              <Button
+                className="h-11 cursor-pointer"
+                onClick={() => setStep(2)}
+              >
                 Continue <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
@@ -165,7 +236,9 @@ export default function Onboarding() {
           {step === 2 && (
             <div className="space-y-5">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Your identity</h1>
+                <h1 className="text-2xl font-bold tracking-tight">
+                  Your identity
+                </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Username is permanent after onboarding — choose carefully.
                 </p>
@@ -209,10 +282,13 @@ export default function Onboarding() {
           {step === 3 && (
             <div className="space-y-5">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Choose subjects</h1>
+                <h1 className="text-2xl font-bold tracking-tight">
+                  Choose subjects
+                </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Select 1–5 subjects from the shared Cambridge catalogue. These create your first
-                  revision tasks and become your durable subject selection.
+                  Select 1–5 subjects from the shared Cambridge catalogue. These
+                  create your first revision tasks and become your durable
+                  subject selection.
                 </p>
               </div>
               <div className="relative">
@@ -229,7 +305,10 @@ export default function Onboarding() {
                 Selected {selectedIds.length} / {MAX_SELECTED_SUBJECTS}
               </p>
               {selectedIds.length === MAX_SELECTED_SUBJECTS && (
-                <p className="text-sm font-medium text-foreground" role="status">
+                <p
+                  className="text-sm font-medium text-foreground"
+                  role="status"
+                >
                   Maximum reached. Deselect a subject to choose another.
                 </p>
               )}
@@ -240,7 +319,8 @@ export default function Onboarding() {
               ) : subjectsError ? (
                 <div className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-5">
                   <p className="text-sm text-destructive" role="alert">
-                    We couldn’t load the subject catalogue. Check your connection and try again.
+                    We couldn’t load the subject catalogue. Check your
+                    connection and try again.
                   </p>
                   <Button
                     type="button"
@@ -284,7 +364,9 @@ export default function Onboarding() {
                               {subject.code}
                             </span>
                           </span>
-                          {selected && <Check className="h-4 w-4 text-primary" />}
+                          {selected && (
+                            <Check className="h-4 w-4 text-primary" />
+                          )}
                         </button>
                       </li>
                     );
@@ -297,7 +379,9 @@ export default function Onboarding() {
           {step === 4 && (
             <div className="space-y-5">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Study context</h1>
+                <h1 className="text-2xl font-bold tracking-tight">
+                  Study context
+                </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Tell us your level and target exam session.
                 </p>
@@ -323,38 +407,170 @@ export default function Onboarding() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Exam session</Label>
+                <Label>Default exam session</Label>
                 <p className="text-xs text-muted-foreground">
-                  May/June and Oct/Nov create your subjects. Other is profile-only
-                  and cannot start onboarding.
+                  This applies to every selected subject unless you choose a
+                  subject-specific override below. Other is profile-only and
+                  cannot create subjects.
                 </p>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {examOptions.map((opt) => (
-                    <button
-                      key={opt}
+                {availabilityLoading ? (
+                  <p className="text-sm text-muted-foreground">
+                    Checking available sessions…
+                  </p>
+                ) : availabilityError ? (
+                  <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+                    <p className="text-sm text-destructive" role="alert">
+                      We couldn’t check exam-session availability.
+                    </p>
+                    <Button
                       type="button"
-                      onClick={() => setExamSession(opt)}
-                      className={cn(
-                        "rounded-xl border px-4 py-3 text-left text-sm font-medium",
-                        examSession === opt
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/40",
-                      )}
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => void refetchAvailability()}
                     >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
+                      Retry
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {examOptions.map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setExamSession(opt)}
+                        className={cn(
+                          "rounded-xl border px-4 py-3 text-left text-sm font-medium",
+                          examSession === opt
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/40",
+                        )}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {examSession && examSession !== "Other" && !availabilityError && (
+                <div className="space-y-3 border-t pt-5">
+                  <div>
+                    <h2 className="text-sm font-semibold">
+                      Sessions by subject
+                    </h2>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Keep the default or choose a different sitting for an
+                      individual subject.
+                    </p>
+                  </div>
+                  {selectedSubjects.map((subject) => {
+                    const override = subjectSessionOverrides[subject.id] ?? "";
+                    const effective = effectiveSessionLabel(
+                      subject.id,
+                      examSession,
+                      subjectSessionOverrides,
+                    );
+                    const valid = subjectSupportsSession(
+                      assignmentAvailability,
+                      subject.id,
+                      effective,
+                    );
+                    return (
+                      <div
+                        key={subject.id}
+                        className={cn(
+                          "rounded-xl border p-4",
+                          valid
+                            ? "border-border bg-muted/15"
+                            : "border-destructive/40 bg-destructive/5",
+                        )}
+                      >
+                        <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-medium">
+                              {subject.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {subject.code}
+                            </p>
+                          </div>
+                          <Badge variant={override ? "default" : "secondary"}>
+                            {override ? "Override" : "Uses default"}
+                          </Badge>
+                        </div>
+                        <Label
+                          htmlFor={`subject-session-${subject.id}`}
+                          className="sr-only"
+                        >
+                          Exam session for {subject.name}
+                        </Label>
+                        <select
+                          id={`subject-session-${subject.id}`}
+                          aria-label={`Exam session for ${subject.name}`}
+                          value={override}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setSubjectSessionOverrides((current) => {
+                              const next = { ...current };
+                              if (value) next[subject.id] = value;
+                              else delete next[subject.id];
+                              return next;
+                            });
+                          }}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        >
+                          <option value="">Use default — {examSession}</option>
+                          {assignmentOptions.map((option) => {
+                            const supported = subjectSupportsSession(
+                              assignmentAvailability,
+                              subject.id,
+                              option.label,
+                            );
+                            return (
+                              <option
+                                key={option.label}
+                                value={option.label}
+                                disabled={!supported}
+                              >
+                                {option.label}
+                                {!supported
+                                  ? ` — not available for ${subject.name}`
+                                  : ""}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <p
+                          className={cn(
+                            "mt-2 text-xs",
+                            valid
+                              ? "text-muted-foreground"
+                              : "font-medium text-destructive",
+                          )}
+                          role={valid ? undefined : "alert"}
+                        >
+                          {valid
+                            ? `Effective session: ${effective}`
+                            : `${subject.name} is not available for ${effective}. Choose an override.`}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
           {step === 5 && (
             <div className="space-y-5">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Review & finish</h1>
+                <h1 className="text-2xl font-bold tracking-tight">
+                  Review & finish
+                </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Confirm your details. We’ll create your starter tasks in one step.
+                  Confirm your details. We’ll create your starter tasks in one
+                  step.
                 </p>
               </div>
               <dl className="space-y-3 text-sm">
@@ -376,9 +592,29 @@ export default function Onboarding() {
                   <dt className="text-muted-foreground">Level</dt>
                   <dd className="font-medium">{level}</dd>
                 </div>
-                <div className="flex justify-between gap-4 py-2">
-                  <dt className="text-muted-foreground">Exam session</dt>
-                  <dd className="font-medium">{examSession}</dd>
+                <div className="space-y-2 py-2">
+                  <dt className="text-muted-foreground">Exam sessions</dt>
+                  {selectedSubjects.map((subject) => {
+                    const override = subjectSessionOverrides[subject.id];
+                    return (
+                      <dd
+                        key={subject.id}
+                        className="flex justify-between gap-4 font-medium"
+                      >
+                        <span>{subject.name}</span>
+                        <span className="text-right">
+                          {effectiveSessionLabel(
+                            subject.id,
+                            examSession,
+                            subjectSessionOverrides,
+                          )}
+                          <span className="ml-1 text-xs font-normal text-muted-foreground">
+                            ({override ? "override" : "default"})
+                          </span>
+                        </span>
+                      </dd>
+                    );
+                  })}
                 </div>
               </dl>
             </div>
@@ -404,7 +640,11 @@ export default function Onboarding() {
                 Back
               </Button>
               {step < 5 ? (
-                <Button type="button" className="cursor-pointer" onClick={goNext}>
+                <Button
+                  type="button"
+                  className="cursor-pointer"
+                  onClick={goNext}
+                >
                   Continue <ChevronRight className="ml-1 h-4 w-4" />
                 </Button>
               ) : (
@@ -416,7 +656,8 @@ export default function Onboarding() {
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finishing…
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                      Finishing…
                     </>
                   ) : (
                     "Finish setup"

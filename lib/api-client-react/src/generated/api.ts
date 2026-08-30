@@ -35,6 +35,7 @@ import type {
   ProfileUpdate,
   ProgressOverview,
   Subject,
+  SubjectAssignmentSessions,
   SubjectInput,
   SubjectPerformance,
   SyllabusTopicProgress,
@@ -458,6 +459,87 @@ export const useDeleteSubject = <TError = ErrorType<ErrorMessage>,
       > => {
       return useMutation(getDeleteSubjectMutationOptions(options));
     }
+
+export const getListSubjectAssignmentSessionsUrl = () => {
+
+
+
+
+  return `/api/subjects/assignment-sessions`
+}
+
+/**
+ * Public, read-only product availability for new subject memberships.
+ * Choices are derived from published applicability and enabled series policy.
+ * The database resolver remains authoritative when a membership is written.
+ * Internal syllabus version identities are never exposed.
+ * @summary List safe upcoming assignment sessions by subject
+ */
+export const listSubjectAssignmentSessions = async ( options?: RequestInit): Promise<SubjectAssignmentSessions[]> => {
+
+  return customFetch<SubjectAssignmentSessions[]>(getListSubjectAssignmentSessionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSubjectAssignmentSessionsQueryKey = () => {
+    return [
+    `/api/subjects/assignment-sessions`
+    ] as const;
+    }
+
+
+export const getListSubjectAssignmentSessionsQueryOptions = <TData = Awaited<ReturnType<typeof listSubjectAssignmentSessions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSubjectAssignmentSessions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSubjectAssignmentSessionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSubjectAssignmentSessions>>> = ({ signal }) => listSubjectAssignmentSessions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSubjectAssignmentSessions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSubjectAssignmentSessionsQueryResult = NonNullable<Awaited<ReturnType<typeof listSubjectAssignmentSessions>>>
+export type ListSubjectAssignmentSessionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List safe upcoming assignment sessions by subject
+ */
+
+export function useListSubjectAssignmentSessions<TData = Awaited<ReturnType<typeof listSubjectAssignmentSessions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSubjectAssignmentSessions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSubjectAssignmentSessionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetSubjectSyllabusUrl = (subjectId: number,) => {
 

@@ -1,7 +1,8 @@
 /**
  * Derive the next four Cambridge-style exam session windows from a reference date.
  * Labels: "May/June YYYY" and "Oct/Nov YYYY", chronologically upcoming.
- * Feb/Mar is a supported series in the API enum; picker coverage is 6.3D.
+ * Feb/Mar remains a domain series but is intentionally excluded from normal
+ * automatic-assignment UX until an eligibility model and product policy exist.
  */
 
 export const EXAM_SITTING_SERIES = ["Feb/Mar", "May/June", "Oct/Nov"] as const;
@@ -61,7 +62,9 @@ export function getUpcomingExamSessionOptions(
 export function getUpcomingExamSessions(
   referenceDate: Date = new Date(),
 ): string[] {
-  return getUpcomingExamSessionOptions(referenceDate).map((option) => option.label);
+  return getUpcomingExamSessionOptions(referenceDate).map(
+    (option) => option.label,
+  );
 }
 
 export function structuredSessionFromPickerLabel(

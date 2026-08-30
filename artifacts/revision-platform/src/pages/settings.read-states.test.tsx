@@ -19,6 +19,7 @@ const api = vi.hoisted(() => ({
   subjects: vi.fn(),
   memberships: vi.fn(),
   replace: vi.fn(),
+  availability: vi.fn(),
 }));
 
 vi.mock("wouter", async (importOriginal) => ({
@@ -41,6 +42,11 @@ vi.mock("@workspace/api-client-react", () => ({
   useListSubjects: api.subjects,
   useListCurrentUserSubjects: api.memberships,
   useReplaceCurrentUserSubjects: api.replace,
+  useListSubjectAssignmentSessions: api.availability,
+  ApiError: class ApiError extends Error {
+    status = 500;
+    data: unknown;
+  },
 }));
 
 vi.mock("@/components/theme-provider", () => ({
@@ -88,6 +94,14 @@ beforeEach(() => {
   api.subjects.mockReturnValue(ok([subject]));
   api.memberships.mockReturnValue(ok([membership]));
   api.replace.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+  api.availability.mockReturnValue(
+    ok([
+      {
+        subjectId: subject.id,
+        sessions: [{ year: 2027, series: "May/June", label: "May/June 2027" }],
+      },
+    ]),
+  );
 });
 
 afterEach(() => {
