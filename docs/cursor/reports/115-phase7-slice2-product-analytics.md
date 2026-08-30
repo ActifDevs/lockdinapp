@@ -165,12 +165,67 @@ Generate with `openssl rand -hex 32`. Store in Vercel only. Never print the valu
 
 Session replay, autocapture, heatmaps, surveys, error tracking.
 
-## Remaining owner gate
+## Hosted Preview Proof
 
-1. Create Preview + Production PostHog EU projects.
-2. Set **server-only** Vercel env vars.
-3. Store the alias secret.
-4. Confirm privacy copy.
-5. Authorize 7.2B Preview proof.
+Status: **BLOCKED** (2026-08-30). Implementation SHA unchanged. No application code change.
+
+### PostHog
+
+- PostHog Preview project: **NOT CREATED** — Cloud EU dashboard required login; no owner PostHog session, personal API key, or project token was available in this environment.
+- PostHog Production project: **NOT CREATED**, **NOT WIRED**.
+- EU region confirmed: **N/A (projects absent)**. Ingest host remains `https://eu.i.posthog.com` when projects exist.
+- Privacy settings confirmed: **NOT INSPECTED** (no project access).
+- Token type: **N/A**. No token values recorded.
+
+### Vercel
+
+- Topology inspected (do not guess):
+  - `actif-devs/lockdinapp-web` (`prj_yHc7KMBuw3tftu3VC1z5xVs7tr9S`) — Vite SPA + serverless Express `/api` (`api/index.mjs` + `vercel.json` rewrites). **This is where Preview product analytics executes.**
+  - `actif-devs/lockdinapp` (`prj_mAJNDRGExffevfYDKc7oj3xowPV6`) — parallel Express Git Preview. No PostHog vars. Not used for this proof.
+- Preview env configured: **NO**. Neither project lists `POSTHOG_PROJECT_TOKEN`, `POSTHOG_HOST`, `LOCKDIN_ANALYTICS_ENV`, or `LOCKDIN_ANALYTICS_ALIAS_SECRET`.
+- Production analytics env: **NOT CONFIGURED**.
+- Preview-only alias secret: **NOT STORED** (not generated into Vercel; would be Preview-only once PostHog token exists).
+- Existing Preview deployment (pre-env-change; not a proof redeploy):
+  - Project: `lockdinapp-web`
+  - Deployment ID: `dpl_GAQCCeDnsS1XJpWF79ThMx4HdAEG`
+  - Immutable URL: `https://lockdinapp-mfj5yoeuj-actif-devs.vercel.app`
+  - Branch alias: `https://lockdinapp-web-git-phase7-slice2-product-analytics-actif-devs.vercel.app`
+  - Source: `47c50dac402844902c130bad3386c1a006f0b6df`
+  - State: **READY**
+- Production was not redeployed.
+
+### Preview backend classification
+
+PREVIEW DATABASE: **PRODUCTION-BACKED**
+
+- `lockdinapp-web` has shared **Production and Preview** `DATABASE_URL` / `SUPABASE_URL` (updated Aug 27). No `phase7-slice2-product-analytics` branch override.
+- Preview client bundle for the SHA above contains the known Production Supabase project ref (same as Report 112). Connection strings not recorded.
+- Mutation QA must stay minimal, synthetic, and reversible. **Not started** because PostHog ingest is not wired.
+
+### Telemetry
+
+Not executed. Hosted capture cannot be proven without Preview PostHog token + redeploy.
+
+- events proven: **NONE**
+- unified identity: **NOT TESTED**
+- property privacy: **NOT TESTED**
+- occurrence semantics: **NOT TESTED**
+- cleanup: **N/A**
+- no secrets in this report: **YES**
+
+### Hosted changes this run
+
+- Supabase: **NONE**
+- Production DB schema: **NONE**
+- Migration: **NONE**
+- 0016: **ABSENT**
+- Production PostHog wiring: **NONE**
+
+### Unblock
+
+1. Owner logs into PostHog Cloud EU and creates **Lockdin Preview** + **Lockdin Production** (EU). Production project create-only; do not wire Production Vercel vars.
+2. Apply Preview-only vars on **`lockdinapp-web`** (server analytics execution).
+3. Redeploy the feature-branch Preview (not Production).
+4. Repeat bounded synthetic QA on Production-backed Preview.
 
 **MERGE: HOLD.**
