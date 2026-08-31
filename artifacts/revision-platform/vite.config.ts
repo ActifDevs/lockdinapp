@@ -1,7 +1,13 @@
 import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { defineConfig } from 'vite';
+import {
+  applyFrontendDeploymentReleaseEnv,
+  createFrontendSentryVitePluginOptions,
+  shouldUploadSentrySourcemaps,
+} from './src/lib/monitoring/sourcemap-upload';
 
 const rawPort = process.env.PORT;
 
@@ -25,11 +31,18 @@ if (!basePath) {
   );
 }
 
+applyFrontendDeploymentReleaseEnv(process.env);
+
+const uploadSourcemaps = shouldUploadSentrySourcemaps(process.env);
+
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
+    ...(uploadSourcemaps
+      ? [sentryVitePlugin(createFrontendSentryVitePluginOptions(process.env))]
+      : []),
   ],
   resolve: {
     alias: {
@@ -47,6 +60,7 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/public'),
     emptyOutDir: true,
+    sourcemap: uploadSourcemaps ? 'hidden' : false,
   },
   server: {
     port,

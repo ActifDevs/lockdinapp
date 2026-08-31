@@ -12,6 +12,10 @@ export {
   resolveMonitoringRelease,
 } from "./environment";
 export {
+  applyFrontendDeploymentReleaseEnv,
+  shouldUploadSentrySourcemaps,
+} from "./sourcemap-upload";
+export {
   PRIVACY_INIT_FLAGS,
   REDACTED_MESSAGE,
   isDiagnosticBreadcrumbCategory,

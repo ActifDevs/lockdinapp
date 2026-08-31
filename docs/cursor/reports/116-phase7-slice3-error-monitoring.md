@@ -117,18 +117,88 @@ API events tag `request_id` with the existing Pino/server UUID (`req.id`) throug
 | Frontend | `VITE_SENTRY_ENVIRONMENT`, else `VITE_VERCEL_ENV`, else Vite `MODE` | `VITE_SENTRY_RELEASE` or `VITE_VERCEL_GIT_COMMIT_SHA` |
 | API | `SENTRY_ENVIRONMENT`, else `VERCEL_ENV`, else `NODE_ENV` | `SENTRY_RELEASE` or `VERCEL_GIT_COMMIT_SHA` |
 
-Vercel already provides `VERCEL_ENV` and `VERCEL_GIT_COMMIT_SHA` to the API function. The browser needs explicit `VITE_*` copies for environment/release unless those are injected at build time in a later hosted slice.
+Vercel already provides `VERCEL_ENV` and `VERCEL_GIT_COMMIT_SHA` to the API function. The Vite build now copies `VERCEL_GIT_COMMIT_SHA` → `VITE_VERCEL_GIT_COMMIT_SHA` (and `SENTRY_RELEASE` → `VITE_SENTRY_RELEASE` when set) so the browser SDK release matches the API runtime SHA. The auth token is never copied into `VITE_*`.
 
 ## Source maps
 
-**Not configured in this slice.** Public Vite source maps stay off so the browser bundle does not publish application source.
+Implemented in Slice 7.3C. Upload is **conditional** and does not run without `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, and a deployment SHA (`SENTRY_RELEASE` or `VERCEL_GIT_COMMIT_SHA`). Local/dev/test builds succeed without those values.
 
-Deferred to a later owner-authorized source-map step, server/build-only:
+Hosted symbolication is **not proven** until an owner-configured build-only token uploads maps for a Preview release that also emits events.
 
-- `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` — never `VITE_*`.
-- `@sentry/vite-plugin` for the web build: generate hidden maps, upload to the matching **release SHA**, delete maps from the public `dist` output.
-- API already emits linked esbuild maps in `artifacts/api-server/dist` (server-side, not the public SPA). Upload those with the same release SHA via Sentry CLI if readable API stacks are wanted.
-- Release SHA must match `VERCEL_GIT_COMMIT_SHA` of the deployed Preview/Production.
+## Source-map implementation
+
+**Frontend** (`@sentry/vite-plugin@5.4.0`, official Vite upload path):
+
+- When upload is enabled: `build.sourcemap = "hidden"` (no `sourceMappingURL` in public JS).
+- Plugin `release.name` is the same SHA resolver used by `initFrontendSentry`.
+- `sourcemaps.assets` is limited to `./dist/public/**`.
+- `sourcemaps.ignore` excludes `node_modules`, `.env` / `.env.*`, `*.pem`, `credentials.json`.
+- Official `sourcemaps.filesToDeleteAfterUpload`: `./dist/public/**/*.map`.
+- Plugin `telemetry` is off. Replay/tracing tree-shaking flags are on. `reactComponentAnnotation` is off. `setCommits` / `deploy` are off.
+- When upload is disabled: Vite `sourcemap: false` and the plugin is not registered. No upload attempt.
+
+**API** (`@sentry/esbuild-plugin@5.4.0` on the existing esbuild graph; no restructure):
+
+- Linked maps remain (`sourcemap: "linked"`) for `node --enable-source-maps`. They are not the public SPA.
+- Plugin is appended only when the same build-only credentials + SHA are present.
+- Upload assets: `./dist/**` only, same ignore list. Maps are **not** deleted after upload (server artifact, not publicly served).
+- Same `release.name` as the API SDK (`SENTRY_RELEASE` or `VERCEL_GIT_COMMIT_SHA`).
+
+## Release linkage
+
+One deployment → one release SHA. Authoritative hosted value: `VERCEL_GIT_COMMIT_SHA`. Optional override: `SENTRY_RELEASE` / `VITE_SENTRY_RELEASE`. No hardcoded evidence SHAs.
+
+## Build-only credential model
+
+| Item | Value |
+| --- | --- |
+| Purpose | Create/finalize the Git-SHA release and upload JS + source maps |
+| Names | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` |
+| Client | **Never** `VITE_SENTRY_AUTH_TOKEN`. Token is not defined into the Vite client env. |
+| Runtime | Not required. DSN-only init still works without maps. |
+| Storage | Vercel `lockdinapp-web` **build** environment (Preview first). Not committed. |
+| Minimum scopes (current Sentry docs for bundler plugins / org tokens) | Organization token, or personal/org token with **`project:releases`** (Release: Admin) and **`org:read`**. Equivalent UI: Project Read & Write + Release Admin. Avoid `org:admin` / account-wide admin. |
+| Rotation | Revoke the token in Sentry Auth Tokens, create a replacement with the same scopes, update the Vercel build env, redeploy. |
+
+Real token: **not created in this slice**.
+
+## Alerting plan
+
+Do not create alerts in this local implementation (no hosted Sentry write access authorized).
+
+**Preview**
+
+- Issues visible in the project inbox.
+- No paging, no team-wide Slack/email storms.
+
+**Production** (configure only after Production DSN + source-map proof; `environment=production`)
+
+- New unhandled issue.
+- Regression of a resolved issue.
+- Optional: repeated API errors above a meaningful count, filtered `runtime=api`, if the current free plan supports issue alerts cleanly.
+- Do **not** alert on every event.
+
+Filters: `environment` and `runtime` (`frontend` / `api`).
+
+## Source-map security review
+
+| Severity | Finding |
+| --- | --- |
+| **BLOCKER** | Auth token is build-only. No `VITE_SENTRY_AUTH_TOKEN`. Plugin options are not passed through Vite `define`. |
+| **BLOCKER** | Public maps: hidden maps + official delete-after-upload when uploading; no public maps when not uploading. |
+| **HIGH** | Release name is the deployment SHA used by both SDKs. Upload is refused if SHA is missing (avoids an unmatched release). |
+| **HIGH** | Upload globs are `dist/public` (web) and `dist` (API). Env/credential files are ignored. No `uploadLegacySourcemaps` of `.`. |
+| **MEDIUM** | Preview vs Production share one project; `environment` + SHA distinguish deploys. Auto `deploy` records are disabled. |
+| **MEDIUM** | Maps include compiled application sources for symbolication only. Study content is still stripped from events by `beforeSend`. |
+| **LOW** | Free-plan artifact/release limits may delay or drop uploads; events still ingest without maps. |
+
+## Remaining hosted source-map gate
+
+1. Owner creates a **build-only** token with the minimum scopes above.
+2. Set `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` on Vercel Preview (not `VITE_*`).
+3. Redeploy the feature branch. Confirm the build log uploaded maps for that SHA and public `dist/public` has no `.map` files.
+4. Trigger one Preview frontend error and confirm the issue stack is symbolicated for that SHA.
+5. Do **not** treat this slice as hosted symbolication proof. Production Sentry remains unconfigured.
 
 ## Tests
 
@@ -141,14 +211,14 @@ Coverage includes the original no-op / single-capture / failure-isolation tests 
 | Gate | Result |
 | --- | --- |
 | `pnpm run typecheck` | PASS |
-| `pnpm --filter @workspace/api-server test` | PASS — 35 files, 182 tests |
-| `vitest run --pool=forks --maxWorkers=1` (frontend) | PASS — 42 files, 252 tests |
+| `pnpm --filter @workspace/api-server test` | PASS — 36 files, 184 tests |
+| `vitest run --pool=forks --maxWorkers=1` (frontend) | PASS — 43 files, 259 tests |
 | `pnpm --filter @workspace/scripts test:unit` | PASS — 41 tests |
 | `pnpm --filter @workspace/scripts test:harness` | PASS — 21 tests |
 | `pnpm run check:migrations` | PASS — count=16, head=`0015_silent_sentinel` |
 | `pnpm run check:codegen` | PASS — no OpenAPI drift |
 | `git diff --check` | PASS |
-| `pnpm --filter @workspace/revision-platform run build:vercel` | PASS — Sentry is a separate async chunk (~483 kB) loaded only after a DSN init; main entry ~613 kB |
+| `pnpm --filter @workspace/revision-platform run build:vercel` (no Sentry auth token) | PASS — no source-map upload; public `dist/public` has no `.map` files; Sentry remains a separate async chunk (~483 kB); main entry ~613 kB |
 
 `@opentelemetry/api@1.9.1` was added to `@workspace/db`, `@workspace/api-server`, and `@workspace/scripts` so Drizzle keeps a single type identity after `@sentry/node` is installed.
 
@@ -172,7 +242,7 @@ Coverage includes the original no-op / single-capture / failure-isolation tests 
 - Session Replay: **OFF**.
 - Default PII: **OFF**.
 - PostHog: **UNCHANGED**; it remains product analytics only and does not capture exceptions.
-- Source-map auth/upload: **NOT CONFIGURED**. Stacktrace presence was proven without changing this gate.
+- Source-map auth/upload: **LOCAL IMPLEMENTATION READY**. Hosted token **NOT CONFIGURED**. Stacktrace presence was proven without hosted maps.
 
 Preview remains **PRODUCTION-BACKED**. No Production failure injection was performed and no synthetic API 500 was invented.
 
@@ -243,7 +313,9 @@ Privacy/redaction regression: **PASS**. Duplicate capture remains **NONE** by de
 | SLICE 7.3A LOCAL | **PASS** |
 | SLICE 7.3B FRONTEND PREVIEW | **PASS** |
 | API HOSTED PROOF | **SAFE-TEST BLOCKED / ACCEPTED SAFETY BOUNDARY** |
+| SOURCE-MAP IMPLEMENTATION | **LOCAL READY** |
+| HOSTED SYMBOLICATION | **NOT PROVEN** |
 | PRODUCTION SENTRY | **NOT CONFIGURED** |
 | SLICE 7.3 | **IN PROGRESS** |
 | MERGE | **HOLD** |
-| NEXT | **OWNER REVIEW → PRODUCTION SENTRY CONFIG + MERGE** |
+| NEXT | **OWNER CONFIGURES BUILD-ONLY SENTRY TOKEN → PREVIEW SYMBOLICATION PROOF** |

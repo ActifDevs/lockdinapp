@@ -165,5 +165,7 @@ describe("frontend Sentry sanitization", () => {
     expect(PRIVACY_INIT_FLAGS.sendDefaultPii).toBe(false);
     expect(PRIVACY_INIT_FLAGS.replaysSessionSampleRate).toBe(0);
     expect(PRIVACY_INIT_FLAGS.replaysOnErrorSampleRate).toBe(0);
+    expect(PRIVACY_INIT_FLAGS.tracesSampleRate).toBe(0);
+    expect(PRIVACY_INIT_FLAGS.profilesSampleRate).toBe(0);
   });
 });

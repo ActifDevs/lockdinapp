@@ -4,6 +4,25 @@ import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
 import { rm } from "node:fs/promises";
+import { sentryEsbuildPlugin } from "@sentry/esbuild-plugin";
+
+function readBuildEnv(env, name) {
+  const value = env[name];
+  return value && value.trim() ? value.trim() : undefined;
+}
+
+function resolveApiSentryRelease(env) {
+  return readBuildEnv(env, "SENTRY_RELEASE") || readBuildEnv(env, "VERCEL_GIT_COMMIT_SHA");
+}
+
+function shouldUploadSentrySourcemaps(env) {
+  return Boolean(
+    readBuildEnv(env, "SENTRY_AUTH_TOKEN") &&
+      readBuildEnv(env, "SENTRY_ORG") &&
+      readBuildEnv(env, "SENTRY_PROJECT") &&
+      resolveApiSentryRelease(env),
+  );
+}
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -109,7 +128,34 @@ async function buildAll() {
     sourcemap: "linked",
     plugins: [
       // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it
-      esbuildPluginPino({ transports: ["pino-pretty"] })
+      esbuildPluginPino({ transports: ["pino-pretty"] }),
+      ...(shouldUploadSentrySourcemaps(process.env)
+        ? [
+            sentryEsbuildPlugin({
+              org: readBuildEnv(process.env, "SENTRY_ORG"),
+              project: readBuildEnv(process.env, "SENTRY_PROJECT"),
+              authToken: readBuildEnv(process.env, "SENTRY_AUTH_TOKEN"),
+              telemetry: false,
+              debug: false,
+              sourcemaps: {
+                assets: ["./dist/**"],
+                ignore: [
+                  "**/node_modules/**",
+                  "**/.env",
+                  "**/.env.*",
+                  "**/*.pem",
+                  "**/credentials.json",
+                ],
+              },
+              release: {
+                name: resolveApiSentryRelease(process.env),
+                inject: true,
+                setCommits: false,
+                deploy: false,
+              },
+            }),
+          ]
+        : []),
     ],
     // Make sure packages that are cjs only (e.g. express) but are bundled continue to work in our esm output file
     banner: {
