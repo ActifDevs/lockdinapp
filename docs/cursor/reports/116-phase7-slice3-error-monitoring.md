@@ -154,14 +154,19 @@ One deployment → one release SHA. Authoritative hosted value: `VERCEL_GIT_COMM
 | Item | Value |
 | --- | --- |
 | Purpose | Create/finalize the Git-SHA release and upload JS + source maps |
-| Names | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` |
-| Client | **Never** `VITE_SENTRY_AUTH_TOKEN`. Token is not defined into the Vite client env. |
+| Integration | Owner-created Sentry Internal Integration: `Lockdin Vercel Source Maps` |
+| Permission | **Continuous Integration (CI) only**; no additional Sentry permissions enabled |
+| Secret | The integration token is configured in Vercel Preview as `SENTRY_AUTH_TOKEN` |
+| Hosted slugs | `SENTRY_ORG=actifdevs`; `SENTRY_PROJECT=lockdin-study` (non-secret) |
+| Branch scope | Vercel Preview variable scoped to `phase7-slice3-error-monitoring` |
+| Client | **Never** `VITE_SENTRY_AUTH_TOKEN`. The token is not defined into or exposed through the Vite client environment. |
 | Runtime | Not required. DSN-only init still works without maps. |
-| Storage | Vercel `lockdinapp-web` **build** environment (Preview first). Not committed. |
-| Minimum scopes (current Sentry docs for bundler plugins / org tokens) | Organization token, or personal/org token with **`project:releases`** (Release: Admin) and **`org:read`**. Equivalent UI: Project Read & Write + Release Admin. Avoid `org:admin` / account-wide admin. |
-| Rotation | Revoke the token in Sentry Auth Tokens, create a replacement with the same scopes, update the Vercel build env, redeploy. |
+| Storage | Vercel `lockdinapp-web` Preview build environment. The token value was never committed or printed in this report. |
+| Hosted evidence | The token successfully authenticated both frontend and API source-map uploads. |
+| Production | **NOT CONFIGURED** — no Production token or Sentry configuration yet |
+| Rotation | Revoke or rotate the Internal Integration token in Sentry, retain **Continuous Integration (CI) only**, update the branch-scoped Vercel Preview secret, and redeploy. |
 
-Real token: **not created in this slice**.
+A real build-only Sentry authentication token **was created and used** for the successful hosted Preview uploads. Its value remains secret and is not recorded in the repository.
 
 ## Alerting plan
 
