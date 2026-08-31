@@ -6,7 +6,7 @@
 - Branch: `phase7-slice3-error-monitoring`
 - Base / `origin/main`: `dbd15cc11b6ac8bdf3ca9fef99b304776bc62d8d`
 - Phase 7 Slice 7.2: **CLOSED** (Report 115 on main)
-- This slice: **7.3A local implementation + hosted Preview proof + 7.3B runtime-tag remediation**. Hosted frontend delivery and privacy proof passed; the remediated runtime tag still requires one hosted frontend Preview retest. Production Sentry remains unconfigured. No Production error injection, no Supabase changes, no migration 0016, and no merge.
+- This slice: **7.3A local implementation + hosted Preview proof + 7.3B runtime-tag remediation and final Preview reconciliation**. Hosted frontend delivery, privacy, and remediated runtime-tag proof passed. Production Sentry remains unconfigured. No Production error injection, no Supabase changes, no migration 0016, and no merge.
 - Migration head: **0015_silent_sentinel**. **0016 ABSENT**.
 - SDKs: `@sentry/react@10.71.0` (frontend), `@sentry/node@10.71.0` (API). Same major. Official current v10 APIs (`init`, `beforeSend`, `captureReactException`, `reactErrorHandler`). `setupExpressErrorHandler` is **not** used, to keep a single capture at the existing API error middleware.
 
@@ -178,21 +178,23 @@ Preview remains **PRODUCTION-BACKED**. No Production failure injection was perfo
 
 ## Hosted Preview proof
 
-Frontend hosted delivery: **PASS** (owner verified before this remediation, 2026-08-31).
+Frontend hosted delivery: **PASS** (owner verified after runtime-tag remediation, 2026-08-31).
 
 | Evidence | Result |
 | --- | --- |
 | Frontend event delivery | **PASS** |
-| Privacy inspection | **PASS** |
-| IP/geography scrubbing | **PASS** — the newest event showed geography as filtered |
-| Stacktrace | **PASS** |
-| Arbitrary message redaction | **PASS** |
 | `environment=preview` | **PASS** |
-| Release | **PASS** |
+| `runtime=frontend` | **PASS** |
+| `release=d27f686c5204f57993a906a81b96094e2e161f2d` | **PASS** |
+| Exception message `[redacted-message]` | **PASS** |
+| Stacktrace | **PRESENT — PASS** |
+| IP/geography | **FILTERED — PASS** |
+| PII | **NONE OBSERVED** |
+| Study content | **NONE OBSERVED** |
+| Session Replay | **NONE** |
 | Duplicate capture | **NONE** |
-| `runtime=frontend` | **MISSING** in the hosted event |
 
-API hosted proof remains **NOT PERFORMED** because Preview is Production-backed and no safe non-destructive API 500 path was introduced solely for telemetry proof. Local tests are the API evidence for this remediation.
+API hosted error proof: **SAFE-TEST BLOCKED**. Preview remains Production-backed and no safe non-destructive genuine API 500 path exists. No API error was manufactured solely for telemetry proof. Automated API monitoring tests remain **PASS**; this is the accepted safety boundary for hosted API proof.
 
 ## Runtime-tag root cause
 
@@ -236,7 +238,12 @@ Privacy/redaction regression: **PASS**. Duplicate capture remains **NONE** by de
 
 ## Merge readiness
 
-- Hosted runtime proof after remediation: **NOT YET RETESTED**.
-- Next gate: exactly one owner-authorized frontend Preview retest confirming `runtime=frontend` on the received event.
-- **MERGE: HOLD.**
-- Verdict: **READY FOR ONE FRONTEND PREVIEW RETEST**.
+| Gate | Verdict |
+| --- | --- |
+| SLICE 7.3A LOCAL | **PASS** |
+| SLICE 7.3B FRONTEND PREVIEW | **PASS** |
+| API HOSTED PROOF | **SAFE-TEST BLOCKED / ACCEPTED SAFETY BOUNDARY** |
+| PRODUCTION SENTRY | **NOT CONFIGURED** |
+| SLICE 7.3 | **IN PROGRESS** |
+| MERGE | **HOLD** |
+| NEXT | **OWNER REVIEW → PRODUCTION SENTRY CONFIG + MERGE** |
