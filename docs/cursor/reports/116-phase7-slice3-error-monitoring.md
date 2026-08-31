@@ -6,7 +6,7 @@
 - Branch: `phase7-slice3-error-monitoring`
 - Base / `origin/main`: `dbd15cc11b6ac8bdf3ca9fef99b304776bc62d8d`
 - Phase 7 Slice 7.2: **CLOSED** (Report 115 on main)
-- This slice: **7.3A local implementation + hosted Preview proof + 7.3B runtime-tag remediation + 7.3C debug_meta symbolication remediation**. Hosted frontend delivery, privacy, runtime tags, and source-map **upload** passed. Hosted **symbolication** remains owner-verified after this sanitizer fix. Production Sentry remains unconfigured. No Production error injection, no Supabase changes, no migration 0016, and no merge.
+- This slice: **7.3A local implementation + hosted Preview proof + 7.3B runtime-tag remediation + 7.3C debug_meta symbolication remediation**. Hosted frontend delivery, privacy, runtime tags, source-map upload, and stack symbolication passed. Production Sentry remains unconfigured. No Production error injection, no Supabase changes, no migration 0016, and no merge.
 - Migration head: **0015_silent_sentinel**. **0016 ABSENT**.
 - SDKs: `@sentry/react@10.71.0` (frontend), `@sentry/node@10.71.0` (API). Same major. Official current v10 APIs (`init`, `beforeSend`, `captureReactException`, `reactErrorHandler`). `setupExpressErrorHandler` is **not** used, to keep a single capture at the existing API error middleware.
 
@@ -124,7 +124,7 @@ Vercel already provides `VERCEL_ENV` and `VERCEL_GIT_COMMIT_SHA` to the API func
 
 Implemented in Slice 7.3C. Upload is **conditional** and does not run without `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, and a deployment SHA (`SENTRY_RELEASE` or `VERCEL_GIT_COMMIT_SHA`). Local/dev/test builds succeed without those values.
 
-Hosted symbolication is **not proven** until an owner-configured build-only token uploads maps for a Preview release that also emits events.
+Hosted source-map upload and symbolication are **PROVEN** for Preview release `975b857b33b712b47a98d1d6809b9e07ffbc4d87`.
 
 ## Source-map implementation
 
@@ -193,13 +193,13 @@ Filters: `environment` and `runtime` (`frontend` / `api`).
 | **MEDIUM** | Maps include compiled application sources for symbolication only. Study content is still stripped from events by `beforeSend`. |
 | **LOW** | Free-plan artifact/release limits may delay or drop uploads; events still ingest without maps. |
 
-## Remaining hosted source-map gate
+## Hosted source-map gate completion
 
-1. Owner creates a **build-only** token with the minimum scopes above.
-2. Set `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` on Vercel Preview (not `VITE_*`).
-3. Redeploy the feature branch. Confirm the build log uploaded maps for that SHA and public `dist/public` has no `.map` files.
-4. Trigger one Preview frontend error and confirm the issue stack is symbolicated for that SHA.
-5. Do **not** treat this slice as hosted symbolication proof. Production Sentry remains unconfigured.
+1. Build-only Preview credentials were configured without exposing the auth token to `VITE_*`.
+2. Frontend and API source-map uploads passed.
+3. The feature branch was redeployed at release `975b857b33b712b47a98d1d6809b9e07ffbc4d87`.
+4. The owner inspected the controlled Preview frontend event and confirmed symbolication passed.
+5. Production Sentry remains unconfigured.
 
 ## Tests
 
@@ -243,7 +243,7 @@ Coverage includes the original no-op / single-capture / failure-isolation tests 
 - Session Replay: **OFF**.
 - Default PII: **OFF**.
 - PostHog: **UNCHANGED**; it remains product analytics only and does not capture exceptions.
-- Source-map auth/upload: **HOSTED BUILD-ONLY CONFIG PRESENT**. Preview redeploy uploaded artifacts. Hosted stack **symbolication not inspected** in this session (no Sentry Cloud login).
+- Source-map auth/upload: **HOSTED BUILD-ONLY CONFIG PRESENT**. Preview frontend and API artifact uploads passed. Owner inspection confirmed hosted frontend stack symbolication.
 
 Preview remains **PRODUCTION-BACKED**. No Production failure injection was performed and no synthetic API 500 was invented.
 
@@ -256,7 +256,7 @@ Frontend hosted delivery: **PASS** (owner verified after runtime-tag remediation
 | Frontend event delivery | **PASS** |
 | `environment=preview` | **PASS** |
 | `runtime=frontend` | **PASS** |
-| `release=d27f686c5204f57993a906a81b96094e2e161f2d` | **PASS** |
+| `release=975b857b33b712b47a98d1d6809b9e07ffbc4d87` | **PASS** |
 | Exception message `[redacted-message]` | **PASS** |
 | Stacktrace | **PRESENT — PASS** |
 | IP/geography | **FILTERED — PASS** |
@@ -313,17 +313,15 @@ Privacy/redaction regression: **PASS**. Duplicate capture remains **NONE** by de
 | --- | --- |
 | SLICE 7.3A LOCAL | **PASS** |
 | SLICE 7.3B FRONTEND PREVIEW | **PASS** |
-| API HOSTED PROOF | **SAFE-TEST BLOCKED / ACCEPTED SAFETY BOUNDARY** |
-| SOURCE-MAP IMPLEMENTATION | **PASS** |
-| HOSTED FRONTEND SYMBOLICATION | **BLOCKED — SENTRY UI NOT AVAILABLE TO THIS AGENT** |
-| API MAP UPLOAD | **PASS** |
+| SLICE 7.3C SOURCE-MAP IMPLEMENTATION | **PASS** |
+| SLICE 7.3C HOSTED SYMBOLICATION | **PASS** |
 | API HOSTED ERROR | **SAFE-TEST BLOCKED / ACCEPTED SAFETY BOUNDARY** |
 | PRODUCTION SENTRY | **NOT CONFIGURED** |
 | SLICE 7.3 | **IN PROGRESS** |
 | MERGE | **HOLD** |
-| NEXT | **OWNER INSPECTS PREVIEW EVENT SYMBOLICATION IN SENTRY → THEN PRODUCTION SENTRY CONFIG + MERGE/CLOSEOUT** |
+| NEXT | **PRODUCTION SENTRY CONFIG + MERGE/CLOSEOUT** |
 
-## Hosted Source-Map Proof
+## Pre-remediation Hosted Source-Map Proof
 
 Date: 2026-08-31. Implementation SHA unchanged: `d9894fece6958084f154f60219ebf0f290658e7e`. Documentation-only follow-up.
 
@@ -346,9 +344,9 @@ Date: 2026-08-31. Implementation SHA unchanged: `d9894fece6958084f154f60219ebf0f
 
 **Public frontend maps:** **NOT EXPOSED**. Entry JS has no `sourceMappingURL`. Known asset `.map` URLs are not downloadable application maps. Plugin delete-after-upload ran as configured.
 
-**Frontend symbolication:** **NOT PROVEN**. One controlled Preview `Error("SENTRY_SOURCEMAP_PREVIEW_TEST")` was thrown in a headless Chrome session against this deployment. This agent had **no Sentry Cloud session** (`actifdevs.sentry.io` → Sign In). Newest issue/event was not inspected. Do not treat stacks as symbolicated until the owner opens the Preview event for this SHA.
+**Frontend symbolication at this pre-remediation SHA:** **NOT PROVEN**. One controlled Preview `Error("SENTRY_SOURCEMAP_PREVIEW_TEST")` was thrown in a headless Chrome session against this deployment. This agent had **no Sentry Cloud session** (`actifdevs.sentry.io` → Sign In). The later owner inspection and remediation are recorded below.
 
-**Privacy retest:** **NOT RE-INSPECTED** in Sentry (same login gap). Prior 7.3B Preview event remained redacted. Public bundle contains no auth token.
+**Privacy retest at this pre-remediation SHA:** **NOT RE-INSPECTED** in Sentry (same login gap). Prior 7.3B Preview event remained redacted. Public bundle contains no auth token.
 
 **API hosted error:** **SAFE-TEST BLOCKED / ACCEPTED SAFETY BOUNDARY**. Maps uploaded; no manufactured API 500.
 
@@ -379,4 +377,27 @@ This is **not** a source-map upload/release defect. The build pipeline was not r
 
 **Privacy review:** no PII/user content reintroduced; no auth token in the client bundle; arbitrary `debug_meta` is not copied.
 
-**Hosted symbolication after this change:** **NOT YET OWNER-VERIFIED**. Local tests must not be treated as hosted PASS. A new Preview SHA must upload maps and the owner must inspect the new event for `debug_meta` + a symbolicated stack.
+## Final hosted symbolication proof
+
+Owner inspection of the hosted Preview frontend event for release `975b857b33b712b47a98d1d6809b9e07ffbc4d87`:
+
+| Evidence | Result |
+| --- | --- |
+| Release | `975b857b33b712b47a98d1d6809b9e07ffbc4d87` — **PASS** |
+| `debug_meta` | **PRESENT — PASS** |
+| `debug_meta` image | `type=sourcemap` — **PASS** |
+| `debug_id` | **PRESENT — PASS** |
+| `code_file` | generated frontend asset — **PASS** |
+| `platform` | `javascript` — **PASS** |
+| Frontend source-map upload | **PASS** |
+| API source-map upload | **PASS** |
+| Hosted stack symbolication | **PASS** |
+| Privacy | **UNCHANGED** |
+| Exception | `[redacted-message]` |
+| PII | **NONE OBSERVED** |
+| Study content | **NONE OBSERVED** |
+| API hosted error | **NOT TESTED — ACCEPTED SAFETY BOUNDARY** |
+
+The generated frontend asset frame was resolved by Sentry to original source information under the Sentry browser package rather than remaining only a minified `/assets/index-*.js:<line>:<column>` frame.
+
+The top `<unknown> in eval` frame is expected because the controlled test was triggered from DevTools/eval and therefore has no original application source file to symbolicate.
