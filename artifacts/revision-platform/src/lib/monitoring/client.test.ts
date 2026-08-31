@@ -84,6 +84,32 @@ describe("frontend Sentry client", () => {
         },
       }).tags,
     ).toEqual({ runtime: "frontend" });
+
+    const debugMetaEvent = beforeSend({
+      platform: "javascript",
+      tags: { runtime: "frontend" },
+      debug_meta: {
+        sdk_debug: { leak: true },
+        images: [
+          {
+            type: "sourcemap",
+            code_file: "https://app.example/assets/index.js?token=abc#x",
+            debug_id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+            extra: "drop",
+          },
+        ],
+      },
+    } as never);
+    expect((debugMetaEvent as { platform?: string }).platform).toBe("javascript");
+    expect((debugMetaEvent as { debug_meta?: unknown }).debug_meta).toEqual({
+      images: [
+        {
+          type: "sourcemap",
+          debug_id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+          code_file: "/assets/index.js",
+        },
+      ],
+    });
   });
 
   it("captures a boundary error once and ignores Sentry failures", async () => {

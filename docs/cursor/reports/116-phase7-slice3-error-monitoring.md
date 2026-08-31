@@ -6,7 +6,7 @@
 - Branch: `phase7-slice3-error-monitoring`
 - Base / `origin/main`: `dbd15cc11b6ac8bdf3ca9fef99b304776bc62d8d`
 - Phase 7 Slice 7.2: **CLOSED** (Report 115 on main)
-- This slice: **7.3A local implementation + hosted Preview proof + 7.3B runtime-tag remediation and final Preview reconciliation**. Hosted frontend delivery, privacy, and remediated runtime-tag proof passed. Production Sentry remains unconfigured. No Production error injection, no Supabase changes, no migration 0016, and no merge.
+- This slice: **7.3A local implementation + hosted Preview proof + 7.3B runtime-tag remediation + 7.3C debug_meta symbolication remediation**. Hosted frontend delivery, privacy, runtime tags, and source-map **upload** passed. Hosted **symbolication** remains owner-verified after this sanitizer fix. Production Sentry remains unconfigured. No Production error injection, no Supabase changes, no migration 0016, and no merge.
 - Migration head: **0015_silent_sentinel**. **0016 ABSENT**.
 - SDKs: `@sentry/react@10.71.0` (frontend), `@sentry/node@10.71.0` (API). Same major. Official current v10 APIs (`init`, `beforeSend`, `captureReactException`, `reactErrorHandler`). `setupExpressErrorHandler` is **not** used, to keep a single capture at the existing API error middleware.
 
@@ -86,7 +86,8 @@ Missing DSN = safe no-op. Sentry exceptions are swallowed so product/API behavio
 
 **Retained**
 
-- `environment`, `release`
+- `environment`, `release`, `platform` (`javascript` | `node` only; never synthesized)
+- `debug_meta.images[]` for `@sentry/core` `SourceMapDebugImage` (`type=sourcemap`) only: `type`, `debug_id`, sanitized `code_file`
 - exception `type`
 - exception `value` only if it is on an explicit allow-list (currently empty; otherwise `[redacted-message]`)
 - stack frames, using official field names only: `function`, `module`, `filename`, `abs_path`, `lineno`, `colno`, `in_app`, `platform`
@@ -352,3 +353,30 @@ Date: 2026-08-31. Implementation SHA unchanged: `d9894fece6958084f154f60219ebf0f
 **API hosted error:** **SAFE-TEST BLOCKED / ACCEPTED SAFETY BOUNDARY**. Maps uploaded; no manufactured API 500.
 
 **Secrets:** none printed or committed.
+
+## Hosted symbolication finding (Slice 7.3C)
+
+Owner inspection of the Preview event for release `d9894fece6958084f154f60219ebf0f290658e7e`:
+
+- Frontend and API source maps **uploaded successfully**.
+- Release linkage **passed**.
+- Stack remained minified (`/assets/index-*.js:<line>:<column>`).
+- Exact event JSON contained **no `debug_meta`**.
+- Event `platform` was observed as `other`.
+
+**Root cause (local proof):** `beforeSend` rebuilds the Sentry event from an allow-list. `@sentry/core` `Event` includes `debug_meta` (`images: SourceMapDebugImage[]` with `type`, `code_file`, `debug_id`) and `platform`. The sanitizer omitted both. Sentry ingest then cannot Debug-ID-match uploaded maps, and missing `platform` surfaces as `other`.
+
+This is **not** a source-map upload/release defect. The build pipeline was not redesigned.
+
+**Remediation**
+
+- Preserve `debug_meta.images` entries only when `type === "sourcemap"`, `debug_id` is a valid UUID, and `code_file` is a generated JS/script path.
+- Sanitize `code_file` with the **same** `sanitizeFramePath` used for frame `abs_path` / `filename` (strip query and fragment; do not treat the two sides differently).
+- Drop wasm/macho images, unknown `debug_meta` keys, and extra image fields (`debug_file`, nested objects).
+- Preserve event `platform` only when it is `javascript` or `node`. Do not synthesize platform.
+
+**Tests:** representative fixtures prove debug_meta survival, field allow-list, debug_id unchanged, query/fragment stripped from `code_file`, `abs_path === code_file`, unknown metadata dropped, `platform=javascript` preserved, unknown platforms dropped, existing privacy tags/user/extra/auth/bodies/study-text/Replay/PostHog/no-duplicate-capture contracts unchanged.
+
+**Privacy review:** no PII/user content reintroduced; no auth token in the client bundle; arbitrary `debug_meta` is not copied.
+
+**Hosted symbolication after this change:** **NOT YET OWNER-VERIFIED**. Local tests must not be treated as hosted PASS. A new Preview SHA must upload maps and the owner must inspect the new event for `debug_meta` + a symbolicated stack.

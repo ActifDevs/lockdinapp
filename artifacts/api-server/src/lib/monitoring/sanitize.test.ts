@@ -6,9 +6,29 @@ import {
   sanitizeSentryEvent,
 } from "./sanitize.js";
 
+const SOURCEMAP_DEBUG_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+const MATCHING_SCRIPT_URL = "file:///app/dist/index.mjs?x=1#frag";
+
 const REPRESENTATIVE_API_EVENT = {
   environment: "production",
   release: "sha",
+  platform: "node",
+  debug_meta: {
+    sdk_debug: { secret: "should-not-survive" },
+    images: [
+      {
+        type: "sourcemap",
+        code_file: MATCHING_SCRIPT_URL,
+        debug_id: SOURCEMAP_DEBUG_ID,
+        debug_file: "/secret/notes.map",
+      },
+      {
+        type: "wasm",
+        code_file: "file:///app/dist/mod.wasm",
+        debug_id: "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff",
+      },
+    ],
+  },
   message: "Paper 42 score was 67",
   user: { email: "a@b.co" },
   extra: { detail: "My private task content" },
@@ -35,7 +55,7 @@ const REPRESENTATIVE_API_EVENT = {
             {
               function: "errorHandler",
               filename: "/app/dist/index.mjs",
-              abs_path: "file:///app/dist/index.mjs?x=1",
+              abs_path: MATCHING_SCRIPT_URL,
               lineno: 88,
               colno: 3,
               in_app: true,
@@ -95,5 +115,35 @@ describe("API Sentry sanitization", () => {
 
   it("does not enable default PII", () => {
     expect(PRIVACY_INIT_FLAGS.sendDefaultPii).toBe(false);
+  });
+
+  it("preserves only source-map debug_meta required for symbolication", () => {
+    const sanitized = sanitizeSentryEvent(REPRESENTATIVE_API_EVENT);
+    expect(sanitized.debug_meta).toEqual({
+      images: [
+        {
+          type: "sourcemap",
+          debug_id: SOURCEMAP_DEBUG_ID,
+          code_file: "/app/dist/index.mjs",
+        },
+      ],
+    });
+    expect(sanitized.debug_meta).not.toHaveProperty("sdk_debug");
+    expect(JSON.stringify(sanitized.debug_meta)).not.toContain("?x=1");
+    expect(JSON.stringify(sanitized.debug_meta)).not.toContain("#frag");
+    expect(JSON.stringify(sanitized.debug_meta)).not.toContain("wasm");
+  });
+
+  it("keeps frame abs_path aligned with debug image code_file", () => {
+    const sanitized = sanitizeSentryEvent(REPRESENTATIVE_API_EVENT);
+    const frame = sanitized.exception?.values?.[0]?.stacktrace?.frames?.[0];
+    const image = sanitized.debug_meta?.images?.[0];
+    expect(frame?.abs_path).toBe(image?.code_file);
+    expect(frame?.abs_path).toBe("/app/dist/index.mjs");
+  });
+
+  it("preserves node platform and drops unknown platforms", () => {
+    expect(sanitizeSentryEvent(REPRESENTATIVE_API_EVENT).platform).toBe("node");
+    expect(sanitizeSentryEvent({ platform: "other" }).platform).toBeUndefined();
   });
 });

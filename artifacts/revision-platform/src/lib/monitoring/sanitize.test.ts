@@ -6,10 +6,37 @@ import {
   sanitizeSentryEvent,
 } from "./sanitize";
 
+const SOURCEMAP_DEBUG_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+const MATCHING_SCRIPT_URL =
+  "https://app.example/assets/index-d9894fe.js?token=abc#frag";
+
 const REPRESENTATIVE_EVENT = {
   environment: "preview",
   release: "deadbeef",
+  platform: "javascript",
   message: "Revise photosynthesis chapter 4",
+  debug_meta: {
+    sdk_debug: { secret: "should-not-survive" },
+    images: [
+      {
+        type: "sourcemap",
+        code_file: MATCHING_SCRIPT_URL,
+        debug_id: SOURCEMAP_DEBUG_ID,
+        debug_file: "/secret/notes.map",
+        extra: { notes: "My chemistry notes about equilibrium" },
+      },
+      {
+        type: "wasm",
+        code_file: "https://app.example/module.wasm?user=1",
+        debug_id: "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff",
+      },
+      {
+        type: "macho",
+        debug_id: "cccccccc-dddd-4eee-8fff-111111111111",
+        image_addr: "0x1000",
+      },
+    ],
+  },
   user: { email: "a@b.co", username: "sam" },
   extra: { detail: "My private task content" },
   contexts: { culture: { notes: "My chemistry notes about equilibrium" } },
@@ -37,8 +64,8 @@ const REPRESENTATIVE_EVENT = {
             {
               function: "createTask",
               module: "App",
-              filename: "https://app.example/assets/index.js?token=abc#x",
-              abs_path: "https://app.example/src/pages/study-plan.tsx?user=1",
+              filename: MATCHING_SCRIPT_URL,
+              abs_path: MATCHING_SCRIPT_URL,
               lineno: 42,
               colno: 7,
               in_app: true,
@@ -96,8 +123,8 @@ describe("frontend Sentry sanitization", () => {
       in_app: true,
       platform: "javascript",
     });
-    expect(frame?.filename).toBe("/assets/index.js");
-    expect(frame?.abs_path).toBe("/src/pages/study-plan.tsx");
+    expect(frame?.filename).toBe("/assets/index-d9894fe.js");
+    expect(frame?.abs_path).toBe("/assets/index-d9894fe.js");
     expect(frame).not.toHaveProperty("vars");
     expect(frame).not.toHaveProperty("context_line");
     expect(frame).not.toHaveProperty("pre_context");
@@ -167,5 +194,40 @@ describe("frontend Sentry sanitization", () => {
     expect(PRIVACY_INIT_FLAGS.replaysOnErrorSampleRate).toBe(0);
     expect(PRIVACY_INIT_FLAGS.tracesSampleRate).toBe(0);
     expect(PRIVACY_INIT_FLAGS.profilesSampleRate).toBe(0);
+  });
+
+  it("preserves only source-map debug_meta required for symbolication", () => {
+    const sanitized = sanitizeSentryEvent(REPRESENTATIVE_EVENT);
+    expect(sanitized.debug_meta).toEqual({
+      images: [
+        {
+          type: "sourcemap",
+          debug_id: SOURCEMAP_DEBUG_ID,
+          code_file: "/assets/index-d9894fe.js",
+        },
+      ],
+    });
+    expect(sanitized.debug_meta).not.toHaveProperty("sdk_debug");
+    expect(sanitized.debug_meta?.images?.[0]).not.toHaveProperty("debug_file");
+    expect(sanitized.debug_meta?.images?.[0]).not.toHaveProperty("extra");
+    expect(JSON.stringify(sanitized.debug_meta)).not.toContain("token=abc");
+    expect(JSON.stringify(sanitized.debug_meta)).not.toContain("#frag");
+    expect(JSON.stringify(sanitized.debug_meta)).not.toContain("wasm");
+    expect(JSON.stringify(sanitized.debug_meta)).not.toContain("macho");
+    expect(JSON.stringify(sanitized.debug_meta)).not.toContain("My chemistry notes");
+  });
+
+  it("keeps frame abs_path aligned with debug image code_file", () => {
+    const sanitized = sanitizeSentryEvent(REPRESENTATIVE_EVENT);
+    const frame = sanitized.exception?.values?.[0]?.stacktrace?.frames?.[0];
+    const image = sanitized.debug_meta?.images?.[0];
+    expect(frame?.abs_path).toBe(image?.code_file);
+    expect(frame?.abs_path).toBe("/assets/index-d9894fe.js");
+  });
+
+  it("preserves browser platform=javascript and drops unknown platforms", () => {
+    expect(sanitizeSentryEvent(REPRESENTATIVE_EVENT).platform).toBe("javascript");
+    expect(sanitizeSentryEvent({ platform: "other" }).platform).toBeUndefined();
+    expect(sanitizeSentryEvent({ platform: "python" }).platform).toBeUndefined();
   });
 });

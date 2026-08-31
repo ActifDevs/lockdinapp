@@ -14,6 +14,11 @@ function isOpaqueIdSegment(segment: string): boolean {
 
 const ALLOWED_TAGS = new Set(["request_id", "runtime"]);
 
+/** Static SDK platform identifiers from @sentry/core Event + browser/node SDKs. */
+const ALLOWED_PLATFORMS = new Set(["javascript", "node"]);
+
+const SOURCEMAP_DEBUG_IMAGE_TYPE = "sourcemap";
+
 /** Official browser SDK breadcrumb categories we keep (fetch / xhr / navigation). */
 const ALLOWED_BREADCRUMB_CATEGORIES = new Set([
   "navigation",
@@ -59,6 +64,13 @@ export type LooseException = {
   };
 };
 
+export type LooseDebugImage = {
+  type?: string;
+  code_file?: string;
+  debug_id?: string;
+  [key: string]: unknown;
+};
+
 export type LooseSentryEvent = {
   message?: string;
   exception?: { values?: LooseException[] };
@@ -77,6 +89,11 @@ export type LooseSentryEvent = {
   contexts?: Record<string, unknown>;
   environment?: string;
   release?: string;
+  platform?: string;
+  debug_meta?: {
+    images?: LooseDebugImage[];
+    [key: string]: unknown;
+  };
 };
 
 export function sanitizeRoutePath(raw: string): string {
@@ -118,6 +135,58 @@ export function sanitizeExceptionValue(value: string | undefined): string | unde
   return REDACTED_MESSAGE;
 }
 
+function isValidDebugId(value: string): boolean {
+  return UUID_SEGMENT_RE.test(value);
+}
+
+function isApplicationScriptReference(path: string): boolean {
+  return /\.(m|c)?js$/i.test(path) || /\/assets\//.test(path);
+}
+
+function sanitizeDebugImage(image: LooseDebugImage): LooseDebugImage | undefined {
+  if (image.type !== SOURCEMAP_DEBUG_IMAGE_TYPE) {
+    return undefined;
+  }
+  if (typeof image.debug_id !== "string" || !isValidDebugId(image.debug_id)) {
+    return undefined;
+  }
+  if (typeof image.code_file !== "string" || !image.code_file) {
+    return undefined;
+  }
+  const codeFile = sanitizeFramePath(image.code_file);
+  if (!codeFile || !isApplicationScriptReference(codeFile)) {
+    return undefined;
+  }
+  return {
+    type: SOURCEMAP_DEBUG_IMAGE_TYPE,
+    debug_id: image.debug_id,
+    code_file: codeFile,
+  };
+}
+
+function sanitizeDebugMeta(
+  debugMeta: LooseSentryEvent["debug_meta"],
+): LooseSentryEvent["debug_meta"] | undefined {
+  if (!debugMeta || !Array.isArray(debugMeta.images)) {
+    return undefined;
+  }
+  const images = debugMeta.images
+    .filter((image): image is LooseDebugImage => Boolean(image) && typeof image === "object")
+    .map(sanitizeDebugImage)
+    .filter((image): image is LooseDebugImage => Boolean(image));
+  if (!images.length) {
+    return undefined;
+  }
+  return { images };
+}
+
+function sanitizePlatform(platform: string | undefined): string | undefined {
+  if (typeof platform !== "string") {
+    return undefined;
+  }
+  return ALLOWED_PLATFORMS.has(platform) ? platform : undefined;
+}
+
 function sanitizeStackFrame(frame: LooseStackFrame): LooseStackFrame {
   const next: LooseStackFrame = {};
   if (typeof frame.function === "string") {
@@ -152,6 +221,16 @@ export function sanitizeSentryEvent(event: LooseSentryEvent): LooseSentryEvent {
     environment: event.environment,
     release: event.release,
   };
+
+  const platform = sanitizePlatform(event.platform);
+  if (platform) {
+    next.platform = platform;
+  }
+
+  const debugMeta = sanitizeDebugMeta(event.debug_meta);
+  if (debugMeta) {
+    next.debug_meta = debugMeta;
+  }
 
   if (event.exception?.values) {
     next.exception = {
