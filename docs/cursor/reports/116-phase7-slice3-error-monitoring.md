@@ -6,7 +6,7 @@
 - Branch: `phase7-slice3-error-monitoring`
 - Base / `origin/main`: `dbd15cc11b6ac8bdf3ca9fef99b304776bc62d8d`
 - Phase 7 Slice 7.2: **CLOSED** (Report 115 on main)
-- This slice: **7.3A local implementation + hosted Preview proof + 7.3B runtime-tag remediation + 7.3C debug_meta symbolication remediation**. Hosted frontend delivery, privacy, runtime tags, source-map upload, and stack symbolication passed. Production Sentry remains unconfigured. No Production error injection, no Supabase changes, no migration 0016, and no merge.
+- This slice: **CLOSED** after 7.3A local implementation, 7.3B hosted Preview delivery/privacy and runtime-tag remediation, 7.3C source-map/debug metadata symbolication, and 7.3D Production configuration, merge, runtime-packaging recovery, and closeout. Production Sentry is configured; Production source-map uploads and normal health checks passed. Production event ingestion was deliberately not tested. No Production error injection, Supabase change, migration, or PostHog change occurred.
 - Migration head: **0015_silent_sentinel**. **0016 ABSENT**.
 - SDKs: `@sentry/react@10.71.0` (frontend), `@sentry/node@10.71.0` (API). Same major. Official current v10 APIs (`init`, `beforeSend`, `captureReactException`, `reactErrorHandler`). `setupExpressErrorHandler` is **not** used, to keep a single capture at the existing API error middleware.
 
@@ -156,28 +156,28 @@ One deployment → one release SHA. Authoritative hosted value: `VERCEL_GIT_COMM
 | Purpose | Create/finalize the Git-SHA release and upload JS + source maps |
 | Integration | Owner-created Sentry Internal Integration: `Lockdin Vercel Source Maps` |
 | Permission | **Continuous Integration (CI) only**; no additional Sentry permissions enabled |
-| Secret | The integration token is configured in Vercel Preview as `SENTRY_AUTH_TOKEN` |
+| Secret | The integration token is configured in Vercel Preview and Production as Sensitive `SENTRY_AUTH_TOKEN` variables |
 | Hosted slugs | `SENTRY_ORG=actifdevs`; `SENTRY_PROJECT=lockdin-study` (non-secret) |
-| Branch scope | Vercel Preview variable scoped to `phase7-slice3-error-monitoring` |
+| Branch scope | Preview variable scoped to `phase7-slice3-error-monitoring`; Production variable scoped to the Production environment |
 | Client | **Never** `VITE_SENTRY_AUTH_TOKEN`. The token is not defined into or exposed through the Vite client environment. |
 | Runtime | Not required. DSN-only init still works without maps. |
-| Storage | Vercel `lockdinapp-web` Preview build environment. The token value was never committed or printed in this report. |
+| Storage | Vercel `lockdinapp-web` Preview and Production build environments. The token value was never committed or printed in this report. |
 | Hosted evidence | The token successfully authenticated both frontend and API source-map uploads. |
-| Production | **NOT CONFIGURED** — no Production token or Sentry configuration yet |
-| Rotation | Revoke or rotate the Internal Integration token in Sentry, retain **Continuous Integration (CI) only**, update the branch-scoped Vercel Preview secret, and redeploy. |
+| Production | **CONFIGURED** — runtime DSNs/environments and the CI-only build credential are present for Production |
+| Rotation | Revoke or rotate the Internal Integration token in Sentry, retain **Continuous Integration (CI) only**, update both Vercel Preview and Production secrets, and redeploy. |
 
-A real build-only Sentry authentication token **was created and used** for the successful hosted Preview uploads. Its value remains secret and is not recorded in the repository.
+A real build-only Sentry authentication token **was created and used** for successful hosted Preview and Production uploads. Its value remains secret and is not recorded in the repository.
 
 ## Alerting plan
 
-Do not create alerts in this local implementation (no hosted Sentry write access authorized).
+No alert was created during the local implementation. Production alert creation was evaluated during closeout and deferred because a minimal, environment-scoped rule could not be configured cleanly through the available control path without risking noisy notification behaviour. Issues remain visible in Sentry.
 
 **Preview**
 
 - Issues visible in the project inbox.
 - No paging, no team-wide Slack/email storms.
 
-**Production** (configure only after Production DSN + source-map proof; `environment=production`)
+**Desired Production rules (deferred after Production proof; `environment=production`)**
 
 - New unhandled issue.
 - Regression of a resolved issue.
@@ -204,7 +204,7 @@ Filters: `environment` and `runtime` (`frontend` / `api`).
 2. Frontend and API source-map uploads passed.
 3. The feature branch was redeployed at release `975b857b33b712b47a98d1d6809b9e07ffbc4d87`.
 4. The owner inspected the controlled Preview frontend event and confirmed symbolication passed.
-5. Production Sentry remains unconfigured.
+5. At this Preview-only gate, Production Sentry remained unconfigured; Production configuration and proof are recorded in the closeout sections below.
 
 ## Tests
 
@@ -244,7 +244,7 @@ Coverage includes the original no-op / single-capture / failure-isolation tests 
 
 - Topology: approved **ONE organization / ONE project**, separated by `environment` and `runtime`.
 - Preview frontend Sentry: **CONFIGURED** and delivery proven.
-- Production Sentry: **NOT CONFIGURED**.
+- Production Sentry: **CONFIGURED**; normal runtime ingestion is enabled for `environment=production`, but deliberate Production error ingestion was not tested.
 - Session Replay: **OFF**.
 - Default PII: **OFF**.
 - PostHog: **UNCHANGED**; it remains product analytics only and does not capture exceptions.
@@ -321,10 +321,10 @@ Privacy/redaction regression: **PASS**. Duplicate capture remains **NONE** by de
 | SLICE 7.3C SOURCE-MAP IMPLEMENTATION | **PASS** |
 | SLICE 7.3C HOSTED SYMBOLICATION | **PASS** |
 | API HOSTED ERROR | **SAFE-TEST BLOCKED / ACCEPTED SAFETY BOUNDARY** |
-| PRODUCTION SENTRY | **NOT CONFIGURED** |
-| SLICE 7.3 | **IN PROGRESS** |
-| MERGE | **HOLD** |
-| NEXT | **PRODUCTION SENTRY CONFIG + MERGE/CLOSEOUT** |
+| PRODUCTION SENTRY | **CONFIGURED** |
+| SLICE 7.3 | **CLOSED** |
+| MERGE | **COMPLETE** |
+| NEXT | **SLICE 7.4 — SUPABASE AUTH ABUSE PROTECTION (not begun in this run)** |
 
 ## Pre-remediation Hosted Source-Map Proof
 
@@ -406,3 +406,126 @@ Owner inspection of the hosted Preview frontend event for release `975b857b33b71
 The generated frontend asset frame was resolved by Sentry to original source information under the Sentry browser package rather than remaining only a minified `/assets/index-*.js:<line>:<column>` frame.
 
 The top `<unknown> in eval` frame is expected because the controlled test was triggered from DevTools/eval and therefore has no original application source file to symbolicate.
+
+## Production configuration
+
+Production uses the approved single-project topology:
+
+- Organization: `actifdevs`
+- Project: `lockdin-study`
+- Separation: `environment=preview|production` and `runtime=frontend|api`
+- Runtime variables: `VITE_SENTRY_DSN`, `SENTRY_DSN`, `VITE_SENTRY_ENVIRONMENT=production`, and `SENTRY_ENVIRONMENT=production`
+- Build variables: Sensitive `SENTRY_AUTH_TOKEN`, `SENTRY_ORG=actifdevs`, and `SENTRY_PROJECT=lockdin-study`
+- `VITE_SENTRY_AUTH_TOKEN`: **ABSENT**
+
+The existing CI-only Internal Integration token is server/build-only. No token or DSN value was printed or committed. Session Replay, tracing, profiling, user feedback, and default PII remain off. Project Data Scrubber, Default Scrubbers, Prevent Storing IP Addresses, and the additional sensitive-field list (`email`, `city`, `subdivision`, `region`, `country_code`, `ip_address`) remain enabled.
+
+## Production deployment
+
+The completed monitoring feature branch tip `29ea33865821525ebd674817bce71583c4bf3c9d` was merged without squashing its implementation/evidence history.
+
+| Git evidence | SHA |
+| --- | --- |
+| Starting `main` | `dbd15cc11b6ac8bdf3ca9fef99b304776bc62d8d` |
+| Slice 7.3 feature tip | `29ea33865821525ebd674817bce71583c4bf3c9d` |
+| Original Slice 7.3 merge | `6525355b8a2d09bc9f9e593b2e1c1f7ab4af91bc` |
+| Runtime-packaging hotfix implementation | `80fbf8a0e287ecc298043a4255588babc98e35f7` |
+| Runtime-packaging hotfix merge | `202f51a6c96a9f6edcfcac8c075ed58c11bed310` |
+
+The initial Production deployment from the Slice 7.3 merge was `dpl_6zMekDc74zTVjA5BvfeMqiL78tPV` (`https://lockdinapp-awsvw3byk-actif-devs.vercel.app`). Vercel reported **READY** and both source-map uploads passed, but every normal API request failed during function startup with `FUNCTION_INVOCATION_FAILED`. Runtime logs showed:
+
+`Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@opentelemetry/core' imported from /var/task/artifacts/api-server/dist/index.mjs`
+
+This failed deployment is retained as historical evidence; it was not hidden by the recovery.
+
+## Runtime-packaging recovery
+
+Root cause: the API esbuild graph intentionally externalized `@opentelemetry/*`, and the built artifact imported four OpenTelemetry packages at runtime. `@opentelemetry/api@1.9.1` was already a direct API dependency, but `core`, `instrumentation`, and `sdk-trace-base` were only transitive through Sentry, so Vercel's serverless runtime package did not reliably include them.
+
+The minimum dependency-owner fix was made in `@workspace/api-server`:
+
+| Direct runtime dependency added | Resolved version | Built-artifact use |
+| --- | --- | --- |
+| `@opentelemetry/core` | `2.10.0` | core context/propagation helpers imported by the externalized graph |
+| `@opentelemetry/instrumentation` | `0.220.0` | instrumentation base/registration symbols imported by the externalized graph |
+| `@opentelemetry/sdk-trace-base` | `2.10.0` | trace-base symbols imported by the externalized graph |
+
+These are the versions already resolved by `@sentry/node@10.71.0`; no second OpenTelemetry version family was introduced. `@opentelemetry/api@1.9.1` was unchanged. `skipOpenTelemetrySetup: true`, `registerEsmLoaderHooks: false`, and tracing off were preserved. Sentry initialization, privacy, application routes, and business behaviour were not changed.
+
+Before deployment, a production-only API workspace was materialized in an isolated system temporary directory. Importing its built `dist/index.mjs` completed with `API_ARTIFACT_IMPORT_PASS`, proving the formerly missing external runtime modules resolved from the production dependency set.
+
+Local recovery gates:
+
+| Gate | Result |
+| --- | --- |
+| `pnpm install --frozen-lockfile` | **PASS** |
+| `pnpm run typecheck` | **PASS** |
+| `pnpm --filter @workspace/api-server test` | **PASS — 36 files, 187 tests** |
+| Production-equivalent API artifact import | **PASS** |
+| `pnpm --filter @workspace/revision-platform run build:vercel` | **PASS** |
+| `pnpm run check:migrations` | **PASS — count=16, head=`0015_silent_sentinel`** |
+| `pnpm run check:codegen` | **PASS — no OpenAPI drift** |
+| `pnpm --filter @workspace/scripts test:unit` | **PASS — 41 tests** |
+| `pnpm --filter @workspace/scripts test:harness` | **PASS — 21 tests** |
+| `git diff --check` | **PASS** |
+
+## Production source-map proof
+
+Replacement Production deployment:
+
+- Deployment: `dpl_CNqDMcDp8rx7xZZo7gnFmxBePwfF`
+- Immutable URL: `https://lockdinapp-b8m7nnzto-actif-devs.vercel.app`
+- Canonical URL: `https://lockdinapp-web.vercel.app`
+- Source: `202f51a6c96a9f6edcfcac8c075ed58c11bed310`
+- Environment: Production
+- State: **READY**
+
+Build logs proved both `[sentry-esbuild-plugin] Info: Successfully uploaded source maps to Sentry` and `[sentry-vite-plugin] Info: Successfully uploaded source maps to Sentry`, using organization `actifdevs`, project `lockdin-study`, and release `202f51a6c96a9f6edcfcac8c075ed58c11bed310`. No 401, 403, auth failure, organization/project mismatch, or token value appeared in the build evidence.
+
+The generated frontend map URL for the deployed entry asset returned **403 with an empty body**. Public frontend source maps are not exposed.
+
+## Production smoke
+
+Only normal, non-mutating requests were sent to the canonical Production URL:
+
+| Request | Result |
+| --- | --- |
+| `GET /api/healthz` | **200 — PASS** (`status=ok`) |
+| `GET /api/healthz/db` | **200 — PASS** (`status=ok`, `database=ok`) |
+| `GET /api/subjects` | **200 — PASS** |
+| `GET /api/user-subjects` anonymously | **401 — PASS (expected protected-route result)** |
+
+No 5xx, startup failure, module-resolution error, raw stack trace, or credential exposure was observed. No data was created, changed, or deleted.
+
+Production deliberate error: **NOT TESTED — BY DESIGN**. Production failure injection is prohibited; Preview already proved delivery, privacy, runtime tags, Debug-ID linkage, and symbolication. Actual Production error-event ingestion is therefore not claimed.
+
+## Alerting
+
+- New Production issue alert: **DEFERRED — ISSUES VISIBLE IN SENTRY**
+- Regression alert: **DEFERRED — ISSUES VISIBLE IN SENTRY**
+- Repeated API error alert: **NOT NEEDED**
+
+Minimal environment-scoped alert creation was not cleanly supported through the available control path without risking broad/noisy notifications. No paid upgrade, paging, logs, metrics, tracing, profiling, Replay, or alert-on-every-event rule was enabled.
+
+## Slice 7.3 closeout
+
+| Gate | Verdict |
+| --- | --- |
+| Local monitoring implementation | **PASS** |
+| Preview delivery/privacy/runtime tags | **PASS** |
+| Preview source-map uploads/symbolication | **PASS** |
+| Production configuration | **CONFIGURED** |
+| Feature merge | **COMPLETE** |
+| Production deployment | **READY** |
+| Production source-map uploads | **PASS — frontend + API** |
+| Production health/DB/reference smoke | **PASS** |
+| Production deliberate error | **NOT TESTED — BY DESIGN** |
+| Production failure injection | **NONE** |
+| Secrets exposed | **NONE** |
+| Supabase / Production DB | **UNCHANGED** |
+| Migration | **NONE**; head `0015_silent_sentinel`; **0016 ABSENT** |
+| PostHog | **UNCHANGED** |
+| Slice 7.3 | **CLOSED** |
+| Phase 7 | **IN PROGRESS** |
+
+Next authorized slice: **Slice 7.4 — Supabase Auth abuse protection**. It was not begun during this run.
