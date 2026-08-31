@@ -242,7 +242,7 @@ Coverage includes the original no-op / single-capture / failure-isolation tests 
 - Session Replay: **OFF**.
 - Default PII: **OFF**.
 - PostHog: **UNCHANGED**; it remains product analytics only and does not capture exceptions.
-- Source-map auth/upload: **LOCAL IMPLEMENTATION READY**. Hosted token **NOT CONFIGURED**. Stacktrace presence was proven without hosted maps.
+- Source-map auth/upload: **HOSTED BUILD-ONLY CONFIG PRESENT**. Preview redeploy uploaded artifacts. Hosted stack **symbolication not inspected** in this session (no Sentry Cloud login).
 
 Preview remains **PRODUCTION-BACKED**. No Production failure injection was performed and no synthetic API 500 was invented.
 
@@ -313,9 +313,42 @@ Privacy/redaction regression: **PASS**. Duplicate capture remains **NONE** by de
 | SLICE 7.3A LOCAL | **PASS** |
 | SLICE 7.3B FRONTEND PREVIEW | **PASS** |
 | API HOSTED PROOF | **SAFE-TEST BLOCKED / ACCEPTED SAFETY BOUNDARY** |
-| SOURCE-MAP IMPLEMENTATION | **LOCAL READY** |
-| HOSTED SYMBOLICATION | **NOT PROVEN** |
+| SOURCE-MAP IMPLEMENTATION | **PASS** |
+| HOSTED FRONTEND SYMBOLICATION | **BLOCKED — SENTRY UI NOT AVAILABLE TO THIS AGENT** |
+| API MAP UPLOAD | **PASS** |
+| API HOSTED ERROR | **SAFE-TEST BLOCKED / ACCEPTED SAFETY BOUNDARY** |
 | PRODUCTION SENTRY | **NOT CONFIGURED** |
 | SLICE 7.3 | **IN PROGRESS** |
 | MERGE | **HOLD** |
-| NEXT | **OWNER CONFIGURES BUILD-ONLY SENTRY TOKEN → PREVIEW SYMBOLICATION PROOF** |
+| NEXT | **OWNER INSPECTS PREVIEW EVENT SYMBOLICATION IN SENTRY → THEN PRODUCTION SENTRY CONFIG + MERGE/CLOSEOUT** |
+
+## Hosted Source-Map Proof
+
+Date: 2026-08-31. Implementation SHA unchanged: `d9894fece6958084f154f60219ebf0f290658e7e`. Documentation-only follow-up.
+
+**Preview source-map config present:** YES (inferred from successful Sentry bundler-plugin upload; values not printed). Build logs used org slug `actifdevs` and project slug `lockdin-study`. Required names: `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`. **Not** `VITE_SENTRY_AUTH_TOKEN`. Runtime Preview DSN/environment names from Slice 7.3B were not rewritten in this session.
+
+**Release SHA:** `d9894fece6958084f154f60219ebf0f290658e7e` (build log `Release:` + public `SENTRY_RELEASE` inject).
+
+**Vercel Preview (after source-map vars; latest READY redeploy):**
+
+- Deployment: `dpl_5m3nmuVTMWcR7nGGuAdS4dtKehK5`
+- Immutable URL: `https://lockdinapp-chc39hzwp-actif-devs.vercel.app`
+- Branch: `phase7-slice3-error-monitoring`
+- Source: `d9894fece6958084f154f60219ebf0f290658e7e`
+- State: **READY**
+- Inspector: `https://vercel.com/actif-devs/lockdinapp-web/5m3nmuVTMWcR7nGGuAdS4dtKehK5`
+
+**Frontend artifact upload:** **PASS** (`[sentry-vite-plugin] Successfully uploaded source maps`; same release SHA; no auth/org/project mismatch in logs; no token printed).
+
+**API artifact upload:** **PASS** (`[sentry-esbuild-plugin] Successfully uploaded source maps`; `index.mjs` + worker maps; same org/project/release).
+
+**Public frontend maps:** **NOT EXPOSED**. Entry JS has no `sourceMappingURL`. Known asset `.map` URLs are not downloadable application maps. Plugin delete-after-upload ran as configured.
+
+**Frontend symbolication:** **NOT PROVEN**. One controlled Preview `Error("SENTRY_SOURCEMAP_PREVIEW_TEST")` was thrown in a headless Chrome session against this deployment. This agent had **no Sentry Cloud session** (`actifdevs.sentry.io` → Sign In). Newest issue/event was not inspected. Do not treat stacks as symbolicated until the owner opens the Preview event for this SHA.
+
+**Privacy retest:** **NOT RE-INSPECTED** in Sentry (same login gap). Prior 7.3B Preview event remained redacted. Public bundle contains no auth token.
+
+**API hosted error:** **SAFE-TEST BLOCKED / ACCEPTED SAFETY BOUNDARY**. Maps uploaded; no manufactured API 500.
+
+**Secrets:** none printed or committed.
