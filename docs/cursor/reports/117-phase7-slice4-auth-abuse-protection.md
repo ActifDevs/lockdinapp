@@ -136,6 +136,88 @@ All three historical hosts still returned HTTP 200 during the review, but none i
 
 Exact recommended cleanup set for owner approval: **all six entries above**. Deletion was **not performed**. Because the hosts still resolve, owner approval should confirm no retained email/link or legacy tester flow must complete on them before removal.
 
+## Slice 7.4E — redirect cleanup and final closeout
+
+The owner approved deletion of the exact six historical entries listed above, subject to a final pre-delete validation. That validation passed:
+
+- starting Git evidence SHA: `9433ebf429837538376056beba8e8a512e4c125e` on clean, synchronized `main`;
+- current Vercel project domains remained `lockdinapp-web.vercel.app`, `lockdinapp-web-actif-devs.vercel.app`, and `lockdinapp-web-git-main-actif-devs.vercel.app`;
+- none of the six historical hosts was a current `lockdinapp-web` project domain;
+- Supabase Auth Site URL remained `https://lockdinapp-web.vercel.app`;
+- the allowlist contained exactly the six approved historical entries plus the two canonical entries, for a total of eight;
+- no actual allowlist entry used a wildcard.
+
+Only the six approved historical entries were selected. Supabase's dedicated **Remove URLs** confirmation reported six selected entries and persisted the deletion directly. The unrelated Site URL **Save changes** control remained disabled because the Site URL was not edited. A fresh page reload proved the persisted final state:
+
+| Redirect result | Verdict |
+| --- | --- |
+| Historical entries removed | **6 / 6** |
+| `https://lockdinapp-web.vercel.app/auth/callback` | **PRESENT** |
+| `https://lockdinapp-web.vercel.app/update-password` | **PRESENT** |
+| Final redirect count | **2** |
+| Historical `lockedin-study` entries | **ABSENT** |
+| Historical `gidiprogrammers` Preview entries | **ABSENT** |
+| Wildcards | **NONE** |
+
+### Post-cleanup security recheck
+
+- Site URL: `https://lockdinapp-web.vercel.app`.
+- Password minimum: **8**; composition: **no required characters**.
+- Email/password and self-signup: **ENABLED**.
+- Email confirmation and secure email change: **ENABLED**.
+- Anonymous sign-in, Google, other OAuth providers, and CAPTCHA: **DISABLED**.
+- JWT expiry: **3600 seconds**.
+- Refresh-token compromise detection/rotation: **ENABLED**; reuse interval: **10 seconds**.
+- Session restrictions: **UNCHANGED**.
+- Provider-native rate limits: **UNCHANGED**.
+
+### Post-cleanup legitimate flows
+
+The owner completed exactly one fresh password login using the existing controlled account. Credentials were entered directly in the browser and were not exposed to the agent or chat.
+
+| Gate | Result |
+| --- | --- |
+| Fresh login | **PASS** |
+| Canonical dashboard destination | **PASS** |
+| Dashboard/API-backed content | **PASS** |
+| Study Plan | **PASS** |
+| Past Papers | **PASS** |
+| Old-domain redirect | **NONE** |
+| Raw/5xx error | **NONE OBSERVED** |
+| Study-data mutation | **NONE** |
+
+The original authenticated session remained healthy after the recovery-link check. One normal logout then passed, and direct navigation to `/dashboard` redirected to `/login?next=%2Fdashboard`.
+
+### Controlled recovery proof
+
+The earlier Slice 7.4D recovery status remains historically **DEFERRED**. In Slice 7.4E the owner authorized exactly one controlled password-recovery request.
+
+- request count: **ONE**;
+- application response: **PASS — generic/non-enumerating**;
+- recovery email: **RECEIVED**;
+- effective destination host: `lockdinapp-web.vercel.app` — **PASS**;
+- effective destination path: `/update-password` — **PASS**;
+- historical-domain redirect: **NONE**;
+- password changed: **NO**;
+- second recovery email: **NOT SENT**.
+
+The one-time recovery action reported `access_denied` / expired-or-invalid after resolving to the canonical destination. No query parameters, fragment values, recovery token, email address, or identifier were reproduced. This does not weaken the canonical redirect proof: the delivered link resolved to the required canonical host/path. The expired one-time action was recorded rather than retried, and no password change was attempted.
+
+Recent Auth logs were reviewed read-only after the flow. Expected login/logout activity was present. No server error, invalid-redirect event, rate-limit problem, email burst, or repeated failure burst was observed. Abuse evidence remains **NONE**.
+
+### Final policy and safety decisions
+
+- CAPTCHA: **KEEP OFF**.
+- Cloudflare Turnstile: **DEFERRED — ENABLE ONLY IF FUTURE ABUSE EVIDENCE JUSTIFIES IT**.
+- Hosted/frontend password minimum parity: **8 / 8**.
+- Local Supabase development minimum: **6**.
+- Local config parity: **DEFERRED — NON-BETA-BLOCKING**. Align local development configuration to 8 in a future repository-hygiene change; do not add unrelated config churn to this hosted closeout.
+- Production database and schema: **UNCHANGED**.
+- Migration: **NONE**; head `0015_silent_sentinel`; **0016 ABSENT**.
+- Vercel, Sentry, and PostHog: **UNCHANGED**.
+- CAPTCHA and attack simulation: **OFF / NONE**.
+- Passwords, recovery tokens, secret keys, and user identifiers exposed or reproduced: **NONE**.
+
 ## Privacy, telemetry, and safety
 
 - Sentry: **UNCHANGED**; no deliberate error was created.
@@ -156,7 +238,10 @@ Exact recommended cleanup set for owner approval: **all six entries above**. Del
 | SLICE 7.4B HOSTED INSPECTION | **COMPLETE** |
 | SLICE 7.4C HOSTED HARDENING | **CONFIGURATION PASS** |
 | SLICE 7.4D AUTH FLOW VERIFICATION | **PASS** |
-| RECOVERY LIVE PROOF | **DEFERRED** |
-| REDIRECT CLEANUP | **OWNER DECISION REQUIRED — NO DELETION PERFORMED** |
-| SLICE 7.4 | **IN PROGRESS** |
-| NEXT | **OWNER REDIRECT-CLEANUP DECISION + 7.4E CLOSEOUT** |
+| SLICE 7.4E REDIRECT CLEANUP | **PASS — 6 REMOVED, 2 CANONICAL RETAINED** |
+| RECOVERY REQUEST / EMAIL / CANONICAL DESTINATION | **PASS** |
+| RECOVERY ONE-TIME ACTION | **EXPIRED/INVALID — RECORDED, NOT RETRIED; PASSWORD UNCHANGED** |
+| CAPTCHA | **OFF — EVIDENCE-TRIGGERED TURNSTILE DEFERRED** |
+| SLICE 7.4 | **CLOSED** |
+| PHASE 7 | **IN PROGRESS** |
+| NEXT | **SLICE 7.5 (not begun in this run)** |
