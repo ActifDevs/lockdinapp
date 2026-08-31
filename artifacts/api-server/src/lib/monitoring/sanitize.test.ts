@@ -12,7 +12,12 @@ const REPRESENTATIVE_API_EVENT = {
   message: "Paper 42 score was 67",
   user: { email: "a@b.co" },
   extra: { detail: "My private task content" },
-  tags: { request_id: "rid-99", runtime: "api", email: "a@b.co" },
+  tags: {
+    request_id: "rid-99",
+    runtime: "api",
+    email: "a@b.co",
+    arbitrary: "drop-me",
+  },
   request: {
     method: "POST",
     url: "/api/past-paper-attempts?score=12",

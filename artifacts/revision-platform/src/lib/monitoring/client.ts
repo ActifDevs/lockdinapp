@@ -15,6 +15,7 @@ type SentryModule = typeof import("@sentry/react");
 
 type SentryLike = {
   init: SentryModule["init"];
+  setTag: SentryModule["setTag"];
   captureReactException: SentryModule["captureReactException"];
   reactErrorHandler: SentryModule["reactErrorHandler"];
 };
@@ -89,6 +90,7 @@ export async function initFrontendSentry(
         };
       },
     });
+    sdk.setTag("runtime", "frontend");
     sentry = sdk;
     initialized = true;
     return true;

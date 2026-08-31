@@ -138,10 +138,21 @@ describe("frontend Sentry sanitization", () => {
     expect(sanitized.user).toBeUndefined();
     expect(sanitized.contexts).toBeUndefined();
     expect(sanitized.request).toEqual({ method: "POST", url: "/api/tasks" });
-    expect(sanitized.tags).toEqual({ request_id: "req-1", runtime: "frontend" });
+    expect(sanitized.tags).toEqual({ runtime: "frontend" });
     expect(JSON.stringify(sanitized)).not.toMatch(
       /a@b\.co|Bearer secret|postgres:|sid=1/,
     );
+  });
+
+  it("allows only the frontend runtime tag", () => {
+    const sanitized = sanitizeSentryEvent({
+      tags: {
+        runtime: "frontend",
+        request_id: "not-approved-for-frontend",
+        arbitrary: "drop-me",
+      },
+    });
+    expect(sanitized.tags).toEqual({ runtime: "frontend" });
   });
 
   it("strips query strings from routes", () => {

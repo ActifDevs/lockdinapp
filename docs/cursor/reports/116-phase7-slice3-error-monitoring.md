@@ -6,7 +6,7 @@
 - Branch: `phase7-slice3-error-monitoring`
 - Base / `origin/main`: `dbd15cc11b6ac8bdf3ca9fef99b304776bc62d8d`
 - Phase 7 Slice 7.2: **CLOSED** (Report 115 on main)
-- This slice: **7.3A local implementation + hosted-config gate**. No Sentry Cloud projects, no Vercel Sentry env changes, no Production error injection, no Supabase changes, no migration 0016, no merge.
+- This slice: **7.3A local implementation + hosted Preview proof + 7.3B runtime-tag remediation**. Hosted frontend delivery and privacy proof passed; the remediated runtime tag still requires one hosted frontend Preview retest. Production Sentry remains unconfigured. No Production error injection, no Supabase changes, no migration 0016, and no merge.
 - Migration head: **0015_silent_sentinel**. **0016 ABSENT**.
 - SDKs: `@sentry/react@10.71.0` (frontend), `@sentry/node@10.71.0` (API). Same major. Official current v10 APIs (`init`, `beforeSend`, `captureReactException`, `reactErrorHandler`). `setupExpressErrorHandler` is **not** used, to keep a single capture at the existing API error middleware.
 
@@ -91,7 +91,8 @@ Missing DSN = safe no-op. Sentry exceptions are swallowed so product/API behavio
 - exception `value` only if it is on an explicit allow-list (currently empty; otherwise `[redacted-message]`)
 - stack frames, using official field names only: `function`, `module`, `filename`, `abs_path`, `lineno`, `colno`, `in_app`, `platform`
 - `request.method` + sanitized path
-- tags `request_id`, `runtime`
+- frontend tag: `runtime` only
+- API tags: `runtime`, `request_id` only
 - diagnostic breadcrumbs only (`navigation`, `fetch`, `xhr`, `http`) with sanitized `url` / `from` / `to` / `method` / `status_code`
 
 **Dropped**
@@ -107,7 +108,7 @@ Missing DSN = safe no-op. Sentry exceptions are swallowed so product/API behavio
 
 ## Request correlation
 
-API events tag `request_id` with the existing Pino/server UUID (`req.id`). Client-supplied request IDs are not used. No user identity is attached.
+API events tag `request_id` with the existing Pino/server UUID (`req.id`) through Sentry's public capture-context `{ tags }` shape. Client-supplied request IDs are not used. No user identity is attached.
 
 ## Release/environment model
 
@@ -122,7 +123,7 @@ Vercel already provides `VERCEL_ENV` and `VERCEL_GIT_COMMIT_SHA` to the API func
 
 **Not configured in this slice.** Public Vite source maps stay off so the browser bundle does not publish application source.
 
-Recommended later (7.3B), server/build-only:
+Deferred to a later owner-authorized source-map step, server/build-only:
 
 - `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` — never `VITE_*`.
 - `@sentry/vite-plugin` for the web build: generate hidden maps, upload to the matching **release SHA**, delete maps from the public `dist` output.
@@ -133,7 +134,7 @@ Recommended later (7.3B), server/build-only:
 
 Focused mocks only. No Sentry Cloud traffic.
 
-Coverage includes the original no-op / single-capture / failure-isolation tests plus representative Sentry event fixtures proving: stack frames survive; locals do not; query/fragment stripped from frame and request URLs; arbitrary exception/event/breadcrumb/extra study text is dropped; exception type, `runtime`, and API `request_id` survive; Auth/cookies/bodies absent; Replay off; PostHog unchanged.
+Coverage includes the original no-op / single-capture / failure-isolation tests plus representative Sentry event fixtures proving: stack frames survive; locals do not; query/fragment stripped from frame and request URLs; arbitrary exception/event/breadcrumb/extra study text is dropped; frontend `runtime=frontend` survives; API `runtime=api` and `request_id` survive; frontend `request_id` and all unknown tags are dropped; Auth/cookies/bodies absent; Replay off; PostHog unchanged.
 
 ## Regression verification
 
@@ -141,7 +142,7 @@ Coverage includes the original no-op / single-capture / failure-isolation tests 
 | --- | --- |
 | `pnpm run typecheck` | PASS |
 | `pnpm --filter @workspace/api-server test` | PASS — 35 files, 182 tests |
-| `vitest run --pool=forks --maxWorkers=1` (frontend) | PASS — 42 files, 251 tests |
+| `vitest run --pool=forks --maxWorkers=1` (frontend) | PASS — 42 files, 252 tests |
 | `pnpm --filter @workspace/scripts test:unit` | PASS — 41 tests |
 | `pnpm --filter @workspace/scripts test:harness` | PASS — 21 tests |
 | `pnpm run check:migrations` | PASS — count=16, head=`0015_silent_sentinel` |
@@ -159,112 +160,83 @@ Coverage includes the original no-op / single-capture / failure-isolation tests 
 | **HIGH** | Browser DSN is public by design. Treat it as a project identifier, not an admin token. Auth token must never be `VITE_*`. |
 | **MEDIUM** | *(Fixed before hosted config.)* Arbitrary exception/event text is no longer pattern-matched; values fail closed to `[redacted-message]`. |
 | **MEDIUM** | *(Fixed before hosted config.)* Stack frames are now rebuilt from official `StackFrame` fields instead of being dropped. |
-| **MEDIUM** | Preview is historically Production-backed. Hosted 7.3B must not inject Production errors. |
+| **MEDIUM** | Preview is historically Production-backed. Hosted proof must not inject Production errors. |
 | **LOW** | React development mode can rethrow boundary errors to the console; production builds are the duplicate-capture check. |
 | **LOW** | One shared Sentry project (recommended) mixes frontend/API issues; `runtime` tag is required for filtering. |
 
-## Hosted configuration plan
+## Hosted topology and configuration
 
-**Do not create Sentry projects or Vercel Sentry variables in this slice.**
+- Topology: approved **ONE organization / ONE project**, separated by `environment` and `runtime`.
+- Preview frontend Sentry: **CONFIGURED** and delivery proven.
+- Production Sentry: **NOT CONFIGURED**.
+- Session Replay: **OFF**.
+- Default PII: **OFF**.
+- PostHog: **UNCHANGED**; it remains product analytics only and does not capture exceptions.
+- Source-map auth/upload: **NOT CONFIGURED**. Stacktrace presence was proven without changing this gate.
 
-### Recommended topology
+Preview remains **PRODUCTION-BACKED**. No Production failure injection was performed and no synthetic API 500 was invented.
 
-**A — one Sentry organization, one project, Preview + Production environments, `runtime` tag (`frontend` / `api`).**
+## Hosted Preview proof
 
-Reasons:
+Frontend hosted delivery: **PASS** (owner verified before this remediation, 2026-08-31).
 
-- Privacy controls and `beforeSend` are identical for both runtimes.
-- Hobby/free event quotas are not doubled.
-- One release SHA covers both artifacts.
-- Alerting can still split on `runtime` and `environment`.
+| Evidence | Result |
+| --- | --- |
+| Frontend event delivery | **PASS** |
+| Privacy inspection | **PASS** |
+| IP/geography scrubbing | **PASS** — the newest event showed geography as filtered |
+| Stacktrace | **PASS** |
+| Arbitrary message redaction | **PASS** |
+| `environment=preview` | **PASS** |
+| Release | **PASS** |
+| Duplicate capture | **NONE** |
+| `runtime=frontend` | **MISSING** in the hosted event |
 
-**B (separate frontend/API projects)** is clearer for source-map auth and alert routing, but costs two DSNs and two quotas. Use B only if the owner wants isolated billing/alerts after the free-plan limit is understood.
+API hosted proof remains **NOT PERFORMED** because Preview is Production-backed and no safe non-destructive API 500 path was introduced solely for telemetry proof. Local tests are the API evidence for this remediation.
 
-Suggested names (hosted later): org `Lockdin`; project `Lockdin` (or `Lockdin App`).
+## Runtime-tag root cause
 
-### Preview (7.3B)
+The sanitizer was not the sole cause.
 
-On **`lockdinapp-web`** only, Preview scope:
+Frontend event path before remediation:
 
-- `VITE_SENTRY_DSN` = project DSN
-- `VITE_SENTRY_ENVIRONMENT=preview`
-- `VITE_SENTRY_RELEASE` optional if `VITE_VERCEL_GIT_COMMIT_SHA` is set at build
-- `SENTRY_DSN` = same DSN if topology A
-- `SENTRY_ENVIRONMENT=preview` (or rely on `VERCEL_ENV`)
+1. `initFrontendSentry` configured environment, release, and privacy hooks but did not set a runtime tag on the Sentry scope.
+2. `captureReactException` and the React root `reactErrorHandler` capture paths did not add event tags.
+3. Sentry therefore prepared the event without `tags.runtime`.
+4. `beforeSend` rebuilt the event and correctly preserved allow-listed tags only when they already existed; it did not synthesize a missing runtime tag.
+5. The final hosted frontend event had no `runtime` tag.
 
-Do not set `SENTRY_AUTH_TOKEN` as a runtime `VITE_*` value. If maps are uploaded, use a build-only token.
+The earlier frontend sanitizer test injected `runtime=frontend` directly into its fixture, so it proved preservation but did not prove the real initialization/capture path supplied the tag.
 
-### Production (later, after Preview proof)
+API inspection found a second capture-path issue: `reportApiException` hid the SDK signature behind a custom type and passed tags under nested `captureContext.tags`. Sentry v10's public `captureException` capture context accepts `{ tags }` directly. The old mock asserted the custom nested shape rather than the SDK contract.
 
-Same names; `environment=production`. Do not configure in 7.3A.
+## Runtime-tag remediation
 
-### Source-map auth
+- Frontend initialization now calls Sentry `setTag("runtime", "frontend")` after successful `init`, so boundary, root, and SDK-managed frontend error paths inherit the tag before `beforeSend`.
+- API initialization now calls Sentry `setTag("runtime", "api")`, covering every API event emitted through the configured SDK scope.
+- `reportApiException` now uses the public capture context `{ tags: { runtime, request_id } }`.
+- Frontend allowed custom tags are tightened to `runtime` only.
+- API allowed custom tags remain limited to `runtime` and `request_id`.
+- Unknown tags are still dropped. The sanitizer still rebuilds the event and none of the privacy/redaction protections were weakened.
 
-Build-only: `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`. Never commit. Never `VITE_*`.
+## Remediation verification
 
-### Alerting (configure in 7.3B, not now)
+| Gate | Result |
+| --- | --- |
+| Focused frontend + API monitoring tests | PASS — 4 files, 16 tests |
+| `pnpm run typecheck` | PASS |
+| `pnpm --filter @workspace/api-server test` | PASS — 35 files, 182 tests |
+| frontend `vitest run --pool=forks --maxWorkers=1` | PASS — 42 files, 252 tests |
+| `pnpm run check:migrations` | PASS — count=16, head=`0015_silent_sentinel` |
+| `pnpm run check:codegen` | PASS — no OpenAPI drift |
+| `pnpm --filter @workspace/revision-platform run build:vercel` | PASS |
+| `git diff --check` | PASS |
 
-- Preview: issues visible in the project; no paging.
-- Production: new unhandled issue / regression; optional repeated API 5xx if the plan supports it.
-- Avoid “any event” alerts.
-
-### Retention / privacy toggles (hosted)
-
-- Prefer ≤90 days.
-- Session Replay off.
-- Default PII / IP off if the project UI offers it.
-- No user identification.
-
-## Owner gate
-
-1. Approve topology A (or reject in favour of B).
-2. Create the Sentry org/project in the chosen region.
-3. Set Preview-only Vercel variables on `lockdinapp-web`.
-4. Redeploy the feature-branch Preview.
-5. Prove one synthetic frontend and one API error in Preview (not Production).
-6. Confirm redaction on received events.
-7. Then consider Production env + merge.
+Privacy/redaction regression: **PASS**. Duplicate capture remains **NONE** by design and tests. Monitoring failures remain isolated from product/API behaviour. Migration: **NONE**. 0016: **ABSENT**. PostHog: **UNCHANGED**.
 
 ## Merge readiness
 
-**MERGE: HOLD.** Local implementation is approved. Hosted Preview proof is **BLOCKED** (2026-08-30) until owner Sentry Cloud + Vercel Preview env can be applied in a session with dashboard access.
-
-## Hosted Preview Configuration
-
-Status: **BLOCKED** (2026-08-30). Implementation SHA unchanged: `4f219e31739cc87683214d95b4b7a015f300b917`. No application code change.
-
-- Sentry org/project: **NOT CREATED**. This agent session had no Sentry Cloud login, no `~/.sentryclirc`, and no Sentry API token. The Sentry wizard was not run.
-- Topology: still the approved **ONE organization / ONE project** (`Lockdin` / `Lockdin App`), environments `preview`/`production`, tags `runtime=frontend|api`.
-- Preview DSN configured: **NO**
-- Production DSN: **NOT CONFIGURED**
-- Privacy toggles: **NOT INSPECTED** (no project). Replay remains off in the SDK (`replaysSessionSampleRate` / `replaysOnErrorSampleRate` = 0; no `replayIntegration`). Hosted Replay cannot be removed from the Sentry plan; it is disabled by not sending replay data.
-- Alerting: **NOT CONFIGURED** (no paging).
-- Source-map status: **NOT CONFIGURED**. Deferred until event delivery is proven. No `SENTRY_AUTH_TOKEN`.
-- Vercel: this session had no ActifDevs Vercel MCP/CLI write access. Preview-only vars were **not** written on `lockdinapp-web`. PostHog vars were not touched.
-
-Existing Git Preview for the implementation SHA (pre-Sentry-env; not a proof redeploy):
-
-- GitHub deployment: `6172051643`
-- Immutable URL: `https://lockdinapp-okfnc6tah-actif-devs.vercel.app`
-- Vercel status: `https://vercel.com/actif-devs/lockdinapp-web/CqFSTFf79egqpHWpVUxxLaWi5iLG`
-- Source: `4f219e31739cc87683214d95b4b7a015f300b917`
-- State: **READY**
-- Preview client bundle contains sanitizer/`[redacted-message]` but **no** `ingest.sentry.io` host (DSN not baked in).
-
-## Hosted Preview Proof
-
-Preview is **PRODUCTION-BACKED**. No Production failure injection was performed. No synthetic API 500 was invented.
-
-- Frontend hosted proof: **BLOCKED** (no Preview DSN / no captured event)
-- API hosted proof: **SAFE-TEST BLOCKED** — no safe existing non-destructive Preview 500 that avoids Production-backed mutation; local mocked proof remains the API evidence
-- environment=preview: **NOT TESTED**
-- runtime tags: **NOT TESTED**
-- release: **NOT TESTED**
-- request_id: **NOT TESTED**
-- stacktrace: **NOT TESTED** hosted
-- redaction: **NOT TESTED** hosted
-- duplicate capture: **NOT TESTED** hosted
-
-Unblock: owner creates org/project in Sentry Cloud (no wizard rewrite of the repo), sets Preview-only vars on `lockdinapp-web` (prefer branch `phase7-slice3-error-monitoring`), redeploys this SHA, then one controlled frontend throw in Preview only.
-
-**MERGE: HOLD.**
+- Hosted runtime proof after remediation: **NOT YET RETESTED**.
+- Next gate: exactly one owner-authorized frontend Preview retest confirming `runtime=frontend` on the received event.
+- **MERGE: HOLD.**
+- Verdict: **READY FOR ONE FRONTEND PREVIEW RETEST**.

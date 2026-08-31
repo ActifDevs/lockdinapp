@@ -10,14 +10,10 @@ import {
   type LooseSentryEvent,
 } from "./sanitize.js";
 
-type CaptureFn = (
-  exception: unknown,
-  hint?: { captureContext?: { tags?: Record<string, string> } },
-) => string;
-
 type SentryLike = {
   init: typeof Sentry.init;
-  captureException: CaptureFn;
+  setTag: typeof Sentry.setTag;
+  captureException: typeof Sentry.captureException;
 };
 
 let sentry: SentryLike = Sentry;
@@ -80,6 +76,7 @@ export function initApiSentry(env: NodeJS.ProcessEnv = process.env): boolean {
         return sanitizeSentryEvent(event as LooseSentryEvent) as typeof event;
       },
     });
+    sentry.setTag("runtime", "api");
     initialized = true;
     return true;
   } catch {
@@ -97,11 +94,9 @@ export function reportApiException(
   try {
     const requestId = context.requestId?.trim();
     sentry.captureException(error, {
-      captureContext: {
-        tags: {
-          runtime: "api",
-          ...(requestId ? { request_id: requestId } : {}),
-        },
+      tags: {
+        runtime: "api",
+        ...(requestId ? { request_id: requestId } : {}),
       },
     });
   } catch {

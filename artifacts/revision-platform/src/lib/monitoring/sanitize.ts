@@ -12,7 +12,7 @@ function isOpaqueIdSegment(segment: string): boolean {
   return UUID_SEGMENT_RE.test(segment) || /^\d+$/.test(segment);
 }
 
-const ALLOWED_TAGS = new Set(["request_id", "runtime"]);
+const ALLOWED_TAGS = new Set(["runtime"]);
 
 /** Official browser SDK breadcrumb categories we keep (fetch / xhr / navigation). */
 const ALLOWED_BREADCRUMB_CATEGORIES = new Set([
