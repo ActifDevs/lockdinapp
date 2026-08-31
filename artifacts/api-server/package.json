@@ -13,6 +13,8 @@
     "test:integration": "node --test ./scripts/require-local-supabase.test.mjs && LOCKDIN_ALLOW_DESTRUCTIVE_LOCAL_DB=1 pnpm --filter @workspace/scripts exec tsx src/db-harness/run-http-integration-cli.ts"
   },
   "dependencies": {
+    "@opentelemetry/api": "1.9.1",
+    "@sentry/node": "10.71.0",
     "@supabase/supabase-js": "^2.111.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
@@ -25,6 +27,7 @@
     "posthog-node": "^5.51.4"
   },
   "devDependencies": {
+    "@sentry/esbuild-plugin": "5.4.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

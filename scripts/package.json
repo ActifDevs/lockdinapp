@@ -21,6 +21,7 @@
     "test:harness": "vitest run src/db-harness/__tests__/target-safety.test.ts src/db-harness/__tests__/migration-integrity.test.ts"
   },
   "dependencies": {
+    "@opentelemetry/api": "1.9.1",
     "@workspace/db": "workspace:*",
     "csv-parse": "^5.6.0",
     "drizzle-orm": "catalog:",
