@@ -16,7 +16,8 @@ type FieldErrors = {
 
 function validateEmail(value: string) {
   if (!value.trim()) return "Email is required.";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return "Enter a valid email address.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()))
+    return "Enter a valid email address.";
   return undefined;
 }
 
@@ -38,8 +39,7 @@ function mapLoginError(err: unknown): string {
   return "We couldn't sign you in. Please try again.";
 }
 
-const googleAuthEnabled =
-  import.meta.env.VITE_GOOGLE_AUTH_ENABLED === "true";
+const googleAuthEnabled = import.meta.env.VITE_GOOGLE_AUTH_ENABLED === "true";
 
 export default function Login() {
   const { login, signInWithGoogle } = useAuth();
@@ -54,13 +54,17 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
+  const [touched, setTouched] = useState<{
+    email?: boolean;
+    password?: boolean;
+  }>({});
 
   const handleBlur = (field: keyof FieldErrors) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
     setErrors((prev) => ({
       ...prev,
-      [field]: field === "email" ? validateEmail(email) : validatePassword(password),
+      [field]:
+        field === "email" ? validateEmail(email) : validatePassword(password),
     }));
   };
 
@@ -115,7 +119,8 @@ export default function Login() {
               Pick up where you left off.
             </p>
             <p className="mt-3 text-sm leading-relaxed text-primary-foreground/75">
-              Your syllabus coverage, paper logs, and today’s plan stay in one workspace.
+              Your syllabus coverage, paper logs, and today’s plan stay in one
+              workspace.
             </p>
           </div>
         </div>
@@ -131,7 +136,9 @@ export default function Login() {
 
         <div className="mx-auto w-full max-w-sm">
           <h1 className="font-bold tracking-tight">Welcome back</h1>
-          <p className="mt-2 text-muted-foreground">Log in to continue your revision.</p>
+          <p className="mt-2 text-muted-foreground">
+            Log in to continue your revision.
+          </p>
 
           {profileLoadReason && (
             <p className="mt-4 text-sm text-destructive" role="alert">
@@ -174,17 +181,29 @@ export default function Login() {
                 onChange={(e) => {
                   setEmail(e.target.value);
                   if (touched.email) {
-                    setErrors((prev) => ({ ...prev, email: validateEmail(e.target.value) }));
+                    setErrors((prev) => ({
+                      ...prev,
+                      email: validateEmail(e.target.value),
+                    }));
                   }
                 }}
                 onBlur={() => handleBlur("email")}
                 placeholder="you@school.edu"
-                className={cn("h-11", errors.email && touched.email && "border-destructive")}
+                className={cn(
+                  "h-11",
+                  errors.email && touched.email && "border-destructive",
+                )}
                 aria-invalid={Boolean(errors.email && touched.email)}
-                aria-describedby={errors.email && touched.email ? "email-error" : undefined}
+                aria-describedby={
+                  errors.email && touched.email ? "email-error" : undefined
+                }
               />
               {errors.email && touched.email && (
-                <p id="email-error" className="text-sm text-destructive" role="alert">
+                <p
+                  id="email-error"
+                  className="text-sm text-destructive"
+                  role="alert"
+                >
                   {errors.email}
                 </p>
               )}
@@ -207,16 +226,30 @@ export default function Login() {
                 onChange={(e) => {
                   setPassword(e.target.value);
                   if (touched.password) {
-                    setErrors((prev) => ({ ...prev, password: validatePassword(e.target.value) }));
+                    setErrors((prev) => ({
+                      ...prev,
+                      password: validatePassword(e.target.value),
+                    }));
                   }
                 }}
                 onBlur={() => handleBlur("password")}
-                className={cn("h-11", errors.password && touched.password && "border-destructive")}
+                className={cn(
+                  "h-11",
+                  errors.password && touched.password && "border-destructive",
+                )}
                 aria-invalid={Boolean(errors.password && touched.password)}
-                aria-describedby={errors.password && touched.password ? "password-error" : undefined}
+                aria-describedby={
+                  errors.password && touched.password
+                    ? "password-error"
+                    : undefined
+                }
               />
               {errors.password && touched.password && (
-                <p id="password-error" className="text-sm text-destructive" role="alert">
+                <p
+                  id="password-error"
+                  className="text-sm text-destructive"
+                  role="alert"
+                >
                   {errors.password}
                 </p>
               )}
@@ -228,15 +261,22 @@ export default function Login() {
               </p>
             )}
 
-            <Button type="submit" className="h-11 w-full cursor-pointer text-base active:scale-[0.98]" disabled={busy}>
+            <Button
+              type="submit"
+              className="h-11 w-full cursor-pointer text-base active:scale-[0.98]"
+              disabled={busy}
+            >
               {isLoading ? "Signing in…" : "Sign in"}
             </Button>
           </form>
 
           <p className="mt-8 text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="font-medium text-foreground underline-offset-4 hover:underline">
-              Sign up
+            Need an account?{" "}
+            <Link
+              href="/signup"
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              Invitation only
             </Link>
           </p>
         </div>

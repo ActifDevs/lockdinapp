@@ -20,11 +20,25 @@ describe("auth pages wiring", () => {
     expect(src).toMatch(/Email or password is incorrect/);
   });
 
-  it("signup gates Google sign-in behind configuration", () => {
+  it("signup shows invitation-only controlled-beta state without a public self-signup form", () => {
     const src = readPage("signup.tsx");
-    expect(src).toMatch(/signInWithGoogle/);
-    expect(src).toMatch(/VITE_GOOGLE_AUTH_ENABLED/);
-    expect(src).toMatch(/googleAuthEnabled/);
+    expect(src).toMatch(/This is a controlled beta/);
+    expect(src).toMatch(/Registration is currently by invitation\s+only/);
+    expect(src).toMatch(/Invitation only/);
+    expect(src).toMatch(/href=\"\/login\"/);
+    expect(src).not.toMatch(/signUp\(/);
+    expect(src).not.toMatch(/signInWithGoogle/);
+    expect(src).not.toMatch(/Create account/);
+    expect(src).not.toMatch(/type=\"password\"/);
+    expect(src).not.toMatch(/autoComplete=\"new-password\"/);
+    expect(src).not.toMatch(/username/i);
+  });
+
+  it("login links to invitation-only signup without promising open registration", () => {
+    const src = readPage("login.tsx");
+    expect(src).toMatch(/href=\"\/signup\"/);
+    expect(src).toMatch(/Invitation only/);
+    expect(src).not.toMatch(/>Sign up</);
   });
 
   it("login shows safe profile-load reason message", () => {
@@ -33,13 +47,10 @@ describe("auth pages wiring", () => {
     expect(src).toMatch(/load your account\. Please sign in again/);
   });
 
-  it("signup confirmation-required branch renders correctly", () => {
+  it("signup confirmation-required branch was removed with public self-signup", () => {
     const src = readPage("signup.tsx");
-    expect(src).toMatch(/emailConfirmationRequired/);
-    expect(src).toMatch(/needsConfirmation/);
-    expect(src).toMatch(/Back to login/);
-    expect(src).toMatch(/signUp\(\{/);
-    expect(src).not.toMatch(/username/i);
+    expect(src).not.toMatch(/emailConfirmationRequired/);
+    expect(src).not.toMatch(/needsConfirmation/);
   });
 
   it("generic password-reset response does not reveal account existence", () => {

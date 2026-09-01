@@ -4,11 +4,15 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { ArrowRight, GraduationCap, LayoutDashboard, BookOpen, FileText, TrendingUp } from "lucide-react";
 import {
-  EmptyIllustration,
-  type EmptyScene,
-} from "@/components/illustrations";
+  ArrowRight,
+  GraduationCap,
+  LayoutDashboard,
+  BookOpen,
+  FileText,
+  TrendingUp,
+} from "lucide-react";
+import { EmptyIllustration, type EmptyScene } from "@/components/illustrations";
 import { LandingSection } from "@/components/landing-section";
 
 const features: {
@@ -46,7 +50,10 @@ const navItems = [
 
 function ProductHeroVisual() {
   return (
-    <div className="landing-hero-visual pointer-events-none absolute inset-0 bg-background" aria-hidden>
+    <div
+      className="landing-hero-visual pointer-events-none absolute inset-0 bg-background"
+      aria-hidden
+    >
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_15%_0%,hsl(var(--brand-teal)/0.22),transparent_45%),radial-gradient(ellipse_at_90%_20%,hsl(var(--brand-amber)/0.2),transparent_40%),radial-gradient(ellipse_at_80%_85%,hsl(var(--brand-coral)/0.14),transparent_45%)]" />
       <div className="landing-hero-mock-frame">
         <div className="dark landing-hero-mock flex h-full overflow-hidden rounded-t-2xl border border-border/70 bg-card shadow-[0_24px_80px_-12px_hsl(var(--primary)/0.28)]">
@@ -55,7 +62,9 @@ function ProductHeroVisual() {
               <div className="brand-icon-sm">
                 <GraduationCap className="h-4 w-4" strokeWidth={2} />
               </div>
-              <span className="text-sm font-bold tracking-tight text-foreground"><BrandName /></span>
+              <span className="text-sm font-bold tracking-tight text-foreground">
+                <BrandName />
+              </span>
             </div>
             <div className="space-y-1">
               {navItems.map(({ label, icon: Icon, active }) => (
@@ -79,7 +88,9 @@ function ProductHeroVisual() {
           </div>
           <div className="min-w-0 flex-1 bg-background/80">
             <div className="flex h-10 items-center border-b border-border/60 bg-card px-3 md:hidden">
-              <span className="text-sm font-bold tracking-tight text-foreground"><BrandName /></span>
+              <span className="text-sm font-bold tracking-tight text-foreground">
+                <BrandName />
+              </span>
             </div>
             <div className="grid h-full grid-cols-1 gap-2.5 p-3 sm:gap-3 sm:p-4 md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.85fr)] md:gap-4 md:p-6">
               <div className="flex flex-col gap-2.5 sm:gap-3 md:gap-4">
@@ -87,37 +98,51 @@ function ProductHeroVisual() {
                   <div className="mb-0.5 text-[11px] font-medium text-primary-foreground/90 sm:mb-1 sm:text-xs">
                     Good afternoon
                   </div>
-                  <div className="text-base font-bold sm:text-lg">Today&apos;s revision</div>
+                  <div className="text-base font-bold sm:text-lg">
+                    Today&apos;s revision
+                  </div>
                   <div className="mt-2 inline-flex rounded-md bg-primary-foreground/20 px-2.5 py-1 text-[11px] font-semibold text-primary-foreground sm:mt-3 sm:px-3 sm:text-xs">
                     3 tasks · 2h planned
                   </div>
                 </div>
                 <div className="flex-1 rounded-xl border border-border/60 bg-card p-3 shadow-sm sm:rounded-2xl sm:p-4">
                   <div className="mb-2 flex items-center justify-between sm:mb-3">
-                    <div className="text-[11px] font-semibold text-foreground/85 sm:text-xs">Today&apos;s tasks</div>
-                    <div className="text-[11px] font-semibold text-primary sm:text-xs">40% done</div>
+                    <div className="text-[11px] font-semibold text-foreground/85 sm:text-xs">
+                      Today&apos;s tasks
+                    </div>
+                    <div className="text-[11px] font-semibold text-primary sm:text-xs">
+                      40% done
+                    </div>
                   </div>
-                  {[["Mechanics review", "Physics"], ["Integration practice", "Maths"], ["Organic reactions", "Chemistry"]].map(
-                    ([title, subject], i) => (
+                  {[
+                    ["Mechanics review", "Physics"],
+                    ["Integration practice", "Maths"],
+                    ["Organic reactions", "Chemistry"],
+                  ].map(([title, subject], i) => (
+                    <div
+                      key={title}
+                      className={cn(
+                        "flex items-center gap-3 border-t border-border/50 py-2.5 first:border-t-0 first:pt-0 sm:py-3",
+                        i === 2 && "hidden sm:flex",
+                      )}
+                    >
                       <div
-                        key={title}
-                        className={cn(
-                          "flex items-center gap-3 border-t border-border/50 py-2.5 first:border-t-0 first:pt-0 sm:py-3",
-                          i === 2 && "hidden sm:flex",
-                        )}
-                      >
-                        <div
-                          className={`h-4 w-4 rounded-full border-2 ${
-                            i === 0 ? "border-primary bg-primary" : "border-primary/65"
-                          }`}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-xs font-semibold text-foreground">{title}</div>
-                          <div className="text-xs text-foreground/72">{subject}</div>
+                        className={`h-4 w-4 rounded-full border-2 ${
+                          i === 0
+                            ? "border-primary bg-primary"
+                            : "border-primary/65"
+                        }`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-xs font-semibold text-foreground">
+                          {title}
+                        </div>
+                        <div className="text-xs text-foreground/72">
+                          {subject}
                         </div>
                       </div>
-                    ),
-                  )}
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="hidden flex-col gap-3 sm:gap-4 md:flex">
@@ -128,23 +153,40 @@ function ProductHeroVisual() {
                   {[
                     { label: "Physics", pct: 72, color: "hsl(var(--chart-1))" },
                     { label: "Maths", pct: 54, color: "hsl(var(--chart-2))" },
-                    { label: "Chemistry", pct: 41, color: "hsl(var(--chart-3))" },
+                    {
+                      label: "Chemistry",
+                      pct: 41,
+                      color: "hsl(var(--chart-3))",
+                    },
                   ].map(({ label, pct, color }) => (
                     <div key={label} className="mb-3 last:mb-0">
                       <div className="mb-1 flex justify-between text-[10px]">
-                        <span className="font-semibold text-foreground/90">{label}</span>
-                        <span className="font-medium text-foreground/75">{pct}%</span>
+                        <span className="font-semibold text-foreground/90">
+                          {label}
+                        </span>
+                        <span className="font-medium text-foreground/75">
+                          {pct}%
+                        </span>
                       </div>
                       <div className="h-1.5 rounded-full bg-muted/80">
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${pct}%`, backgroundColor: color }}
+                        />
                       </div>
                     </div>
                   ))}
                 </div>
                 <div className="rounded-2xl border border-border/60 bg-muted/45 p-4 shadow-sm">
-                  <div className="text-xs font-semibold text-foreground/80">Next exam</div>
-                  <div className="mt-2 text-sm font-bold text-foreground">Physics P2</div>
-                  <div className="mt-1 text-xs font-semibold text-primary">12 days</div>
+                  <div className="text-xs font-semibold text-foreground/80">
+                    Next exam
+                  </div>
+                  <div className="mt-2 text-sm font-bold text-foreground">
+                    Physics P2
+                  </div>
+                  <div className="mt-1 text-xs font-semibold text-primary">
+                    12 days
+                  </div>
                 </div>
               </div>
             </div>
@@ -170,7 +212,10 @@ export default function LandingPage() {
 
       <header className="landing-header fixed inset-x-0 top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto flex h-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
-          <Link href="/" className="flex min-w-0 items-center gap-2 text-lg font-bold tracking-tight sm:text-2xl">
+          <Link
+            href="/"
+            className="flex min-w-0 items-center gap-2 text-lg font-bold tracking-tight sm:text-2xl"
+          >
             <span className="brand-icon-sm shrink-0">
               <GraduationCap className="h-4 w-4" strokeWidth={2} />
             </span>
@@ -193,8 +238,11 @@ export default function LandingPage() {
                   Log in
                 </Link>
                 <Link href="/signup">
-                  <Button size="sm" className="cursor-pointer active:scale-[0.98]">
-                    Start free
+                  <Button
+                    size="sm"
+                    className="cursor-pointer active:scale-[0.98]"
+                  >
+                    Invitation only
                   </Button>
                 </Link>
               </>
@@ -219,15 +267,19 @@ export default function LandingPage() {
               Syllabus, papers, and today&apos;s plan — in one workspace.
             </h1>
             <p className="mb-5 max-w-lg text-pretty text-sm leading-relaxed text-muted-foreground sm:mb-8 sm:text-base md:text-lg">
-              Built around how A-Levels are actually structured. See what you&apos;ve covered, what you&apos;ve sat, and what to do next.
+              Built around how A-Levels are actually structured. See what
+              you&apos;ve covered, what you&apos;ve sat, and what to do next.
             </p>
             <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-              <Link href={isAuthenticated ? "/dashboard" : "/signup"} className="w-full sm:w-auto">
+              <Link
+                href={isAuthenticated ? "/dashboard" : "/signup"}
+                className="w-full sm:w-auto"
+              >
                 <Button
                   size="lg"
                   className="h-12 w-full cursor-pointer px-7 text-base active:scale-[0.98] sm:w-auto"
                 >
-                  {isAuthenticated ? "Open workspace" : "Create your workspace"}
+                  {isAuthenticated ? "Open workspace" : "Invitation only"}
                   <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
                 </Button>
               </Link>
@@ -243,7 +295,11 @@ export default function LandingPage() {
           </div>
         </LandingSection>
 
-        <LandingSection id="intro" className="landing-section-intro" ambient="intro">
+        <LandingSection
+          id="intro"
+          className="landing-section-intro"
+          ambient="intro"
+        >
           <div className="grid w-full gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center lg:gap-12">
             <div>
               <p className="mb-3 text-sm font-semibold tracking-wide text-primary">
@@ -253,7 +309,8 @@ export default function LandingPage() {
                 Built for the A-Level calendar, not generic to-do lists.
               </h2>
               <p className="mt-4 max-w-lg text-pretty text-muted-foreground md:text-lg">
-                Syllabus units, past-paper logs, and a daily plan that matches how Cambridge courses actually run.
+                Syllabus units, past-paper logs, and a daily plan that matches
+                how Cambridge courses actually run.
               </p>
             </div>
 
@@ -264,18 +321,23 @@ export default function LandingPage() {
                   Topic-level progress
                 </p>
                 <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-                  Mark units as covered and Lockdin turns that into a percentage you can trust — not a vague checklist.
+                  Mark units as covered and Lockdin turns that into a percentage
+                  you can trust — not a vague checklist.
                 </p>
               </div>
               <div className="landing-proof-stat surface-card p-5">
                 <p className="card-label">Past papers</p>
                 <p className="mt-2 text-2xl font-bold tabular">Score trail</p>
-                <p className="mt-2 text-sm text-muted-foreground">Every attempt logged in one timeline.</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Every attempt logged in one timeline.
+                </p>
               </div>
               <div className="landing-proof-stat surface-card p-5">
                 <p className="card-label">Daily focus</p>
                 <p className="mt-2 text-2xl font-bold tabular">One plan</p>
-                <p className="mt-2 text-sm text-muted-foreground">Open the app and know what to revise next.</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Open the app and know what to revise next.
+                </p>
               </div>
             </div>
           </div>
@@ -286,7 +348,9 @@ export default function LandingPage() {
             key={feature.title}
             id={`feature-${index + 1}`}
             className="landing-section-feature"
-            ambient={(`feature-${index + 1}` as "feature-1" | "feature-2" | "feature-3")}
+            ambient={
+              `feature-${index + 1}` as "feature-1" | "feature-2" | "feature-3"
+            }
           >
             <div
               className={cn(
@@ -296,12 +360,16 @@ export default function LandingPage() {
               )}
             >
               <div>
-                <div className={`mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl ${feature.variant}`}>
+                <div
+                  className={`mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl ${feature.variant}`}
+                >
                   <span className="text-sm font-bold tabular text-primary">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                 </div>
-                <h3 className="mb-3 text-2xl font-semibold tracking-tight md:text-3xl">{feature.title}</h3>
+                <h3 className="mb-3 text-2xl font-semibold tracking-tight md:text-3xl">
+                  {feature.title}
+                </h3>
                 <p className="max-w-prose text-pretty text-base leading-relaxed text-muted-foreground md:text-lg">
                   {feature.body}
                 </p>
@@ -313,7 +381,10 @@ export default function LandingPage() {
                 )}
                 aria-hidden
               >
-                <EmptyIllustration scene={feature.scene} className="max-w-[14rem]" />
+                <EmptyIllustration
+                  scene={feature.scene}
+                  className="max-w-[14rem]"
+                />
               </div>
             </div>
           </LandingSection>
@@ -329,7 +400,8 @@ export default function LandingPage() {
               Start with your subjects. Plan today&apos;s revision from there.
             </h2>
             <p className="hero-band-muted mb-8 text-pretty text-base md:text-lg">
-              Free to set up. Add your papers and syllabus when you&apos;re ready — no trial countdown.
+              Controlled beta — registration is by invitation only. Invited
+              participants set up from their email link.
             </p>
             <Link href="/signup">
               <Button
@@ -337,7 +409,7 @@ export default function LandingPage() {
                 variant="secondary"
                 className="h-12 cursor-pointer px-7 text-base cta-on-brand active:scale-[0.98]"
               >
-                Create your workspace
+                Invitation only
               </Button>
             </Link>
           </div>
@@ -351,13 +423,21 @@ export default function LandingPage() {
                 <BrandName />
               </span>
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/75">
-                <Link href="/privacy" className="transition-colors hover:text-white">
+                <Link
+                  href="/privacy"
+                  className="transition-colors hover:text-white"
+                >
                   Privacy
                 </Link>
-                <Link href="/terms" className="transition-colors hover:text-white">
+                <Link
+                  href="/terms"
+                  className="transition-colors hover:text-white"
+                >
                   Terms
                 </Link>
-                <span>© {new Date().getFullYear()} <BrandName /></span>
+                <span>
+                  © {new Date().getFullYear()} <BrandName />
+                </span>
               </div>
             </div>
           </footer>
