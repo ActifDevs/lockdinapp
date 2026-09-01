@@ -8,6 +8,7 @@ Timestamped technical snapshots documenting the project state at specific points
 
 | Checkpoint | Date & Time | Commit | Summary |
 |------------|-------------|--------|---------|
+| [2026-09-01_2245](./checkpoints/2026-09-01_2245/2026-09-01_2245_CURRENT_STATE.md) | 01 Sep 2026 22:45 | `0d2963c` | Phase 7 in progress — telemetry, monitoring, invite-only Auth, restore proof, and pre-beta participant gates |
 | [2026-08-30_1339](./checkpoints/2026-08-30_1339/2026-08-30_1339_CURRENT_STATE.md) | 30 Aug 2026 13:39 | `707e979` | Phase 6 closed — immutable syllabus lifecycle, session-aware strict assignment, applicability policy, and disposable CI harness |
 | [2026-08-29_0016](./checkpoints/2026-08-29_0016/2026-08-29_0016_CURRENT_STATE.md) | 29 Aug 2026 00:16 | `0d2f1f4` | Phase 5 closed — frontend state reconciliation and final serverless/history cutover fixes production verified |
 | [2026-08-24_1705](./checkpoints/2026-08-24_1705/2026-08-24_1705_CURRENT_STATE.md) | 24 Aug 2026 17:05 | `f76fc21` | Phase 4 API Hardening Complete & Production Deployed — global fail-secure auth policy & request correlation IDs |
