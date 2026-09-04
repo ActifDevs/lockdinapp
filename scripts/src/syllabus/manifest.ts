@@ -119,3 +119,93 @@ export const SYLLABUS_IMPORT_MANIFEST: SyllabusManifestEntry[] = [
     isCurrent: true,
   },
 ];
+
+/**
+ * New-seven subject metadata for Phase 7 adoption.
+ * Not part of the default raw-CSV import loop (those files live under
+ * data/syllabi/candidates/new-seven/ and are selected via --csv=).
+ */
+export const SYLLABUS_NEW_SEVEN_SUBJECTS: SyllabusManifestEntry[] = [
+  {
+    subjectCode: "8021",
+    subjectName: "English General Paper",
+    color: "#0D9488",
+    csvFile: "8021_english_general_paper.csv",
+    versionLabel: "Current syllabus",
+    validFrom: null,
+    validTo: null,
+    isCurrent: true,
+  },
+  {
+    subjectCode: "9093",
+    subjectName: "English Language",
+    color: "#0369A1",
+    csvFile: "9093_english_language.csv",
+    versionLabel: "Current syllabus",
+    validFrom: null,
+    validTo: null,
+    isCurrent: true,
+  },
+  {
+    subjectCode: "9626",
+    subjectName: "Information Technology",
+    color: "#4D7C0F",
+    csvFile: "9626_information_technology.csv",
+    versionLabel: "Current syllabus",
+    validFrom: null,
+    validTo: null,
+    isCurrent: true,
+  },
+  {
+    subjectCode: "9696",
+    subjectName: "Geography",
+    color: "#B45309",
+    csvFile: "9696_geography.csv",
+    versionLabel: "Current syllabus",
+    validFrom: null,
+    validTo: null,
+    isCurrent: true,
+  },
+  {
+    subjectCode: "9699",
+    subjectName: "Sociology",
+    color: "#BE123C",
+    csvFile: "9699_sociology.csv",
+    versionLabel: "Current syllabus",
+    validFrom: null,
+    validTo: null,
+    isCurrent: true,
+  },
+  {
+    subjectCode: "9706",
+    subjectName: "Accounting",
+    color: "#1D4ED8",
+    csvFile: "9706_accounting.csv",
+    versionLabel: "Current syllabus",
+    validFrom: null,
+    validTo: null,
+    isCurrent: true,
+  },
+  {
+    subjectCode: "9990",
+    subjectName: "Psychology",
+    color: "#9F1239",
+    csvFile: "9990_psychology.csv",
+    versionLabel: "Current syllabus",
+    validFrom: null,
+    validTo: null,
+    isCurrent: true,
+  },
+];
+
+/** All catalogue subjects known to Lockdin import tooling. */
+export const SYLLABUS_SUBJECT_REGISTRY: SyllabusManifestEntry[] = [
+  ...SYLLABUS_IMPORT_MANIFEST,
+  ...SYLLABUS_NEW_SEVEN_SUBJECTS,
+];
+
+export function findSyllabusSubject(
+  subjectCode: string,
+): SyllabusManifestEntry | undefined {
+  return SYLLABUS_SUBJECT_REGISTRY.find((entry) => entry.subjectCode === subjectCode);
+}

@@ -13,16 +13,21 @@ import {
 type Mode = "validate" | "apply";
 
 export type ApplicabilityCliOptions = {
-  loadManifest?: () => ApplicabilityManifest;
+  loadManifest?: (filePath?: string) => ApplicabilityManifest;
   validate?: typeof validateApplicabilityPopulation;
   apply?: typeof applyApplicabilityPopulation;
   output?: Pick<Console, "log" | "error">;
 };
 
-function parseMode(args: string[]): Mode {
+function parseArgs(args: string[]): { mode: Mode; manifestPath: string | null } {
   const modeArg = args.find((item) => item.startsWith("--mode="))?.split("=")[1];
-  if (modeArg === "apply") return "apply";
-  return "validate";
+  const manifestArg = args
+    .find((item) => item.startsWith("--manifest="))
+    ?.slice("--manifest=".length);
+  return {
+    mode: modeArg === "apply" ? "apply" : "validate",
+    manifestPath: manifestArg?.trim() || null,
+  };
 }
 
 export async function runApplicabilityCli(
@@ -30,15 +35,18 @@ export async function runApplicabilityCli(
   options: ApplicabilityCliOptions = {},
 ): Promise<number> {
   const output = options.output ?? console;
-  const mode = parseMode(args);
+  const { mode, manifestPath } = parseArgs(args);
   try {
-    const manifest = (options.loadManifest ?? loadApplicabilityManifest)();
+    const load =
+      options.loadManifest ??
+      ((filePath?: string) => loadApplicabilityManifest(filePath));
+    const manifest = load(manifestPath ?? undefined);
     if (mode === "validate") {
       const result = await (options.validate ?? validateApplicabilityPopulation)(
         manifest,
       );
       output.log(
-        `APPLICABILITY VALIDATE: ${result.targets.length}/9 targets OK`,
+        `APPLICABILITY VALIDATE: ${result.targets.length}/${manifest.versions.length} targets OK`,
       );
       output.log("Overall: OK");
       return 0;

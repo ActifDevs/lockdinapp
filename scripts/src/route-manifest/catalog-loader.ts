@@ -101,6 +101,7 @@ export async function loadReferenceCatalogFromDatabase(
       versionId: syllabusVersionsTable.id,
       subjectCode: subjectsTable.code,
       logicalRevisionKey: syllabusVersionsTable.logicalRevisionKey,
+      lifecycle: syllabusVersionsTable.lifecycle,
       applicableFromYear: syllabusVersionsTable.applicableFromYear,
       applicableToYear: syllabusVersionsTable.applicableToYear,
     })
@@ -152,6 +153,7 @@ export async function loadReferenceCatalogFromDatabase(
   const version: ReferenceSyllabusVersion = {
     subjectCode: versionRow.subjectCode,
     logicalRevisionKey: versionRow.logicalRevisionKey ?? syllabusRevisionKey,
+    lifecycle: versionRow.lifecycle,
     applicableFromYear: versionRow.applicableFromYear,
     applicableToYear: versionRow.applicableToYear,
     components: components.map((component) => ({

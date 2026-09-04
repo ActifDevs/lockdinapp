@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "report": "docs/cursor/reports/129-phase7-local-16-subject-adoption-publication-b3.md",
+    "researchArtifact": "docs/reference-data/syllabus-applicability/new-seven-population-proposal.json + Report 102/127 windows",
+    "ownerDecision": "B3 local adoption: official family windows; Feb/Mar product_auto_assign false; superseded r001 retired on successor publish"
+  },
+  "versions": [
+    {
+      "subjectCode": "9231",
+      "logicalRevisionKey": "9231-r001",
+      "expectedContentSha256": "f3f2b9ce60a90826da78a123dad8ae9386da5003d9594ac6780ffd211e9ee76e",
+      "applicability": {
+        "from": {
+          "year": 2023,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    }
+  ]
+}

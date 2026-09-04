@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { SYLLABUS_IMPORT_MANIFEST } from "./manifest.js";
+import { SYLLABUS_IMPORT_MANIFEST, findSyllabusSubject } from "./manifest.js";
 import { parseAndValidateCsv } from "./parse-csv.js";
 import { normalizeSyllabus } from "./normalize.js";
 import { hashNormalizedSyllabus } from "./canonical-graph.js";
@@ -132,7 +132,16 @@ export async function runSyllabusCli(
   const output = options.output ?? console;
   const loadImporter = options.loadImporter ?? loadDatabaseImporter;
   const entries = files
-    ? SYLLABUS_IMPORT_MANIFEST.filter((e) => files.includes(e.subjectCode))
+    ? files.map((code) => {
+        const entry = findSyllabusSubject(code);
+        if (!entry) {
+          throw new SyllabusOperatorError(
+            "subject_scope",
+            `unknown subject code "${code}"`,
+          );
+        }
+        return entry;
+      })
     : SYLLABUS_IMPORT_MANIFEST;
 
   const needsDb = (mode === "import" && !dryRun) || mode === "adopt" || mode === "publish";
@@ -149,11 +158,20 @@ export async function runSyllabusCli(
         "import, adopt, and publish require exactly one subject via --files=<subject-code>",
       );
     }
-    const selected = SYLLABUS_IMPORT_MANIFEST.find((entry) => entry.subjectCode === files[0]);
-    if (!selected) {
+    if (!findSyllabusSubject(files[0]!)) {
       throw new SyllabusOperatorError(
         "subject_scope",
         `unknown subject code "${files[0]}"`,
+      );
+    }
+    if (
+      mode !== "publish" &&
+      !SYLLABUS_IMPORT_MANIFEST.some((entry) => entry.subjectCode === files[0]) &&
+      !csvPath
+    ) {
+      throw new SyllabusOperatorError(
+        "subject_scope",
+        `subject ${files[0]} requires --csv= (no default raw mapping)`,
       );
     }
   }
@@ -197,27 +215,21 @@ export async function runSyllabusCli(
   let anyFailed = false;
   const results: Array<string | PreparedEntry> = [];
 
-  for (const entry of SYLLABUS_IMPORT_MANIFEST) {
-    if (files && !files.includes(entry.subjectCode)) {
-      results.push(
-        `${entry.csvFile.padEnd(35)} SKIPPED (not in --files filter)`,
-      );
-      continue;
-    }
-
+  for (const entry of entries) {
     const filePath = csvPath
       ? path.resolve(csvPath)
       : path.join(CSV_DIR, entry.csvFile);
+    const sourceFileName = path.basename(filePath);
     const result = parseAndValidateCsv(filePath);
 
     if (result.errors.length > 0) {
       anyFailed = true;
       results.push(
-        `${entry.csvFile.padEnd(35)} FAILED — ${result.errors.length} error(s), ${result.warnings.length} warning(s)`,
+        `${sourceFileName.padEnd(35)} FAILED — ${result.errors.length} error(s), ${result.warnings.length} warning(s)`,
       );
       for (const e of result.errors.slice(0, 10)) {
         output.error(
-          `  [${entry.csvFile}] row=${e.row} col=${e.column}: ${e.message}`,
+          `  [${sourceFileName}] row=${e.row} col=${e.column}: ${e.message}`,
         );
       }
       if (result.errors.length > 10)
@@ -225,9 +237,14 @@ export async function runSyllabusCli(
       continue;
     }
 
-    const normalized = normalizeSyllabus(entry, result.rows);
+    // When --csv= overrides the default raw mapping, persist that basename as
+    // source_file so successor snapshots keep distinct provenance identities.
+    const normalized = normalizeSyllabus(
+      { ...entry, csvFile: sourceFileName },
+      result.rows,
+    );
     for (const notice of normalized.notices) {
-      output.warn(`  [${entry.csvFile}] NOTICE: ${notice}`);
+      output.warn(`  [${sourceFileName}] NOTICE: ${notice}`);
     }
 
     const topicsCount = countTopics(normalized.units);
@@ -238,7 +255,7 @@ export async function runSyllabusCli(
 
     if (mode === "validate") {
       results.push(
-        `${entry.csvFile.padEnd(35)} OK — ${result.rows.length} rows, ${result.warnings.length} warning(s) ` +
+        `${sourceFileName.padEnd(35)} OK — ${result.rows.length} rows, ${result.warnings.length} warning(s) ` +
           `revision=${revisionLabel} sha256=${contentSha256.slice(0, 12)}… ` +
           `(would produce ${normalized.units.length} units / ${topicsCount} topics / ${outcomesCount} outcomes / ${normalized.components.length} components / ${relationshipsCount} relationships)`,
       );
@@ -247,14 +264,17 @@ export async function runSyllabusCli(
 
     if (mode === "import" && dryRun) {
       results.push(
-        `${entry.csvFile.padEnd(35)} DRY RUN — revision=${revisionLabel} sha256=${contentSha256} ` +
+        `${sourceFileName.padEnd(35)} DRY RUN — revision=${revisionLabel} sha256=${contentSha256} ` +
           `would import ${normalized.units.length} units / ${topicsCount} topics / ` +
           `${outcomesCount} learning outcomes / ${normalized.components.length} components / ${relationshipsCount} relationships`,
       );
       continue;
     }
 
-    results.push({ entry, normalized });
+    results.push({
+      entry: { ...entry, csvFile: sourceFileName },
+      normalized,
+    });
   }
 
   const rows: string[] = [];

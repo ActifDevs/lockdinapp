@@ -72,11 +72,21 @@ async function lockAndLoadTarget(
       `${entry.logicalRevisionKey} is not owned by ${entry.subjectCode}`,
     );
   }
-  if (version.lifecycle !== "published" && version.lifecycle !== "draft") {
+  if (
+    version.lifecycle !== "published" &&
+    version.lifecycle !== "draft" &&
+    version.lifecycle !== "retired"
+  ) {
     throw new SyllabusOperatorError(
       "applicability_requires_published",
-      `${entry.logicalRevisionKey} must be draft or published`,
+      `${entry.logicalRevisionKey} must be draft, published, or retired`,
     );
+  }
+  // Retired versions may receive a one-time historical window annotation so
+  // pin-supporting route manifests can validate year mappings. Resolver ignores
+  // retired lifecycles regardless of window/policy.
+  if (version.lifecycle === "retired" && !windowIsNull(version)) {
+    // fall through to classifyTarget equality checks
   }
   if (version.contentSha256 !== entry.expectedContentSha256) {
     throw new SyllabusOperatorError(
@@ -179,7 +189,12 @@ async function classifyTarget(
         `${entry.logicalRevisionKey} has conflicting series policy rows`,
       );
     }
-    await assertNoOverlap(tx, subjectId, version.id, entry);
+    // Retired historical annotation is not assignment-eligible; overlapping a
+    // published successor window is expected and must not block pin-support
+    // route publication.
+    if (version.lifecycle !== "retired") {
+      await assertNoOverlap(tx, subjectId, version.id, entry);
+    }
     return { version, status: "needs-write" };
   }
 

@@ -1,0 +1,590 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "report": "docs/cursor/reports/129-phase7-local-16-subject-adoption-publication-b3.md",
+    "researchArtifact": "docs/reference-data/syllabus-applicability/new-seven-population-proposal.json + Report 102/127 windows",
+    "ownerDecision": "B3 local adoption: official family windows; Feb/Mar product_auto_assign false; superseded r001 retired on successor publish"
+  },
+  "versions": [
+    {
+      "subjectCode": "9231",
+      "logicalRevisionKey": "9231-r001",
+      "expectedContentSha256": "f3f2b9ce60a90826da78a123dad8ae9386da5003d9594ac6780ffd211e9ee76e",
+      "applicability": {
+        "from": {
+          "year": 2023,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9489",
+      "logicalRevisionKey": "9489-r001",
+      "expectedContentSha256": "d451305b402521724f58a6cf51fb9a795ba989681dd102410a0c22c270ee26c7",
+      "applicability": {
+        "from": {
+          "year": 2027,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2029,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9609",
+      "logicalRevisionKey": "9609-r001",
+      "expectedContentSha256": "47bef6703c0d26f37bac77200f2fa4dfbd4e265948a912c8b447f840f9d723ef",
+      "applicability": {
+        "from": {
+          "year": 2023,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2028,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9618",
+      "logicalRevisionKey": "9618-r001",
+      "expectedContentSha256": "cbc4240de8d64cb32c855194187b288a094764b0d2d9e2e6dc3cd40a2470ae75",
+      "applicability": {
+        "from": {
+          "year": 2024,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2029,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9700",
+      "logicalRevisionKey": "9700-r001",
+      "expectedContentSha256": "058a5aba48c0f80ef3bc3d4dc67ad2e056b37cdef476c2ae5e39d1de563fc1f6",
+      "applicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9701",
+      "logicalRevisionKey": "9701-r001",
+      "expectedContentSha256": "987a41ef98117648459fffe40f60835a5193918d3467ea60528d6138f725d486",
+      "applicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9702",
+      "logicalRevisionKey": "9702-r001",
+      "expectedContentSha256": "286920d02cbfae80964bb21642aeef619052ef6094949526b45aa5448b8643be",
+      "applicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9708",
+      "logicalRevisionKey": "9708-r001",
+      "expectedContentSha256": "5bfc60acd8587c67006315702685aea431cc80e46726669b90956f91ef270a8d",
+      "applicability": {
+        "from": {
+          "year": 2023,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2028,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9709",
+      "logicalRevisionKey": "9709-r001",
+      "expectedContentSha256": "e720d0d50929a2cc1e298eda51f3d931ad65a77c6ebdb6ffb1e5516d9c4a566a",
+      "applicability": {
+        "from": {
+          "year": 2023,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9489",
+      "logicalRevisionKey": "9489-r002",
+      "expectedContentSha256": "f5389bdbeb9a1ccff15e0bb89c4305b2ab4a03cde9376e271e9855b9ae9352e6",
+      "applicability": {
+        "from": {
+          "year": 2027,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2029,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9609",
+      "logicalRevisionKey": "9609-r002",
+      "expectedContentSha256": "fd8e39f746ab7afc07272071d1ca78b309b47e2fc2edd7bbf1ac5bb32bba729b",
+      "applicability": {
+        "from": {
+          "year": 2026,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2028,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9618",
+      "logicalRevisionKey": "9618-r002",
+      "expectedContentSha256": "3da56291821da34aed6c56cbfbf62b7f0eb5b7389c2620d55d98a38153a2047c",
+      "applicability": {
+        "from": {
+          "year": 2027,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2029,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9700",
+      "logicalRevisionKey": "9700-r002",
+      "expectedContentSha256": "b5a8edba3293a40fe54fb928aeaeea18602d52277896066f001836004b027175",
+      "applicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2027,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9701",
+      "logicalRevisionKey": "9701-r002",
+      "expectedContentSha256": "134a26f077ed74467e7d6f86e340d2bc7ad5ecbfc56a64d414874ab81eaea803",
+      "applicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2027,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9701",
+      "logicalRevisionKey": "9701-r003",
+      "expectedContentSha256": "581812bf8b469be099b028def9bba96de15ba9c22c33e4ce860d5be88b2a5fee",
+      "applicability": {
+        "from": {
+          "year": 2028,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9702",
+      "logicalRevisionKey": "9702-r002",
+      "expectedContentSha256": "b38da66a0874c77f436859fedb9294e506b684c1a1c0634299d873921bf4668e",
+      "applicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2027,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9708",
+      "logicalRevisionKey": "9708-r002",
+      "expectedContentSha256": "89a900c6c8062840eeccb9303b2a0eaf3f12177e5365763a3395d07e03f917c1",
+      "applicability": {
+        "from": {
+          "year": 2026,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2028,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9709",
+      "logicalRevisionKey": "9709-r002",
+      "expectedContentSha256": "2a9bde58e736344fce5c267ca1b474f15bcf6bc69da8709159fe3bf13cc651fd",
+      "applicability": {
+        "from": {
+          "year": 2026,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "8021",
+      "logicalRevisionKey": "8021-r001",
+      "expectedContentSha256": "05cde7ae889ac065253fa880f23455590ed70c47bbd2da2e3250b2ee59d42f6e",
+      "applicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2027,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "8021",
+      "logicalRevisionKey": "8021-r002",
+      "expectedContentSha256": "3a89b61f59aa0730083f376fd17199421f8a6360af11c52d32e9e6cb04430865",
+      "applicability": {
+        "from": {
+          "year": 2028,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9093",
+      "logicalRevisionKey": "9093-r001",
+      "expectedContentSha256": "7f049b3cc0326f490dfede3f330fc29d5313077f2e6abab77af99fd3ff6d2f3c",
+      "applicability": {
+        "from": {
+          "year": 2027,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2028,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9626",
+      "logicalRevisionKey": "9626-r001",
+      "expectedContentSha256": "436e5a2dcbe25703ddf4b339167f60ad65c1a6c922b22dbd8d036ceb6a9d80e4",
+      "applicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2027,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9626",
+      "logicalRevisionKey": "9626-r002",
+      "expectedContentSha256": "20f96933e002357a2e0d57fa95024ba5237f1ef984a4ccf86f037b4588725a04",
+      "applicability": {
+        "from": {
+          "year": 2028,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9696",
+      "logicalRevisionKey": "9696-r001",
+      "expectedContentSha256": "24a8ed56cd1efc88f390ff85df8928cd45b274cdcbe0124af2cb9a249630a186",
+      "applicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2026,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9696",
+      "logicalRevisionKey": "9696-r002",
+      "expectedContentSha256": "c0975a3674c422dbef8a2671c9a016992418f32a472f839385b847608de3c0c6",
+      "applicability": {
+        "from": {
+          "year": 2027,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2029,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9699",
+      "logicalRevisionKey": "9699-r001",
+      "expectedContentSha256": "2a1c8a3d3d882070612a129baabfc80daac14d8ec30a62a8a58bb2bce8572c77",
+      "applicability": {
+        "from": {
+          "year": 2027,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2028,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9706",
+      "logicalRevisionKey": "9706-r001",
+      "expectedContentSha256": "29bc8c48465328d6a52823624e7f24294d661d56ea24f99a1b6e390c353ad008",
+      "applicability": {
+        "from": {
+          "year": 2026,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2028,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9990",
+      "logicalRevisionKey": "9990-r001",
+      "expectedContentSha256": "150538c53c0cfc5805f206d8f879f942662f914e2e2278a30980216c6564cff4",
+      "applicability": {
+        "from": {
+          "year": 2027,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2027,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    },
+    {
+      "subjectCode": "9990",
+      "logicalRevisionKey": "9990-r002",
+      "expectedContentSha256": "8a465a8cb790c6659c43ad4e7c8b0da95e474bd761e3fdfd68b36782f2ba98e4",
+      "applicability": {
+        "from": {
+          "year": 2028,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      },
+      "seriesPolicy": {
+        "Feb/Mar": false,
+        "May/June": true,
+        "Oct/Nov": true
+      }
+    }
+  ]
+}

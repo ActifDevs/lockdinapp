@@ -94,7 +94,10 @@ describe("syllabus CLI database isolation", () => {
       expect.stringContaining("9702_physics.csv                    DRY RUN"),
     );
     expect(captured.logs).toContainEqual(
-      expect.stringContaining("9231_further_mathematics.csv        SKIPPED"),
+      expect.stringContaining("Manifest entries: 1 / 9"),
+    );
+    expect(captured.logs).not.toContainEqual(
+      expect.stringContaining("SKIPPED"),
     );
     expect(captured.logs).toContain("\nOverall: OK");
   });
