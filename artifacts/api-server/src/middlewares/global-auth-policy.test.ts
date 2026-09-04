@@ -138,6 +138,7 @@ describe("global API authentication policy", () => {
     ["post", "/analytics/account-created"],
     ["get", "/user-subjects"],
     ["put", "/user-subjects"],
+    ["put", "/user-subjects/1/assessment-route"],
   ] as const)("rejects anonymous %s %s", async (method, path) => {
     const response = await request(app)[method](`/api${path}`);
 

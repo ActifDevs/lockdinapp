@@ -47,6 +47,19 @@ vi.mock("@workspace/api-client-react", () => ({
   useListCurrentUserSubjects: api.memberships,
   useReplaceCurrentUserSubjects: api.replace,
   useListSubjectAssignmentSessions: api.availability,
+  useAssignCurrentUserSubjectAssessmentRoute: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  listSubjectAssessmentRoutes: vi.fn().mockResolvedValue({
+    subjectId: 1,
+    syllabusVersionId: 1,
+    routeSetId: null,
+    routeRevisionKey: null,
+    selectionMode: "none_available",
+    routes: [],
+    optionGroups: [],
+  }),
   ApiError: api.ApiError,
 }));
 vi.mock("@/components/theme-provider", () => ({
@@ -97,7 +110,16 @@ beforeEach(() => {
     ok([
       {
         subject,
+        syllabusVersion: {
+          id: 10,
+          label: "2025–2027",
+          examBoard: "CAIE",
+          qualification: "A Level",
+        },
+        assessmentRouteId: null,
         intendedExamSession: { year: 2026, series: "May/June" },
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
       },
     ]),
   );
@@ -107,20 +129,20 @@ beforeEach(() => {
       {
         subjectId: subject.id,
         sessions: [
-          { year: 2026, series: "Oct/Nov", label: "Oct/Nov 2026" },
-          { year: 2027, series: "May/June", label: "May/June 2027" },
+          { year: 2026, series: "Oct/Nov", label: "Oct/Nov 2026", syllabusVersionId: 10 },
+          { year: 2027, series: "May/June", label: "May/June 2027", syllabusVersionId: 10 },
         ],
       },
       {
         subjectId: chemistry.id,
         sessions: [
-          { year: 2026, series: "Oct/Nov", label: "Oct/Nov 2026" },
-          { year: 2027, series: "May/June", label: "May/June 2027" },
+          { year: 2026, series: "Oct/Nov", label: "Oct/Nov 2026", syllabusVersionId: 10 },
+          { year: 2027, series: "May/June", label: "May/June 2027", syllabusVersionId: 10 },
         ],
       },
       {
         subjectId: history.id,
-        sessions: [{ year: 2027, series: "May/June", label: "May/June 2027" }],
+        sessions: [{ year: 2027, series: "May/June", label: "May/June 2027", syllabusVersionId: 10 }],
       },
     ]),
   );
@@ -245,8 +267,22 @@ describe("Settings subject-session mutations", () => {
   it("allows removal-only without validating the profile/default session", async () => {
     api.memberships.mockReturnValue(
       ok([
-        { subject, intendedExamSession: null },
-        { subject: history, intendedExamSession: null },
+        {
+          subject,
+          syllabusVersion: { id: 10, label: "2025–2027", examBoard: "CAIE", qualification: "A Level" },
+          assessmentRouteId: null,
+          intendedExamSession: null,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+        {
+          subject: history,
+          syllabusVersion: { id: 11, label: "2025–2027", examBoard: "CAIE", qualification: "A Level" },
+          assessmentRouteId: null,
+          intendedExamSession: null,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
       ]),
     );
     const mutateAsync = vi.fn().mockResolvedValue([{ subject }]);

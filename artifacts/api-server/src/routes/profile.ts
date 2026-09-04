@@ -246,6 +246,15 @@ router.post("/profile/complete-onboarding", requireAuth, async (req, res): Promi
     return;
   }
 
+  const routeAssignments =
+    body.data.routeAssignments && body.data.routeAssignments.length > 0
+      ? body.data.routeAssignments.map((row) => ({
+          subjectId: row.subjectId,
+          routeId: row.routeId,
+          optionIds: row.optionIds,
+        }))
+      : undefined;
+
   const client = createUserScopedSupabaseClient(req.accessToken!);
   const onboardingParams = {
     p_full_name: fullName,
@@ -259,6 +268,7 @@ router.post("/profile/complete-onboarding", requireAuth, async (req, res): Promi
     )
       ? sessionArgs.args
       : {}),
+    ...(routeAssignments ? { p_route_assignments: routeAssignments } : {}),
   };
   const { data, error } = await client.rpc(
     "lockdin_complete_onboarding",

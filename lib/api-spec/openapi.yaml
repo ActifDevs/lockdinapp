@@ -211,6 +211,49 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorMessage"
 
+  /subjects/{subjectId}/syllabus-versions/{syllabusVersionId}/assessment-routes:
+    get:
+      operationId: listSubjectAssessmentRoutes
+      tags: [subjects]
+      summary: List published assessment routes for a syllabus version
+      description: |
+        Returns the published route set for the given syllabus version of a subject,
+        including routes, components, and study-option groups. Fails closed when a
+        published route set is required but missing or ambiguous. When no published
+        route set exists yet, returns an empty routes array (legacy-compatible).
+      parameters:
+        - name: subjectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: syllabusVersionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Published route catalogue for the version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubjectAssessmentRouteCatalogue"
+        "400":
+          description: Invalid parameters or ambiguous route set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Subject or syllabus version not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+
   /subjects/{subjectId}/assessment-components:
     get:
       operationId: listAssessmentComponents
@@ -742,6 +785,56 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorMessage"
 
+  /user-subjects/{subjectId}/assessment-route:
+    put:
+      operationId: assignCurrentUserSubjectAssessmentRoute
+      tags: [userSubjects]
+      summary: Assign or change the assessment route for one membership
+      description: |
+        Intentional authenticated mutation. Stays within the existing pinned
+        syllabus_version_id. Does not run on page view. Legacy null-route
+        remediation and Settings route changes use this endpoint.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: subjectId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignAssessmentRouteInput"
+      responses:
+        "200":
+          description: Updated membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSubjectMembership"
+        "400":
+          description: Invalid route or option selection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "401":
+          description: Missing or invalid Bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Membership not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+
   /profile:
     get:
       operationId: getCurrentProfile
@@ -1037,7 +1130,10 @@ components:
 
     AssignmentSessionChoice:
       type: object
-      description: Product-safe intended sitting available for new membership assignment.
+      description: |
+        Product-safe intended sitting available for new membership assignment.
+        syllabusVersionId is included only for unambiguous published mappings
+        already accepted by the projection.
       properties:
         year:
           type: integer
@@ -1050,10 +1146,14 @@ components:
             - Oct/Nov
         label:
           type: string
+        syllabusVersionId:
+          type: integer
+          minimum: 1
       required:
         - year
         - series
         - label
+        - syllabusVersionId
       additionalProperties: false
 
     SubjectAssignmentSessions:
@@ -1087,6 +1187,30 @@ components:
         - subjectId
         - year
         - series
+      additionalProperties: false
+
+    SubjectRouteAssignmentInput:
+      type: object
+      description: |
+        Version-scoped route + study-option selection for one subject.
+        Server revalidates route/options against the resolved published route set.
+      properties:
+        subjectId:
+          type: integer
+          minimum: 1
+        routeId:
+          type: integer
+          minimum: 1
+        optionIds:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          uniqueItems: true
+      required:
+        - subjectId
+        - routeId
+        - optionIds
       additionalProperties: false
 
     CompleteOnboardingInput:
@@ -1123,6 +1247,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SubjectSessionOverride"
+        routeAssignments:
+          type: array
+          description: |
+            Optional when every selected subject has zero or one published route
+            and no required study options. Required when multiple routes exist
+            or study-option cardinality must be satisfied.
+          items:
+            $ref: "#/components/schemas/SubjectRouteAssignmentInput"
       required:
         - fullName
         - username
@@ -1148,6 +1280,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SubjectSessionOverride"
+        routeAssignments:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubjectRouteAssignmentInput"
       required:
         - subjectIds
       additionalProperties: false
@@ -1159,6 +1295,11 @@ components:
           $ref: "#/components/schemas/SubjectReference"
         syllabusVersion:
           $ref: "#/components/schemas/UserSubjectSyllabusVersion"
+        assessmentRouteId:
+          type: ["integer", "null"]
+          description: |
+            Canonical version-scoped assessment route. Null for legacy memberships
+            until the member intentionally assigns a route.
         intendedExamSession:
           allOf:
             - $ref: "#/components/schemas/IntendedExamSession"
@@ -1172,6 +1313,7 @@ components:
       required:
         - subject
         - syllabusVersion
+        - assessmentRouteId
         - intendedExamSession
         - createdAt
         - updatedAt
@@ -1245,6 +1387,7 @@ components:
       description: |
         Shared catalogue subject. User-specific progress, task-count, and past-paper
         fields remain neutral placeholders on this public catalogue response.
+        Catalogue list endpoints return only subjects selectable for new memberships.
       properties:
         id:
           type: integer
@@ -1254,6 +1397,11 @@ components:
           type: string
         color:
           type: string
+        selectableForNewMemberships:
+          type: boolean
+          description: |
+            When false, omitted from new-membership catalogue surfaces. Existing
+            memberships remain accessible via membership APIs.
         syllabusProgress:
           type: number
           description: Neutral placeholder; always 0 (not derived from shared topic status)
@@ -1280,6 +1428,7 @@ components:
         - name
         - code
         - color
+        - selectableForNewMemberships
         - syllabusProgress
         - topicsTotal
         - topicsCompleted
@@ -1855,3 +2004,151 @@ components:
         - reason
         - syllabusProgress
         - recentScoreTrend
+
+    AssignAssessmentRouteInput:
+      type: object
+      properties:
+        routeId:
+          type: integer
+          minimum: 1
+        optionIds:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          uniqueItems: true
+      required:
+        - routeId
+        - optionIds
+      additionalProperties: false
+
+    SubjectAssessmentRouteCatalogue:
+      type: object
+      properties:
+        subjectId:
+          type: integer
+        syllabusVersionId:
+          type: integer
+        routeSetId:
+          type: ["integer", "null"]
+        routeRevisionKey:
+          type: ["string", "null"]
+        selectionMode:
+          type: string
+          enum: [none_available, auto, explicit]
+        routes:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssessmentRouteSummary"
+        optionGroups:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudyOptionGroupSummary"
+      required:
+        - subjectId
+        - syllabusVersionId
+        - routeSetId
+        - routeRevisionKey
+        - selectionMode
+        - routes
+        - optionGroups
+
+    AssessmentRouteSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        routeKey:
+          type: string
+        displayLabel:
+          type: string
+        qualificationTarget:
+          type: string
+          enum: [as_level, a_level]
+        pathwayType:
+          type: string
+          enum: [single_series, staged_completion, full_same_series]
+        progressionEligibility:
+          type: string
+          enum: [eligible, not_eligible, not_applicable]
+        orderIndex:
+          type: integer
+        components:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssessmentRouteComponentSummary"
+      required:
+        - id
+        - routeKey
+        - displayLabel
+        - qualificationTarget
+        - pathwayType
+        - progressionEligibility
+        - orderIndex
+        - components
+
+    AssessmentRouteComponentSummary:
+      type: object
+      properties:
+        componentId:
+          type: integer
+        paperCode:
+          type: string
+        componentLabel:
+          type: string
+        role:
+          type: string
+          enum: [current_sitting, carried_forward]
+        orderIndex:
+          type: integer
+      required:
+        - componentId
+        - paperCode
+        - componentLabel
+        - role
+        - orderIndex
+
+    StudyOptionGroupSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        groupKey:
+          type: string
+        displayLabel:
+          type: string
+        minSelections:
+          type: integer
+        maxSelections:
+          type: integer
+        orderIndex:
+          type: integer
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudyOptionSummary"
+      required:
+        - id
+        - groupKey
+        - displayLabel
+        - minSelections
+        - maxSelections
+        - orderIndex
+        - options
+
+    StudyOptionSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        optionKey:
+          type: string
+        displayLabel:
+          type: string
+        orderIndex:
+          type: integer
+      required:
+        - id
+        - optionKey
+        - displayLabel
+        - orderIndex

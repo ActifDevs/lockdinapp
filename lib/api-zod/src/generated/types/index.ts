@@ -7,6 +7,13 @@
  */
 
 export * from './assessmentComponent';
+export * from './assessmentRouteComponentSummary';
+export * from './assessmentRouteComponentSummaryRole';
+export * from './assessmentRouteSummary';
+export * from './assessmentRouteSummaryPathwayType';
+export * from './assessmentRouteSummaryProgressionEligibility';
+export * from './assessmentRouteSummaryQualificationTarget';
+export * from './assignAssessmentRouteInput';
 export * from './assignmentSessionChoice';
 export * from './assignmentSessionChoiceSeries';
 export * from './attentionItem';
@@ -32,12 +39,17 @@ export * from './profileUpdate';
 export * from './progressOverview';
 export * from './recentPerformanceItem';
 export * from './reportAccountCreatedInput';
+export * from './studyOptionGroupSummary';
+export * from './studyOptionSummary';
 export * from './subject';
+export * from './subjectAssessmentRouteCatalogue';
+export * from './subjectAssessmentRouteCatalogueSelectionMode';
 export * from './subjectAssignmentSessions';
 export * from './subjectInput';
 export * from './subjectPerformance';
 export * from './subjectProgressItem';
 export * from './subjectReference';
+export * from './subjectRouteAssignmentInput';
 export * from './subjectSessionOverride';
 export * from './syllabusTopic';
 export * from './syllabusTopicProgress';

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { IntendedExamSession } from './intendedExamSession';
+import type { SubjectRouteAssignmentInput } from './subjectRouteAssignmentInput';
 import type { SubjectSessionOverride } from './subjectSessionOverride';
 
 export interface UserSubjectSelectionInput {
@@ -17,4 +18,5 @@ export interface UserSubjectSelectionInput {
   subjectIds: number[];
   intendedExamSession?: IntendedExamSession;
   subjectSessionOverrides?: SubjectSessionOverride[];
+  routeAssignments?: SubjectRouteAssignmentInput[];
 }

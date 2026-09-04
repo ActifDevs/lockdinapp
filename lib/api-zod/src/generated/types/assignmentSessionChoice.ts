@@ -9,6 +9,8 @@ import type { AssignmentSessionChoiceSeries } from './assignmentSessionChoiceSer
 
 /**
  * Product-safe intended sitting available for new membership assignment.
+ * syllabusVersionId is included only for unambiguous published mappings
+ * already accepted by the projection.
  */
 export interface AssignmentSessionChoice {
   /**
@@ -18,4 +20,6 @@ export interface AssignmentSessionChoice {
   year: number;
   series: AssignmentSessionChoiceSeries;
   label: string;
+  /** @minimum 1 */
+  syllabusVersionId: number;
 }

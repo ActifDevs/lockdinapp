@@ -12,6 +12,12 @@ import type { UserSubjectSyllabusVersion } from './userSubjectSyllabusVersion';
 export interface UserSubjectMembership {
   subject: SubjectReference;
   syllabusVersion: UserSubjectSyllabusVersion;
+  /**
+     * Canonical version-scoped assessment route. Null for legacy memberships
+     * until the member intentionally assigns a route.
+     * @nullable
+     */
+  assessmentRouteId: number | null;
   intendedExamSession: IntendedExamSession | null;
   createdAt: string;
   updatedAt: string;

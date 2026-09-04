@@ -1,5 +1,5 @@
+import { useCallback, useMemo, useState } from "react";
 import { BrandName } from "@/components/brand-name";
-import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,15 @@ import {
   toggleSubjectSelection,
   validateUsername,
 } from "@/lib/onboarding-logic";
+import { OnboardingRouteStep } from "@/components/onboarding-route-step";
+import {
+  routeAssignmentsPayload,
+  routeDraftValidationError,
+  type RouteCatalogueLike,
+  type SubjectRouteDraft,
+} from "@/lib/route-selection";
+
+const TOTAL_STEPS = 6;
 
 export default function Onboarding() {
   const { firstName, user, completeOnboarding } = useAuth();
@@ -66,6 +75,19 @@ export default function Onboarding() {
   const [examSession, setExamSession] = useState<string | null>(null);
   const [subjectSessionOverrides, setSubjectSessionOverrides] =
     useState<SubjectSessionOverrides>({});
+  const [routeDrafts, setRouteDrafts] = useState<SubjectRouteDraft[]>([]);
+  const [routeCatalogues, setRouteCatalogues] = useState<RouteCatalogueLike[]>(
+    [],
+  );
+  const onRouteDraftsChange = useCallback((drafts: SubjectRouteDraft[]) => {
+    setRouteDrafts(drafts);
+  }, []);
+  const onRouteCataloguesChange = useCallback(
+    (catalogues: RouteCatalogueLike[]) => {
+      setRouteCatalogues(catalogues);
+    },
+    [],
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -147,7 +169,21 @@ export default function Onboarding() {
         return;
       }
     }
-    setStep((s) => Math.min(s + 1, 5));
+    if (step === 5) {
+      for (const catalogue of routeCatalogues) {
+        const draft = routeDrafts.find((row) => row.subjectId === catalogue.subjectId);
+        if (!draft) {
+          setError("Assessment choices are still loading.");
+          return;
+        }
+        const routeErr = routeDraftValidationError(catalogue, draft);
+        if (routeErr) {
+          setError(routeErr);
+          return;
+        }
+      }
+    }
+    setStep((s) => Math.min(s + 1, TOTAL_STEPS));
   };
 
   const finish = async () => {
@@ -156,11 +192,28 @@ export default function Onboarding() {
       setError("Every subject needs an available May/June or Oct/Nov session.");
       return;
     }
+    for (const catalogue of routeCatalogues) {
+      const draft = routeDrafts.find((row) => row.subjectId === catalogue.subjectId);
+      if (!draft) {
+        setError("Assessment choices are still loading.");
+        return;
+      }
+      const routeErr = routeDraftValidationError(catalogue, draft);
+      if (routeErr) {
+        setError(routeErr);
+        setStep(5);
+        return;
+      }
+    }
     const sessionPayload = assignmentPayloadSessions(
       selectedIds,
       examSession,
       subjectSessionOverrides,
       assignmentOptions,
+    );
+    const routeAssignments = routeAssignmentsPayload(
+      routeDrafts,
+      routeCatalogues,
     );
     setIsSubmitting(true);
     setError(null);
@@ -172,6 +225,7 @@ export default function Onboarding() {
         examSession: examSession!,
         subjectIds: selectedIds,
         ...sessionPayload,
+        ...(routeAssignments.length > 0 ? { routeAssignments } : {}),
       });
     } catch (err) {
       const msg =
@@ -209,7 +263,7 @@ export default function Onboarding() {
       <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-2xl border bg-card shadow-[0_20px_60px_-20px_hsl(185_100%_23%/0.18)]">
         <div className="border-b bg-muted/20 px-6 py-4">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Step {step} of 5
+            Step {step} of {TOTAL_STEPS}
           </p>
         </div>
 
@@ -563,6 +617,20 @@ export default function Onboarding() {
           )}
 
           {step === 5 && (
+            <OnboardingRouteStep
+              subjects={subjects}
+              selectedIds={selectedIds}
+              examSession={examSession}
+              subjectSessionOverrides={subjectSessionOverrides}
+              assignmentAvailability={assignmentAvailability}
+              drafts={routeDrafts}
+              onDraftsChange={onRouteDraftsChange}
+              catalogues={routeCatalogues}
+              onCataloguesChange={onRouteCataloguesChange}
+            />
+          )}
+
+          {step === 6 && (
             <div className="space-y-5">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">
@@ -639,7 +707,7 @@ export default function Onboarding() {
               >
                 Back
               </Button>
-              {step < 5 ? (
+              {step < TOTAL_STEPS ? (
                 <Button
                   type="button"
                   className="cursor-pointer"

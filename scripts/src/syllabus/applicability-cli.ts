@@ -9,6 +9,7 @@ import {
   applyApplicabilityPopulation,
   validateApplicabilityPopulation,
 } from "./applicability-populate.js";
+import { assertCatalogueMutationAuthorized } from "../hosted-cutover/mutation-target.js";
 
 type Mode = "validate" | "apply";
 
@@ -51,6 +52,8 @@ export async function runApplicabilityCli(
       output.log("Overall: OK");
       return 0;
     }
+
+    assertCatalogueMutationAuthorized({ argv: args });
 
     const result = await (options.apply ?? applyApplicabilityPopulation)(
       manifest,

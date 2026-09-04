@@ -10,14 +10,14 @@ const availability = [
   {
     subjectId: 1,
     sessions: [
-      { year: 2026, series: "Oct/Nov" as const, label: "Oct/Nov 2026" },
-      { year: 2027, series: "May/June" as const, label: "May/June 2027" },
+      { year: 2026, series: "Oct/Nov" as const, label: "Oct/Nov 2026", syllabusVersionId: 10 },
+      { year: 2027, series: "May/June" as const, label: "May/June 2027", syllabusVersionId: 10 },
     ],
   },
   {
     subjectId: 2,
     sessions: [
-      { year: 2027, series: "May/June" as const, label: "May/June 2027" },
+      { year: 2027, series: "May/June" as const, label: "May/June 2027", syllabusVersionId: 10 },
     ],
   },
 ];

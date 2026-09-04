@@ -13,6 +13,9 @@ import {
   ListCurrentUserSubjectsResponse,
   ReplaceCurrentUserSubjectsBody,
   ReplaceCurrentUserSubjectsResponse,
+  AssignCurrentUserSubjectAssessmentRouteParams,
+  AssignCurrentUserSubjectAssessmentRouteBody,
+  AssignCurrentUserSubjectAssessmentRouteResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/require-auth";
 import { createUserScopedSupabaseClient } from "../lib/supabase-user-client";
@@ -30,6 +33,7 @@ type MembershipRow = {
   user_id: string;
   subject_id: number;
   syllabus_version_id: number;
+  assessment_route_id: number | null;
   intended_exam_year: number | null;
   intended_exam_series: string | null;
   created_at: string;
@@ -68,6 +72,7 @@ export function buildMembershipResponse(
         examBoard: version.examBoard,
         qualification: version.qualification,
       },
+      assessmentRouteId: membership.assessment_route_id ?? null,
       intendedExamSession: mapStoredIntendedExamSession(
         membership.intended_exam_year,
         membership.intended_exam_series,
@@ -86,7 +91,7 @@ class MembershipPinInvariantError extends Error {
 }
 
 const MEMBERSHIP_SELECT =
-  "user_id, subject_id, syllabus_version_id, intended_exam_year, intended_exam_series, created_at, updated_at";
+  "user_id, subject_id, syllabus_version_id, assessment_route_id, intended_exam_year, intended_exam_series, created_at, updated_at";
 
 function hasForbiddenMembershipField(body: unknown): boolean {
   if (!body || typeof body !== "object") return false;
@@ -98,6 +103,19 @@ function hasForbiddenMembershipField(body: unknown): boolean {
     "syllabusVersionId",
     "syllabus_version_id",
   ].some((key) => Object.prototype.hasOwnProperty.call(body, key));
+}
+
+function routeAssignmentsRpcPayload(
+  assignments:
+    | { subjectId: number; routeId: number; optionIds: number[] }[]
+    | undefined,
+) {
+  if (!assignments || assignments.length === 0) return undefined;
+  return assignments.map((row) => ({
+    subjectId: row.subjectId,
+    routeId: row.routeId,
+    optionIds: row.optionIds,
+  }));
 }
 
 async function listMemberships(
@@ -203,6 +221,8 @@ router.put("/user-subjects", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  const routeAssignments = routeAssignmentsRpcPayload(body.data.routeAssignments);
+
   const client = createUserScopedSupabaseClient(req.accessToken!);
   const replaceParams = {
     p_subject_ids: subjectIds,
@@ -212,6 +232,7 @@ router.put("/user-subjects", requireAuth, async (req, res): Promise<void> => {
     )
       ? sessionArgs.args
       : {}),
+    ...(routeAssignments ? { p_route_assignments: routeAssignments } : {}),
   };
   const { error } = await client.rpc(
     "lockdin_replace_user_subjects",
@@ -262,5 +283,84 @@ router.put("/user-subjects", requireAuth, async (req, res): Promise<void> => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+router.put(
+  "/user-subjects/:subjectId/assessment-route",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = AssignCurrentUserSubjectAssessmentRouteParams.safeParse(
+      req.params,
+    );
+    const body = AssignCurrentUserSubjectAssessmentRouteBody.safeParse(req.body);
+    if (!params.success || !body.success) {
+      res.status(400).json({ error: "Invalid assessment route assignment" });
+      return;
+    }
+
+    const client = createUserScopedSupabaseClient(req.accessToken!);
+    const { error } = await client.rpc("lockdin_assign_membership_route", {
+      p_subject_id: params.data.subjectId,
+      p_assessment_route_id: body.data.routeId,
+      p_option_ids: body.data.optionIds,
+    });
+
+    if (error) {
+      const message = error.message ?? "";
+      const assignmentError = mapMembershipAssignmentRpcError(
+        error.code ?? "",
+        message,
+      );
+      if (assignmentError) {
+        res.status(assignmentError.status).json({ error: assignmentError.error });
+        return;
+      }
+      if (message.includes("membership_not_found")) {
+        res.status(404).json({ error: "Membership not found" });
+        return;
+      }
+      if (
+        error.code === "22023" ||
+        message.includes("invalid_") ||
+        message.includes("assessment_route") ||
+        message.includes("no_selectable_route")
+      ) {
+        res.status(400).json({ error: "Invalid assessment route assignment" });
+        return;
+      }
+      if (error.code === "42501" || message.includes("authentication_required")) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      logger.error(
+        { context: "assign_membership_route", supabaseCode: error.code },
+        "route assignment failed",
+      );
+      res.status(500).json({ error: "Internal server error" });
+      return;
+    }
+
+    try {
+      const memberships = await listMemberships(client, req.userId!);
+      const updated = memberships.find(
+        (row) => row.subject.id === params.data.subjectId,
+      );
+      if (!updated) {
+        res.status(404).json({ error: "Membership not found" });
+        return;
+      }
+      res.json(AssignCurrentUserSubjectAssessmentRouteResponse.parse(updated));
+    } catch (error) {
+      if (error instanceof MembershipPinInvariantError) {
+        res.status(409).json({ error: REFERENCE_CONTEXT_UNAVAILABLE });
+        return;
+      }
+      logger.error(
+        { context: "assign_membership_route_readback" },
+        "membership readback failed",
+      );
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
 
 export default router;

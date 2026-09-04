@@ -58,6 +58,7 @@ export type CompleteOnboardingPayload = {
   subjectIds: number[];
   intendedExamSession?: CompleteOnboardingInput["intendedExamSession"];
   subjectSessionOverrides?: CompleteOnboardingInput["subjectSessionOverrides"];
+  routeAssignments?: CompleteOnboardingInput["routeAssignments"];
 };
 
 type AuthContextValue = {
@@ -377,6 +378,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : {}),
         ...(payload.subjectSessionOverrides
           ? { subjectSessionOverrides: payload.subjectSessionOverrides }
+          : {}),
+        ...(payload.routeAssignments && payload.routeAssignments.length > 0
+          ? { routeAssignments: payload.routeAssignments }
           : {}),
       };
       const profile = await completeCurrentUserOnboarding(body);

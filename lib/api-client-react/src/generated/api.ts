@@ -21,6 +21,7 @@ import type {
 
 import type {
   AssessmentComponent,
+  AssignAssessmentRouteInput,
   CompleteOnboardingInput,
   DashboardSummary,
   ErrorMessage,
@@ -36,6 +37,7 @@ import type {
   ProgressOverview,
   ReportAccountCreatedInput,
   Subject,
+  SubjectAssessmentRouteCatalogue,
   SubjectAssignmentSessions,
   SubjectInput,
   SubjectPerformance,
@@ -691,6 +693,92 @@ export function useGetSubjectPerformance<TData = Awaited<ReturnType<typeof getSu
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetSubjectPerformanceQueryOptions(subjectId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListSubjectAssessmentRoutesUrl = (subjectId: number,
+    syllabusVersionId: number,) => {
+
+
+
+
+  return `/api/subjects/${subjectId}/syllabus-versions/${syllabusVersionId}/assessment-routes`
+}
+
+/**
+ * Returns the published route set for the given syllabus version of a subject,
+ * including routes, components, and study-option groups. Fails closed when a
+ * published route set is required but missing or ambiguous. When no published
+ * route set exists yet, returns an empty routes array (legacy-compatible).
+ * @summary List published assessment routes for a syllabus version
+ */
+export const listSubjectAssessmentRoutes = async (subjectId: number,
+    syllabusVersionId: number, options?: RequestInit): Promise<SubjectAssessmentRouteCatalogue> => {
+
+  return customFetch<SubjectAssessmentRouteCatalogue>(getListSubjectAssessmentRoutesUrl(subjectId,syllabusVersionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSubjectAssessmentRoutesQueryKey = (subjectId: number,
+    syllabusVersionId: number,) => {
+    return [
+    `/api/subjects/${subjectId}/syllabus-versions/${syllabusVersionId}/assessment-routes`
+    ] as const;
+    }
+
+
+export const getListSubjectAssessmentRoutesQueryOptions = <TData = Awaited<ReturnType<typeof listSubjectAssessmentRoutes>>, TError = ErrorType<ErrorMessage>>(subjectId: number,
+    syllabusVersionId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSubjectAssessmentRoutes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSubjectAssessmentRoutesQueryKey(subjectId,syllabusVersionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSubjectAssessmentRoutes>>> = ({ signal }) => listSubjectAssessmentRoutes(subjectId,syllabusVersionId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: subjectId !== null && subjectId !== undefined && syllabusVersionId !== null && syllabusVersionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSubjectAssessmentRoutes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSubjectAssessmentRoutesQueryResult = NonNullable<Awaited<ReturnType<typeof listSubjectAssessmentRoutes>>>
+export type ListSubjectAssessmentRoutesQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary List published assessment routes for a syllabus version
+ */
+
+export function useListSubjectAssessmentRoutes<TData = Awaited<ReturnType<typeof listSubjectAssessmentRoutes>>, TError = ErrorType<ErrorMessage>>(
+ subjectId: number,
+    syllabusVersionId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSubjectAssessmentRoutes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSubjectAssessmentRoutesQueryOptions(subjectId,syllabusVersionId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -1839,6 +1927,81 @@ export const useReplaceCurrentUserSubjects = <TError = ErrorType<ErrorMessage>,
         TContext
       > => {
       return useMutation(getReplaceCurrentUserSubjectsMutationOptions(options));
+    }
+
+export const getAssignCurrentUserSubjectAssessmentRouteUrl = (subjectId: number,) => {
+
+
+
+
+  return `/api/user-subjects/${subjectId}/assessment-route`
+}
+
+/**
+ * Intentional authenticated mutation. Stays within the existing pinned
+ * syllabus_version_id. Does not run on page view. Legacy null-route
+ * remediation and Settings route changes use this endpoint.
+ * @summary Assign or change the assessment route for one membership
+ */
+export const assignCurrentUserSubjectAssessmentRoute = async (subjectId: number,
+    assignAssessmentRouteInput: AssignAssessmentRouteInput, options?: RequestInit): Promise<UserSubjectMembership> => {
+
+  return customFetch<UserSubjectMembership>(getAssignCurrentUserSubjectAssessmentRouteUrl(subjectId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(assignAssessmentRouteInput)
+  }
+);}
+
+
+
+
+
+export const getAssignCurrentUserSubjectAssessmentRouteMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignCurrentUserSubjectAssessmentRoute>>, TError,{subjectId: number;data: BodyType<AssignAssessmentRouteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignCurrentUserSubjectAssessmentRoute>>, TError,{subjectId: number;data: BodyType<AssignAssessmentRouteInput>}, TContext> => {
+
+const mutationKey = ['assignCurrentUserSubjectAssessmentRoute'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignCurrentUserSubjectAssessmentRoute>>, {subjectId: number;data: BodyType<AssignAssessmentRouteInput>}> = (props) => {
+          const {subjectId,data} = props ?? {};
+
+          return  assignCurrentUserSubjectAssessmentRoute(subjectId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignCurrentUserSubjectAssessmentRouteMutationResult = NonNullable<Awaited<ReturnType<typeof assignCurrentUserSubjectAssessmentRoute>>>
+    export type AssignCurrentUserSubjectAssessmentRouteMutationBody = BodyType<AssignAssessmentRouteInput>
+    export type AssignCurrentUserSubjectAssessmentRouteMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary Assign or change the assessment route for one membership
+ */
+export const useAssignCurrentUserSubjectAssessmentRoute = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignCurrentUserSubjectAssessmentRoute>>, TError,{subjectId: number;data: BodyType<AssignAssessmentRouteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignCurrentUserSubjectAssessmentRoute>>,
+        TError,
+        {subjectId: number;data: BodyType<AssignAssessmentRouteInput>},
+        TContext
+      > => {
+      return useMutation(getAssignCurrentUserSubjectAssessmentRouteMutationOptions(options));
     }
 
 export const getGetCurrentProfileUrl = () => {

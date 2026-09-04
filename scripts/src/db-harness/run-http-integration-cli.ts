@@ -58,10 +58,8 @@ async function main(): Promise<void> {
   process.env.DIRECT_DATABASE_URL = status.dbUrl;
   const pool = new Pool({ connectionString: status.dbUrl });
   try {
-    if (ownsStack) {
-      await ensureCleanPublicSchema(pool);
-      await applyBootstrap(pool);
-    }
+    await ensureCleanPublicSchema(pool);
+    await applyBootstrap(pool);
     executeMigrations(status.dbUrl);
     const journal = await verifyMigrationJournal(pool);
     if (!journal.success) throw new Error(journal.error);

@@ -21,8 +21,11 @@ import {
   ListAssessmentComponentsParams,
   ListAssessmentComponentsResponse,
   ListSubjectAssignmentSessionsResponse,
+  ListSubjectAssessmentRoutesParams,
+  ListSubjectAssessmentRoutesResponse,
 } from "@workspace/api-zod";
 import { catalogueEnrichment } from "../lib/catalogue-subject";
+import { loadPublishedRouteCatalogue } from "../lib/assessment-routes";
 import { optionalAuth } from "../middlewares/optional-auth";
 import { requireAuth } from "../middlewares/require-auth";
 import { createUserScopedSupabaseClient } from "../lib/supabase-user-client";
@@ -67,9 +70,11 @@ const syllabusTopicReferenceColumns = {
  * on those endpoints; caller topic progress is merged only on the syllabus GET.
  */
 router.get("/subjects", async (_req, res): Promise<void> => {
+  // New-membership catalogue only. Owned/hidden subjects stay on membership APIs.
   const subjects = await db
     .select()
     .from(subjectsTable)
+    .where(eq(subjectsTable.selectableForNewMemberships, true))
     .orderBy(subjectsTable.id);
 
   // Catalogue topicsTotal is the DEFAULT (`is_current`) graph only.
@@ -104,6 +109,7 @@ router.get(
       db
         .select({ id: subjectsTable.id })
         .from(subjectsTable)
+        .where(eq(subjectsTable.selectableForNewMemberships, true))
         .orderBy(subjectsTable.id),
       db
         .select({
@@ -138,6 +144,33 @@ router.get(
       rows,
     );
     res.json(ListSubjectAssignmentSessionsResponse.parse(result));
+  },
+);
+
+router.get(
+  "/subjects/:subjectId/syllabus-versions/:syllabusVersionId/assessment-routes",
+  async (req, res): Promise<void> => {
+    const params = ListSubjectAssessmentRoutesParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: "Invalid subject or syllabus version" });
+      return;
+    }
+
+    const loaded = await loadPublishedRouteCatalogue(
+      params.data.subjectId,
+      params.data.syllabusVersionId,
+    );
+
+    if (loaded.kind === "not_found") {
+      res.status(404).json({ error: "Subject or syllabus version not found" });
+      return;
+    }
+    if (loaded.kind === "ambiguous") {
+      res.status(400).json({ error: "Ambiguous published route set" });
+      return;
+    }
+
+    res.json(ListSubjectAssessmentRoutesResponse.parse(loaded.catalogue));
   },
 );
 

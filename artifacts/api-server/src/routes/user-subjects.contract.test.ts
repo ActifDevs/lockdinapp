@@ -15,6 +15,7 @@ describe("user-subject membership response", () => {
           user_id: "02444f79-c2bb-4596-ae99-d5d6877f1001",
           subject_id: 1,
           syllabus_version_id: 10,
+          assessment_route_id: null,
           intended_exam_year: null,
           intended_exam_series: null,
           created_at: "2026-08-01T00:00:00.000Z",
@@ -27,6 +28,7 @@ describe("user-subject membership response", () => {
           name: "Physics",
           code: "9702",
           color: "#111111",
+          selectableForNewMemberships: true,
         } as never,
       ],
       [
@@ -48,6 +50,7 @@ describe("user-subject membership response", () => {
       color: "#111111",
       topicsTotal: 14,
     });
+    expect(membership.assessmentRouteId).toBeNull();
     expect(membership.subject).not.toHaveProperty("syllabusProgress");
     expect(membership.subject).not.toHaveProperty("topicsCompleted");
     expect(membership.subject).not.toHaveProperty("upcomingTasksCount");

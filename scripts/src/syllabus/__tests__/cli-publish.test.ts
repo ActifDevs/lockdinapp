@@ -16,10 +16,15 @@ import { runSyllabusCli } from "../cli.js";
 
 describe("publish CLI source independence", () => {
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
   it("publishes from subject code and revision only", async () => {
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+    );
     const publishSyllabusRevision = vi.fn().mockResolvedValue({
       operation: "published",
       versionId: 9,

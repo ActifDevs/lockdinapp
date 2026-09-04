@@ -931,7 +931,8 @@ describe("profile and atomic onboarding (local)", () => {
       join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public' and p.proname = 'lockdin_complete_onboarding'
     `);
-    expect(def.rows.length).toBeGreaterThan(0);
+    // B5BR: single PostgREST-safe wrapper (11 args incl. optional route assignments).
+    expect(def.rows).toHaveLength(1);
     expect(
       def.rows.every((row) => (row as { prosecdef: boolean }).prosecdef),
     ).toBe(true);
@@ -942,12 +943,7 @@ describe("profile and atomic onboarding (local)", () => {
         ),
       ),
     ).toBe(true);
-    expect(
-      def.rows.some((row) => Number((row as { pronargs: number }).pronargs) === 5),
-    ).toBe(true);
-    expect(
-      def.rows.some((row) => Number((row as { pronargs: number }).pronargs) === 10),
-    ).toBe(true);
+    expect(Number((def.rows[0] as { pronargs: number }).pronargs)).toBe(11);
 
     const grants = await db.execute(sql`
       select grantee, privilege_type
@@ -966,16 +962,11 @@ describe("profile and atomic onboarding (local)", () => {
       join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public' and p.proname = 'lockdin_replace_user_subjects'
     `);
-    expect(replaceDef.rows.length).toBeGreaterThan(0);
+    expect(replaceDef.rows).toHaveLength(1);
     expect(
       replaceDef.rows.every((row) => (row as { prosecdef: boolean }).prosecdef),
     ).toBe(true);
-    expect(
-      replaceDef.rows.some((row) => Number((row as { pronargs: number }).pronargs) === 1),
-    ).toBe(true);
-    expect(
-      replaceDef.rows.some((row) => Number((row as { pronargs: number }).pronargs) === 6),
-    ).toBe(true);
+    expect(Number((replaceDef.rows[0] as { pronargs: number }).pronargs)).toBe(7);
     expect(
       replaceDef.rows.every((row) =>
         ((row as { proconfig: string[] | null }).proconfig ?? []).includes(

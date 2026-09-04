@@ -35,6 +35,17 @@ function clearDatabaseEnvironment() {
   vi.stubEnv("DIRECT_DATABASE_URL", undefined);
 }
 
+function stubLocalDatabaseUrl() {
+  vi.stubEnv(
+    "DATABASE_URL",
+    "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+  );
+  vi.stubEnv(
+    "DIRECT_DATABASE_URL",
+    "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+  );
+}
+
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
@@ -110,13 +121,11 @@ describe("syllabus CLI database isolation", () => {
       runSyllabusCli(["--mode=import", "--files=9702", "--revision=9702-test"], {
         output: captured.output,
       }),
-    ).rejects.toThrow(
-      "DATABASE_URL must be set. Did you forget to provision a database?",
-    );
+    ).rejects.toThrow(/DATABASE_URL must be set/);
   });
 
   it("closes the real-import resource once after a successful import", async () => {
-    clearDatabaseEnvironment();
+    stubLocalDatabaseUrl();
     const importSyllabusRevision = vi.fn().mockResolvedValue(SUCCESS_COUNTS);
     const close = vi.fn().mockResolvedValue(undefined);
     const loadImporter = vi.fn().mockResolvedValue({
@@ -148,7 +157,7 @@ describe("syllabus CLI database isolation", () => {
   });
 
   it("closes the real-import resource after a subject transaction failure", async () => {
-    clearDatabaseEnvironment();
+    stubLocalDatabaseUrl();
     const importSyllabusRevision = vi
       .fn()
       .mockRejectedValue(new Error("database write failed"));
@@ -179,7 +188,7 @@ describe("syllabus CLI database isolation", () => {
   });
 
   it("does not swallow a real-import cleanup failure", async () => {
-    clearDatabaseEnvironment();
+    stubLocalDatabaseUrl();
     const importSyllabusRevision = vi.fn().mockResolvedValue(SUCCESS_COUNTS);
     const close = vi
       .fn()
@@ -216,6 +225,7 @@ describe("syllabus CLI database isolation", () => {
   });
 
   it("rejects real import with two subjects before loading the importer", async () => {
+    clearDatabaseEnvironment();
     const loadImporter = vi.fn<() => Promise<SyllabusImporter>>();
     await expect(
       runSyllabusCli(
@@ -227,6 +237,7 @@ describe("syllabus CLI database isolation", () => {
   });
 
   it("rejects adopt and publish without a single known subject", async () => {
+    clearDatabaseEnvironment();
     const loadImporter = vi.fn<() => Promise<SyllabusImporter>>();
     await expect(
       runSyllabusCli(["--mode=adopt", "--revision=x"], {
@@ -250,6 +261,7 @@ describe("syllabus CLI database isolation", () => {
   });
 
   it("publishes without parsing CSV", async () => {
+    stubLocalDatabaseUrl();
     const publishSyllabusRevision = vi.fn().mockResolvedValue({
       operation: "published",
       versionId: 1,

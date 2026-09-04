@@ -37,19 +37,39 @@ vi.mock("@workspace/api-client-react", () => ({
       {
         subjectId: 1,
         sessions: [
-          { year: 2026, series: "Oct/Nov", label: "Oct/Nov 2026" },
-          { year: 2027, series: "May/June", label: "May/June 2027" },
+          { year: 2026, series: "Oct/Nov", label: "Oct/Nov 2026", syllabusVersionId: 10 },
+          { year: 2027, series: "May/June", label: "May/June 2027", syllabusVersionId: 10 },
         ],
       },
       {
         subjectId: 2,
-        sessions: [{ year: 2027, series: "May/June", label: "May/June 2027" }],
+        sessions: [{ year: 2027, series: "May/June", label: "May/June 2027", syllabusVersionId: 10 }],
       },
     ],
     isLoading: false,
     isError: false,
     refetch: vi.fn(),
   }),
+  listSubjectAssessmentRoutes: vi.fn().mockImplementation(async (subjectId: number, syllabusVersionId: number) => ({
+    subjectId,
+    syllabusVersionId,
+    routeSetId: 1,
+    routeRevisionKey: "test-r001",
+    selectionMode: "auto",
+    routes: [
+      {
+        id: subjectId * 10,
+        routeKey: "a_level",
+        displayLabel: "A Level",
+        qualificationTarget: "a_level",
+        pathwayType: "full_same_series",
+        progressionEligibility: "not_applicable",
+        orderIndex: 0,
+        components: [],
+      },
+    ],
+    optionGroups: [],
+  })),
 }));
 
 vi.mock("@/hooks/use-auth", () => ({
@@ -106,6 +126,8 @@ describe("Onboarding multi-session assignment", () => {
     );
     expect(screen.getByText("Override")).toBeVisible();
     await user.click(screen.getByRole("button", { name: /continue/i }));
+    // Route step (none_available for current catalogue) → confirm
+    await user.click(screen.getByRole("button", { name: /continue/i }));
     await user.click(screen.getByRole("button", { name: "Finish setup" }));
 
     await waitFor(() => expect(api.complete).toHaveBeenCalledOnce());
@@ -140,6 +162,7 @@ describe("Onboarding multi-session assignment", () => {
     );
     const user = await reachSessions(["Chemistry"]);
     await user.click(screen.getByRole("button", { name: "May/June 2027" }));
+    await user.click(screen.getByRole("button", { name: /continue/i }));
     await user.click(screen.getByRole("button", { name: /continue/i }));
     fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
 

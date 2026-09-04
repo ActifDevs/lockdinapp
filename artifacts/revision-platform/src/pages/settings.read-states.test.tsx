@@ -43,6 +43,19 @@ vi.mock("@workspace/api-client-react", () => ({
   useListCurrentUserSubjects: api.memberships,
   useReplaceCurrentUserSubjects: api.replace,
   useListSubjectAssignmentSessions: api.availability,
+  useAssignCurrentUserSubjectAssessmentRoute: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  listSubjectAssessmentRoutes: vi.fn().mockResolvedValue({
+    subjectId: 9,
+    syllabusVersionId: 10,
+    routeSetId: null,
+    routeRevisionKey: null,
+    selectionMode: "none_available",
+    routes: [],
+    optionGroups: [],
+  }),
   ApiError: class ApiError extends Error {
     status = 500;
     data: unknown;
@@ -80,7 +93,19 @@ vi.mock("@/hooks/use-toast", () => ({ toast: vi.fn() }));
 import Settings from "./settings";
 
 const subject = { id: 9, name: "Mathematics", code: "9709", color: "#0f766e" };
-const membership = { subject };
+const membership = {
+  subject,
+  syllabusVersion: {
+    id: 10,
+    label: "2025–2027",
+    examBoard: "CAIE",
+    qualification: "A Level",
+  },
+  assessmentRouteId: null,
+  intendedExamSession: { year: 2027, series: "May/June" },
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+};
 const ok = (data: unknown) => ({
   data,
   isLoading: false,
@@ -98,7 +123,7 @@ beforeEach(() => {
     ok([
       {
         subjectId: subject.id,
-        sessions: [{ year: 2027, series: "May/June", label: "May/June 2027" }],
+        sessions: [{ year: 2027, series: "May/June", label: "May/June 2027", syllabusVersionId: 10 }],
       },
     ]),
   );

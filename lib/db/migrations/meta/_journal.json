@@ -127,6 +127,13 @@
       "when": 1788070000000,
       "tag": "0017_route_reference_immutability",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788080000000,
+      "tag": "0018_subject_visibility_and_route_assignment",
+      "breakpoints": true
     }
   ]
 }

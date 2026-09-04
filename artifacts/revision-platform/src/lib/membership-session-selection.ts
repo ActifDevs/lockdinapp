@@ -2,6 +2,7 @@ export type AssignmentSessionChoice = {
   year: number;
   series: "May/June" | "Oct/Nov";
   label: string;
+  syllabusVersionId: number;
 };
 
 export type SubjectAssignmentSessions = {
@@ -51,6 +52,17 @@ export function subjectSupportsSession(
       .find((entry) => entry.subjectId === subjectId)
       ?.sessions.some((session) => session.label === label),
   );
+}
+
+export function syllabusVersionIdForSubjectSession(
+  availability: readonly SubjectAssignmentSessions[],
+  subjectId: number,
+  label: string | null | undefined,
+): number | undefined {
+  if (!label) return undefined;
+  return availability
+    .find((entry) => entry.subjectId === subjectId)
+    ?.sessions.find((session) => session.label === label)?.syllabusVersionId;
 }
 
 export function invalidSessionSubjectIds(

@@ -25,11 +25,36 @@ describe("projectAssignmentSessionAvailability", () => {
     );
 
     expect(result[0]?.sessions).toEqual([
-      { year: 2026, series: "Oct/Nov", label: "Oct/Nov 2026" },
-      { year: 2027, series: "May/June", label: "May/June 2027" },
-      { year: 2027, series: "Oct/Nov", label: "Oct/Nov 2027" },
-      { year: 2028, series: "May/June", label: "May/June 2028" },
-      { year: 2028, series: "Oct/Nov", label: "Oct/Nov 2028" },
+      {
+        year: 2026,
+        series: "Oct/Nov",
+        label: "Oct/Nov 2026",
+        syllabusVersionId: 10,
+      },
+      {
+        year: 2027,
+        series: "May/June",
+        label: "May/June 2027",
+        syllabusVersionId: 10,
+      },
+      {
+        year: 2027,
+        series: "Oct/Nov",
+        label: "Oct/Nov 2027",
+        syllabusVersionId: 10,
+      },
+      {
+        year: 2028,
+        series: "May/June",
+        label: "May/June 2028",
+        syllabusVersionId: 10,
+      },
+      {
+        year: 2028,
+        series: "Oct/Nov",
+        label: "Oct/Nov 2028",
+        syllabusVersionId: 10,
+      },
     ]);
   });
 
@@ -52,6 +77,7 @@ describe("projectAssignmentSessionAvailability", () => {
       year: 2027,
       series: "May/June",
       label: "May/June 2027",
+      syllabusVersionId: 10,
     });
     expect(sessions).not.toContainEqual(
       expect.objectContaining({ year: 2026 }),

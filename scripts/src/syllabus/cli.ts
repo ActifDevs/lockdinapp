@@ -9,6 +9,7 @@ import type { ImportResult } from "./db-upsert.js";
 import type { AdoptResult } from "./adopt.js";
 import type { PublishResult } from "./publish.js";
 import type { NormalizedSyllabus } from "./normalize.js";
+import { assertCatalogueMutationAuthorized } from "../hosted-cutover/mutation-target.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CSV_DIR = path.resolve(__dirname, "../../../data/syllabi/raw");
@@ -174,6 +175,7 @@ export async function runSyllabusCli(
         `subject ${files[0]} requires --csv= (no default raw mapping)`,
       );
     }
+    assertCatalogueMutationAuthorized({ argv: args });
   }
 
   output.log(

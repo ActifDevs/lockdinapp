@@ -15,6 +15,7 @@
     "syllabus:cleanup-placeholders": "tsx ./src/syllabus/cleanup-placeholder-syllabus.ts",
     "syllabus:b3-local-adopt": "tsx ./src/syllabus/b3-local-adoption.ts",
     "syllabus:b3r-fresh": "tsx ./src/syllabus/b3r-fresh-reproduction.ts",
+    "hosted-cutover:b5br-fresh": "tsx ./src/hosted-cutover/b5br-fresh-reproduction.ts",
     "route-manifest:validate": "tsx ./src/route-manifest/cli.ts --mode=validate",
     "route-manifest:hash": "tsx ./src/route-manifest/cli.ts --mode=hash",
     "route-manifest:canonicalize": "tsx ./src/route-manifest/cli.ts --mode=canonicalize",
@@ -26,7 +27,7 @@
     "db-harness": "tsx ./src/db-harness/index.ts",
     "test:http-integration": "tsx ./src/db-harness/run-http-integration-cli.ts",
     "check:migrations": "tsx ./src/db-harness/check-migration-integrity.ts",
-    "test:harness": "vitest run src/db-harness/__tests__/target-safety.test.ts src/db-harness/__tests__/migration-integrity.test.ts"
+    "test:harness": "vitest run src/db-harness/__tests__/target-safety.test.ts src/db-harness/__tests__/migration-integrity.test.ts src/hosted-cutover/__tests__/safety-gate.test.ts src/hosted-cutover/__tests__/b5br-visibility-route-proof.test.ts"
   },
   "dependencies": {
     "@opentelemetry/api": "1.9.1",

@@ -9,12 +9,18 @@
 /**
  * Shared catalogue subject. User-specific progress, task-count, and past-paper
  * fields remain neutral placeholders on this public catalogue response.
+ * Catalogue list endpoints return only subjects selectable for new memberships.
  */
 export interface Subject {
   id: number;
   name: string;
   code: string;
   color: string;
+  /**
+     * When false, omitted from new-membership catalogue surfaces. Existing
+     * memberships remain accessible via membership APIs.
+     */
+  selectableForNewMemberships: boolean;
   /** Neutral placeholder; always 0 (not derived from shared topic status) */
   syllabusProgress: number;
   /** Count of syllabus topics in the shared catalogue for this subject */

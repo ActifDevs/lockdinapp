@@ -31,6 +31,9 @@ vi.mock("@workspace/api-client-react", () => ({
   getListAssessmentComponentsQueryKey: (subjectId: number) => [
     `/api/subjects/${subjectId}/assessment-components`,
   ],
+  getListSubjectAssessmentRoutesQueryKey: (subjectId: number, versionId: number) => [
+    `/api/subjects/${subjectId}/syllabus-versions/${versionId}/assessment-routes`,
+  ],
   getListPastPaperAttemptsQueryKey: () => ["/api/past-paper-attempts"],
   getListCurrentUserSubjectsQueryKey: () => ["/api/user-subjects"],
   useCreatePastPaperAttempt: apiMocks.useCreatePastPaperAttempt,
@@ -38,6 +41,19 @@ vi.mock("@workspace/api-client-react", () => ({
   useListAssessmentComponents: apiMocks.useListAssessmentComponents,
   useListPastPaperAttempts: apiMocks.useListPastPaperAttempts,
   useListCurrentUserSubjects: apiMocks.useListCurrentUserSubjects,
+  useListSubjectAssessmentRoutes: () => ({
+    data: {
+      subjectId: 9,
+      syllabusVersionId: 10,
+      routeSetId: null,
+      routeRevisionKey: null,
+      selectionMode: "none_available",
+      routes: [],
+      optionGroups: [],
+    },
+    isLoading: false,
+    isError: false,
+  }),
 }));
 
 vi.mock("@/components/charts/score-trend-line-chart", () => ({
@@ -103,6 +119,17 @@ beforeEach(() => {
           color: "#0f766e",
           topicsTotal: 20,
         },
+
+        syllabusVersion: {
+          id: 10,
+          label: "2025–2027",
+          examBoard: "CAIE",
+          qualification: "A Level",
+        },
+        assessmentRouteId: null,
+        intendedExamSession: null,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
       },
     ],
     isLoading: false,
@@ -320,7 +347,18 @@ describe("past-paper ownership and year UI wiring", () => {
             color: "#1d4ed8",
             topicsTotal: 18,
           },
+
+        syllabusVersion: {
+          id: 10,
+          label: "2025–2027",
+          examBoard: "CAIE",
+          qualification: "A Level",
         },
+        assessmentRouteId: null,
+        intendedExamSession: null,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
       ],
       isLoading: false,
       isError: false,
@@ -657,7 +695,18 @@ describe("Past Papers navigation state", () => {
             color: "#1d4ed8",
             topicsTotal: 18,
           },
+
+        syllabusVersion: {
+          id: 10,
+          label: "2025–2027",
+          examBoard: "CAIE",
+          qualification: "A Level",
         },
+        assessmentRouteId: null,
+        intendedExamSession: null,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
       ],
       isLoading: false,
       isError: false,

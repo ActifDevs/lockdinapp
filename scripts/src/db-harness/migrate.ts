@@ -29,11 +29,23 @@ export function executeMigrations(databaseUrl: string): void {
       {
         cwd: join(REPO_ROOT, "lib", "db"),
         env: databaseEnvironment(databaseUrl),
-        stdio: ["ignore", "inherit", "inherit"],
+        stdio: ["ignore", "pipe", "pipe"],
+        encoding: "utf8",
       },
     );
-  } catch {
-    throw new Error("[db-harness] Committed Drizzle migrations failed.");
+  } catch (error) {
+    const stdout =
+      error && typeof error === "object" && "stdout" in error
+        ? String((error as { stdout?: string }).stdout ?? "")
+        : "";
+    const stderr =
+      error && typeof error === "object" && "stderr" in error
+        ? String((error as { stderr?: string }).stderr ?? "")
+        : "";
+    const detail = [stdout, stderr].filter(Boolean).join("\n").trim();
+    throw new Error(
+      `[db-harness] Committed Drizzle migrations failed.${detail ? `\n${detail}` : ""}`,
+    );
   }
 }
 

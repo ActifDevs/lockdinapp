@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { IntendedExamSession } from './intendedExamSession';
+import type { SubjectRouteAssignmentInput } from './subjectRouteAssignmentInput';
 import type { SubjectSessionOverride } from './subjectSessionOverride';
 
 export interface CompleteOnboardingInput {
@@ -38,4 +39,10 @@ export interface CompleteOnboardingInput {
      */
   subjectIds: number[];
   subjectSessionOverrides?: SubjectSessionOverride[];
+  /**
+     * Optional when every selected subject has zero or one published route
+     * and no required study options. Required when multiple routes exist
+     * or study-option cardinality must be satisfied.
+     */
+  routeAssignments?: SubjectRouteAssignmentInput[];
 }

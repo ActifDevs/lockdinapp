@@ -5,6 +5,8 @@ import {
   getListCurrentUserSubjectsQueryKey,
   useListAssessmentComponents,
   getListAssessmentComponentsQueryKey,
+  useListSubjectAssessmentRoutes,
+  getListSubjectAssessmentRoutesQueryKey,
   useCreatePastPaperAttempt,
   useDeletePastPaperAttempt,
   getGetDashboardSummaryQueryKey,
@@ -52,6 +54,7 @@ import { ChartSkeleton } from "@/components/charts/chart-skeleton";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { formatPercentage } from "@/lib/format-percentage";
 import { buildAssessmentComponentOptions } from "@/lib/assessment-component-options";
+import { filterComponentsByRouteDefault } from "@/lib/route-selection";
 import { ReadStateNotice } from "@/components/read-state-notice";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
@@ -229,7 +232,48 @@ export default function PastPapers() {
       enabled: !!selectedSubjectId,
     },
   });
-  const componentOptions = buildAssessmentComponentOptions(components ?? []);
+
+  const selectedMembership = (memberships ?? []).find(
+    (row) => row.subject.id === selectedSubjectId,
+  );
+  const {
+    data: routeCatalogue,
+  } = useListSubjectAssessmentRoutes(
+    selectedSubjectId,
+    selectedMembership?.syllabusVersion.id ?? 0,
+    {
+      query: {
+        queryKey: getListSubjectAssessmentRoutesQueryKey(
+          selectedSubjectId,
+          selectedMembership?.syllabusVersion.id ?? 0,
+        ),
+        enabled:
+          !!selectedSubjectId &&
+          !!selectedMembership?.syllabusVersion.id &&
+          selectedMembership.assessmentRouteId != null,
+      },
+    },
+  );
+  const routeComponentIds =
+    routeCatalogue?.routes.find(
+      (route) => route.id === selectedMembership?.assessmentRouteId,
+    )?.components.map((component) => component.componentId) ?? null;
+  const routeFiltered = filterComponentsByRouteDefault(
+    components ?? [],
+    routeComponentIds,
+  );
+  const componentOptions = buildAssessmentComponentOptions([
+    ...routeFiltered.defaults,
+    ...routeFiltered.offRoute,
+  ]);
+  const offRouteComponentIds = new Set(
+    routeFiltered.offRoute.map((component) => component.id),
+  );
+  const selectedComponentId = form.watch("componentId");
+  const selectingOffRoute =
+    routeFiltered.hasRouteFilter &&
+    typeof selectedComponentId === "number" &&
+    offRouteComponentIds.has(selectedComponentId);
   const attemptsRefreshFailed = attemptsError && papers !== undefined;
   const componentsRefreshFailed = componentsError && components !== undefined;
   const canSelectComponent =
@@ -705,10 +749,23 @@ export default function PastPapers() {
                       {componentOptions.map((component) => (
                         <SelectItem key={component.id} value={component.value}>
                           {component.label}
+                          {offRouteComponentIds.has(component.id)
+                            ? " (off-route)"
+                            : routeFiltered.hasRouteFilter
+                              ? ""
+                              : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {selectingOffRoute ? (
+                    <Alert className="mt-2">
+                      <AlertTitle>
+                        This paper is outside your assessment route. Logging it
+                        will not change your route or syllabus.
+                      </AlertTitle>
+                    </Alert>
+                  ) : null}
                   {!!selectedSubjectId && componentsLoading && (
                     <p role="status" className="text-sm text-muted-foreground">
                       Loading assessment components…

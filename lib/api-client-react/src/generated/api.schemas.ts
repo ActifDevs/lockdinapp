@@ -79,6 +79,8 @@ export const AssignmentSessionChoiceSeries = {
 
 /**
  * Product-safe intended sitting available for new membership assignment.
+ * syllabusVersionId is included only for unambiguous published mappings
+ * already accepted by the projection.
  */
 export interface AssignmentSessionChoice {
   /**
@@ -88,6 +90,8 @@ export interface AssignmentSessionChoice {
   year: number;
   series: AssignmentSessionChoiceSeries;
   label: string;
+  /** @minimum 1 */
+  syllabusVersionId: number;
 }
 
 export interface SubjectAssignmentSessions {
@@ -105,6 +109,19 @@ export interface SubjectSessionOverride {
      */
   year: number;
   series: ExamSittingSeries;
+}
+
+/**
+ * Version-scoped route + study-option selection for one subject.
+ * Server revalidates route/options against the resolved published route set.
+ */
+export interface SubjectRouteAssignmentInput {
+  /** @minimum 1 */
+  subjectId: number;
+  /** @minimum 1 */
+  routeId: number;
+  /** @items.minimum 1 */
+  optionIds: number[];
 }
 
 export interface CompleteOnboardingInput {
@@ -137,6 +154,12 @@ export interface CompleteOnboardingInput {
      */
   subjectIds: number[];
   subjectSessionOverrides?: SubjectSessionOverride[];
+  /**
+     * Optional when every selected subject has zero or one published route
+     * and no required study options. Required when multiple routes exist
+     * or study-option cardinality must be satisfied.
+     */
+  routeAssignments?: SubjectRouteAssignmentInput[];
 }
 
 export interface UserSubjectSelectionInput {
@@ -148,6 +171,7 @@ export interface UserSubjectSelectionInput {
   subjectIds: number[];
   intendedExamSession?: IntendedExamSession;
   subjectSessionOverrides?: SubjectSessionOverride[];
+  routeAssignments?: SubjectRouteAssignmentInput[];
 }
 
 /**
@@ -172,6 +196,12 @@ export interface UserSubjectSyllabusVersion {
 export interface UserSubjectMembership {
   subject: SubjectReference;
   syllabusVersion: UserSubjectSyllabusVersion;
+  /**
+     * Canonical version-scoped assessment route. Null for legacy memberships
+     * until the member intentionally assigns a route.
+     * @nullable
+     */
+  assessmentRouteId: number | null;
   intendedExamSession: IntendedExamSession | null;
   createdAt: string;
   updatedAt: string;
@@ -193,12 +223,18 @@ export interface SubjectInput {
 /**
  * Shared catalogue subject. User-specific progress, task-count, and past-paper
  * fields remain neutral placeholders on this public catalogue response.
+ * Catalogue list endpoints return only subjects selectable for new memberships.
  */
 export interface Subject {
   id: number;
   name: string;
   code: string;
   color: string;
+  /**
+     * When false, omitted from new-membership catalogue surfaces. Existing
+     * memberships remain accessible via membership APIs.
+     */
+  selectableForNewMemberships: boolean;
   /** Neutral placeholder; always 0 (not derived from shared topic status) */
   syllabusProgress: number;
   /** Count of syllabus topics in the shared catalogue for this subject */
@@ -552,6 +588,104 @@ export interface ProgressOverview {
   totalTasksCompleted: number;
   totalPapersLogged: number;
   overallSyllabusProgress: number;
+}
+
+export interface AssignAssessmentRouteInput {
+  /** @minimum 1 */
+  routeId: number;
+  /** @items.minimum 1 */
+  optionIds: number[];
+}
+
+export type SubjectAssessmentRouteCatalogueSelectionMode = typeof SubjectAssessmentRouteCatalogueSelectionMode[keyof typeof SubjectAssessmentRouteCatalogueSelectionMode];
+
+
+export const SubjectAssessmentRouteCatalogueSelectionMode = {
+  none_available: 'none_available',
+  auto: 'auto',
+  explicit: 'explicit',
+} as const;
+
+export type AssessmentRouteSummaryQualificationTarget = typeof AssessmentRouteSummaryQualificationTarget[keyof typeof AssessmentRouteSummaryQualificationTarget];
+
+
+export const AssessmentRouteSummaryQualificationTarget = {
+  as_level: 'as_level',
+  a_level: 'a_level',
+} as const;
+
+export type AssessmentRouteSummaryPathwayType = typeof AssessmentRouteSummaryPathwayType[keyof typeof AssessmentRouteSummaryPathwayType];
+
+
+export const AssessmentRouteSummaryPathwayType = {
+  single_series: 'single_series',
+  staged_completion: 'staged_completion',
+  full_same_series: 'full_same_series',
+} as const;
+
+export type AssessmentRouteSummaryProgressionEligibility = typeof AssessmentRouteSummaryProgressionEligibility[keyof typeof AssessmentRouteSummaryProgressionEligibility];
+
+
+export const AssessmentRouteSummaryProgressionEligibility = {
+  eligible: 'eligible',
+  not_eligible: 'not_eligible',
+  not_applicable: 'not_applicable',
+} as const;
+
+export type AssessmentRouteComponentSummaryRole = typeof AssessmentRouteComponentSummaryRole[keyof typeof AssessmentRouteComponentSummaryRole];
+
+
+export const AssessmentRouteComponentSummaryRole = {
+  current_sitting: 'current_sitting',
+  carried_forward: 'carried_forward',
+} as const;
+
+export interface AssessmentRouteComponentSummary {
+  componentId: number;
+  paperCode: string;
+  componentLabel: string;
+  role: AssessmentRouteComponentSummaryRole;
+  orderIndex: number;
+}
+
+export interface AssessmentRouteSummary {
+  id: number;
+  routeKey: string;
+  displayLabel: string;
+  qualificationTarget: AssessmentRouteSummaryQualificationTarget;
+  pathwayType: AssessmentRouteSummaryPathwayType;
+  progressionEligibility: AssessmentRouteSummaryProgressionEligibility;
+  orderIndex: number;
+  components: AssessmentRouteComponentSummary[];
+}
+
+export interface StudyOptionSummary {
+  id: number;
+  optionKey: string;
+  displayLabel: string;
+  orderIndex: number;
+}
+
+export interface StudyOptionGroupSummary {
+  id: number;
+  groupKey: string;
+  displayLabel: string;
+  minSelections: number;
+  maxSelections: number;
+  orderIndex: number;
+  options: StudyOptionSummary[];
+}
+
+export interface SubjectAssessmentRouteCatalogue {
+  subjectId: number;
+  syllabusVersionId: number;
+  /** @nullable */
+  routeSetId: number | null;
+  /** @nullable */
+  routeRevisionKey: string | null;
+  selectionMode: SubjectAssessmentRouteCatalogueSelectionMode;
+  routes: AssessmentRouteSummary[];
+  optionGroups: StudyOptionGroupSummary[];
 }
 
 export type ListTasksParams = {

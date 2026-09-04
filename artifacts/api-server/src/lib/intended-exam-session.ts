@@ -109,6 +109,33 @@ export function mapMembershipAssignmentRpcError(
   if (message.includes("invalid_subject_session_overrides")) {
     return { status: 400, error: "Invalid subject session override." };
   }
+  if (message.includes("assessment_route_required")) {
+    return {
+      status: 400,
+      error: "Choose how you are taking this subject.",
+    };
+  }
+  if (message.includes("no_selectable_route") || message.includes("assessment_route_unavailable")) {
+    return {
+      status: 400,
+      error: "No assessment route is available for this subject yet.",
+    };
+  }
+  if (message.includes("invalid_option_cardinality")) {
+    return {
+      status: 400,
+      error: "Select the required number of study options.",
+    };
+  }
+  if (
+    message.includes("invalid_assessment_route") ||
+    message.includes("invalid_study_option") ||
+    message.includes("invalid_route_assignments") ||
+    message.includes("route_not_available") ||
+    message.includes("options_not_available")
+  ) {
+    return { status: 400, error: "Invalid assessment route assignment." };
+  }
   if (
     code === "22023" ||
     message.includes("invalid_") ||

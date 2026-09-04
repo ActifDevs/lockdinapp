@@ -16,6 +16,8 @@ export type AssignmentSession = {
   year: number;
   series: Extract<AssignmentSeries, "May/June" | "Oct/Nov">;
   label: string;
+  /** Unambiguous published version for this session (projection already rejects ambiguous). */
+  syllabusVersionId: number;
 };
 
 const SERIES_ORDINAL: Record<AssignmentSeries, number> = {
@@ -100,7 +102,13 @@ export function projectAssignmentSessionAvailability(
       ];
       if (Number(keySubjectId) !== subjectId) continue;
       const year = Number(yearText);
-      sessions.push({ year, series, label: `${series} ${year}` });
+      const [syllabusVersionId] = [...versions];
+      sessions.push({
+        year,
+        series,
+        label: `${series} ${year}`,
+        syllabusVersionId: syllabusVersionId!,
+      });
     }
 
     sessions.sort(

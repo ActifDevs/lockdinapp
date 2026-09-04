@@ -52,6 +52,7 @@ import {
   subjectSupportsSession,
   type SubjectSessionOverrides,
 } from "@/lib/membership-session-selection";
+import { MembershipAssessmentPanel } from "@/components/membership-assessment-panel";
 import { ReadStateNotice } from "@/components/read-state-notice";
 import {
   omitDefaultQueryValue,
@@ -255,6 +256,10 @@ export default function Settings() {
       membership.subject.id,
       membership,
     ]),
+  );
+  const catalogueSubjectIds = new Set((subjects ?? []).map((s) => s.id));
+  const ownedOutsideCatalogue = (memberships ?? []).filter(
+    (membership) => !catalogueSubjectIds.has(membership.subject.id),
   );
   const newSubjectIds = selectedSubjectIds.filter(
     (subjectId) => !retainedSubjectIds.has(subjectId),
@@ -760,6 +765,12 @@ export default function Settings() {
                                 ? `${membership.intendedExamSession.series} ${membership.intendedExamSession.year}`
                                 : "Not recorded"}
                             </p>
+                            {membership ? (
+                              <MembershipAssessmentPanel
+                                membership={membership}
+                                onSaved={() => void refetchMemberships()}
+                              />
+                            ) : null}
                           </div>
                         )}
                         {selected && !retained && (
@@ -836,6 +847,43 @@ export default function Settings() {
                     );
                   })}
                 </div>
+                {ownedOutsideCatalogue.length > 0 ? (
+                  <div className="space-y-3 rounded-xl border border-border/60 bg-background/60 p-4">
+                    <p className="text-sm font-medium">
+                      Subjects you already study
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      These remain available on your account even though they
+                      are not currently open for new enrolments.
+                    </p>
+                    {ownedOutsideCatalogue.map((membership) => (
+                      <div
+                        key={membership.subject.id}
+                        className="rounded-xl border border-border/50 bg-muted/20 px-3 py-3"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-medium">
+                              {membership.subject.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {membership.subject.code}
+                            </p>
+                          </div>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/subjects/${membership.subject.id}`}>
+                              View
+                            </Link>
+                          </Button>
+                        </div>
+                        <MembershipAssessmentPanel
+                          membership={membership}
+                          onSaved={() => void refetchMemberships()}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">

@@ -6,6 +6,7 @@ import {
   loadComponentCatalogue,
   seedComponentCatalogue,
 } from "./component-catalogue.js";
+import { assertCatalogueMutationAuthorized } from "../hosted-cutover/mutation-target.js";
 
 export async function runComponentCatalogueCli(
   args: string[],
@@ -19,6 +20,7 @@ export async function runComponentCatalogueCli(
     return 1;
   }
   try {
+    assertCatalogueMutationAuthorized({ argv: args });
     const catalogue = loadComponentCatalogue(path.resolve(fileArg.trim()));
     const result = await seedComponentCatalogue(catalogue);
     output.log(

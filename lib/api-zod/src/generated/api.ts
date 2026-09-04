@@ -28,6 +28,7 @@ export const ListSubjectsResponseItem = zod.object({
   "name": zod.string(),
   "code": zod.string(),
   "color": zod.string(),
+  "selectableForNewMemberships": zod.boolean().describe('When false, omitted from new-membership catalogue surfaces. Existing\nmemberships remain accessible via membership APIs.\n'),
   "syllabusProgress": zod.number().describe('Neutral placeholder; always 0 (not derived from shared topic status)'),
   "topicsTotal": zod.number().describe('Count of syllabus topics in the shared catalogue for this subject'),
   "topicsCompleted": zod.number().describe('Neutral placeholder; always 0'),
@@ -35,7 +36,7 @@ export const ListSubjectsResponseItem = zod.object({
   "upcomingTasksCount": zod.number().describe('Neutral placeholder; always 0 (not user-task derived)'),
   "recentPaperScore": zod.number().nullable().describe('Neutral placeholder; always null on shared catalogue responses'),
   "recentPaperLabel": zod.string().nullable().describe('Neutral placeholder; always null on shared catalogue responses')
-}).describe('Shared catalogue subject. User-specific progress, task-count, and past-paper\nfields remain neutral placeholders on this public catalogue response.\n')
+}).describe('Shared catalogue subject. User-specific progress, task-count, and past-paper\nfields remain neutral placeholders on this public catalogue response.\nCatalogue list endpoints return only subjects selectable for new memberships.\n')
 export const ListSubjectsResponse = zod.array(ListSubjectsResponseItem)
 
 
@@ -72,6 +73,7 @@ export const GetSubjectResponse = zod.object({
   "name": zod.string(),
   "code": zod.string(),
   "color": zod.string(),
+  "selectableForNewMemberships": zod.boolean().describe('When false, omitted from new-membership catalogue surfaces. Existing\nmemberships remain accessible via membership APIs.\n'),
   "syllabusProgress": zod.number().describe('Neutral placeholder; always 0 (not derived from shared topic status)'),
   "topicsTotal": zod.number().describe('Count of syllabus topics in the shared catalogue for this subject'),
   "topicsCompleted": zod.number().describe('Neutral placeholder; always 0'),
@@ -79,7 +81,7 @@ export const GetSubjectResponse = zod.object({
   "upcomingTasksCount": zod.number().describe('Neutral placeholder; always 0 (not user-task derived)'),
   "recentPaperScore": zod.number().nullable().describe('Neutral placeholder; always null on shared catalogue responses'),
   "recentPaperLabel": zod.string().nullable().describe('Neutral placeholder; always null on shared catalogue responses')
-}).describe('Shared catalogue subject. User-specific progress, task-count, and past-paper\nfields remain neutral placeholders on this public catalogue response.\n')
+}).describe('Shared catalogue subject. User-specific progress, task-count, and past-paper\nfields remain neutral placeholders on this public catalogue response.\nCatalogue list endpoints return only subjects selectable for new memberships.\n')
 
 
 /**
@@ -107,13 +109,15 @@ export const listSubjectAssignmentSessionsResponseSessionsItemYearMax = 9999;
 
 
 
+
 export const ListSubjectAssignmentSessionsResponseItem = zod.object({
   "subjectId": zod.number().min(1),
   "sessions": zod.array(zod.object({
   "year": zod.number().min(listSubjectAssignmentSessionsResponseSessionsItemYearMin).max(listSubjectAssignmentSessionsResponseSessionsItemYearMax),
   "series": zod.enum(['May/June', 'Oct/Nov']),
-  "label": zod.string()
-}).describe('Product-safe intended sitting available for new membership assignment.'))
+  "label": zod.string(),
+  "syllabusVersionId": zod.number().min(1)
+}).describe('Product-safe intended sitting available for new membership assignment.\nsyllabusVersionId is included only for unambiguous published mappings\nalready accepted by the projection.\n'))
 })
 export const ListSubjectAssignmentSessionsResponse = zod.array(ListSubjectAssignmentSessionsResponseItem)
 
@@ -177,6 +181,61 @@ export const GetSubjectPerformanceResponse = zod.object({
   "attempts": zod.number()
 })),
   "insight": zod.string().nullable()
+})
+
+
+/**
+ * Returns the published route set for the given syllabus version of a subject,
+ * including routes, components, and study-option groups. Fails closed when a
+ * published route set is required but missing or ambiguous. When no published
+ * route set exists yet, returns an empty routes array (legacy-compatible).
+ * @summary List published assessment routes for a syllabus version
+ */
+
+
+
+
+export const ListSubjectAssessmentRoutesParams = zod.object({
+  "subjectId": zod.coerce.number().min(1),
+  "syllabusVersionId": zod.coerce.number().min(1)
+})
+
+export const ListSubjectAssessmentRoutesResponse = zod.object({
+  "subjectId": zod.number(),
+  "syllabusVersionId": zod.number(),
+  "routeSetId": zod.number().nullable(),
+  "routeRevisionKey": zod.string().nullable(),
+  "selectionMode": zod.enum(['none_available', 'auto', 'explicit']),
+  "routes": zod.array(zod.object({
+  "id": zod.number(),
+  "routeKey": zod.string(),
+  "displayLabel": zod.string(),
+  "qualificationTarget": zod.enum(['as_level', 'a_level']),
+  "pathwayType": zod.enum(['single_series', 'staged_completion', 'full_same_series']),
+  "progressionEligibility": zod.enum(['eligible', 'not_eligible', 'not_applicable']),
+  "orderIndex": zod.number(),
+  "components": zod.array(zod.object({
+  "componentId": zod.number(),
+  "paperCode": zod.string(),
+  "componentLabel": zod.string(),
+  "role": zod.enum(['current_sitting', 'carried_forward']),
+  "orderIndex": zod.number()
+}))
+})),
+  "optionGroups": zod.array(zod.object({
+  "id": zod.number(),
+  "groupKey": zod.string(),
+  "displayLabel": zod.string(),
+  "minSelections": zod.number(),
+  "maxSelections": zod.number(),
+  "orderIndex": zod.number(),
+  "options": zod.array(zod.object({
+  "id": zod.number(),
+  "optionKey": zod.string(),
+  "displayLabel": zod.string(),
+  "orderIndex": zod.number()
+}))
+}))
 })
 
 
@@ -520,6 +579,7 @@ export const ListCurrentUserSubjectsResponseItem = zod.object({
   "examBoard": zod.string(),
   "qualification": zod.string()
 }),
+  "assessmentRouteId": zod.number().nullable().describe('Canonical version-scoped assessment route. Null for legacy memberships\nuntil the member intentionally assigns a route.\n'),
   "intendedExamSession": zod.object({
   "year": zod.number().min(listCurrentUserSubjectsResponseIntendedExamSessionOneYearMin).max(listCurrentUserSubjectsResponseIntendedExamSessionOneYearMax),
   "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
@@ -547,6 +607,9 @@ export const replaceCurrentUserSubjectsBodySubjectSessionOverridesItemYearMax = 
 
 
 
+
+
+
 export const ReplaceCurrentUserSubjectsBody = zod.object({
   "subjectIds": zod.array(zod.number().min(1)).min(1).max(replaceCurrentUserSubjectsBodySubjectIdsMax),
   "intendedExamSession": zod.object({
@@ -557,7 +620,12 @@ export const ReplaceCurrentUserSubjectsBody = zod.object({
   "subjectId": zod.number().min(1),
   "year": zod.number().min(replaceCurrentUserSubjectsBodySubjectSessionOverridesItemYearMin).max(replaceCurrentUserSubjectsBodySubjectSessionOverridesItemYearMax),
   "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
-})).optional()
+})).optional(),
+  "routeAssignments": zod.array(zod.object({
+  "subjectId": zod.number().min(1),
+  "routeId": zod.number().min(1),
+  "optionIds": zod.array(zod.number().min(1))
+}).describe('Version-scoped route + study-option selection for one subject.\nServer revalidates route\/options against the resolved published route set.\n')).optional()
 })
 
 export const replaceCurrentUserSubjectsResponseIntendedExamSessionOneYearMin = 1000;
@@ -579,6 +647,7 @@ export const ReplaceCurrentUserSubjectsResponseItem = zod.object({
   "examBoard": zod.string(),
   "qualification": zod.string()
 }),
+  "assessmentRouteId": zod.number().nullable().describe('Canonical version-scoped assessment route. Null for legacy memberships\nuntil the member intentionally assigns a route.\n'),
   "intendedExamSession": zod.object({
   "year": zod.number().min(replaceCurrentUserSubjectsResponseIntendedExamSessionOneYearMin).max(replaceCurrentUserSubjectsResponseIntendedExamSessionOneYearMax),
   "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
@@ -587,6 +656,57 @@ export const ReplaceCurrentUserSubjectsResponseItem = zod.object({
   "updatedAt": zod.string().datetime({"offset":true})
 })
 export const ReplaceCurrentUserSubjectsResponse = zod.array(ReplaceCurrentUserSubjectsResponseItem)
+
+
+/**
+ * Intentional authenticated mutation. Stays within the existing pinned
+ * syllabus_version_id. Does not run on page view. Legacy null-route
+ * remediation and Settings route changes use this endpoint.
+ * @summary Assign or change the assessment route for one membership
+ */
+
+
+
+export const AssignCurrentUserSubjectAssessmentRouteParams = zod.object({
+  "subjectId": zod.coerce.number().min(1)
+})
+
+
+
+
+
+export const AssignCurrentUserSubjectAssessmentRouteBody = zod.object({
+  "routeId": zod.number().min(1),
+  "optionIds": zod.array(zod.number().min(1))
+})
+
+export const assignCurrentUserSubjectAssessmentRouteResponseIntendedExamSessionOneYearMin = 1000;
+export const assignCurrentUserSubjectAssessmentRouteResponseIntendedExamSessionOneYearMax = 9999;
+
+
+
+export const AssignCurrentUserSubjectAssessmentRouteResponse = zod.object({
+  "subject": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "color": zod.string(),
+  "topicsTotal": zod.number().describe('Count of shared syllabus topics for this subject')
+}).describe('Shared metadata for a subject selected by the authenticated caller.'),
+  "syllabusVersion": zod.object({
+  "id": zod.number(),
+  "label": zod.string(),
+  "examBoard": zod.string(),
+  "qualification": zod.string()
+}),
+  "assessmentRouteId": zod.number().nullable().describe('Canonical version-scoped assessment route. Null for legacy memberships\nuntil the member intentionally assigns a route.\n'),
+  "intendedExamSession": zod.object({
+  "year": zod.number().min(assignCurrentUserSubjectAssessmentRouteResponseIntendedExamSessionOneYearMin).max(assignCurrentUserSubjectAssessmentRouteResponseIntendedExamSessionOneYearMax),
+  "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
+}).describe('Structured intended final exam sitting. Required at runtime when the request creates a new membership. Optional for retained-only or removal-only Settings replacement. Clients never send a version id.\n').nullable(),
+  "createdAt": zod.string().datetime({"offset":true}),
+  "updatedAt": zod.string().datetime({"offset":true})
+})
 
 
 /**
@@ -666,6 +786,9 @@ export const completeCurrentUserOnboardingBodySubjectSessionOverridesItemYearMax
 
 
 
+
+
+
 export const CompleteCurrentUserOnboardingBody = zod.object({
   "fullName": zod.string().min(completeCurrentUserOnboardingBodyFullNameMin).max(completeCurrentUserOnboardingBodyFullNameMax),
   "username": zod.string().min(completeCurrentUserOnboardingBodyUsernameMin).max(completeCurrentUserOnboardingBodyUsernameMax).regex(completeCurrentUserOnboardingBodyUsernameRegExp),
@@ -680,7 +803,12 @@ export const CompleteCurrentUserOnboardingBody = zod.object({
   "subjectId": zod.number().min(1),
   "year": zod.number().min(completeCurrentUserOnboardingBodySubjectSessionOverridesItemYearMin).max(completeCurrentUserOnboardingBodySubjectSessionOverridesItemYearMax),
   "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
-})).optional()
+})).optional(),
+  "routeAssignments": zod.array(zod.object({
+  "subjectId": zod.number().min(1),
+  "routeId": zod.number().min(1),
+  "optionIds": zod.array(zod.number().min(1))
+}).describe('Version-scoped route + study-option selection for one subject.\nServer revalidates route\/options against the resolved published route set.\n')).optional().describe('Optional when every selected subject has zero or one published route\nand no required study options. Required when multiple routes exist\nor study-option cardinality must be satisfied.\n')
 })
 
 export const CompleteCurrentUserOnboardingResponse = zod.object({
