@@ -34,6 +34,8 @@ import { proveApplicabilityPopulation } from "./applicability-population-proof.j
 import { proveStrictAssignment } from "./strict-assignment-proof.js";
 import { proveFutureRevisionLifecycle } from "./future-revision-lifecycle-proof.js";
 import { proveRouteSchemaFoundation } from "./route-schema-foundation-proof.js";
+import { proveRouteReferenceImmutability } from "./route-immutability-proof.js";
+import { proveRoutePublication } from "../route-manifest/publication-proof.js";
 import { proveHttpIntegration } from "./http-integration.js";
 import { verifyFinalSchema, verifySyntheticFixturesRemoved } from "./verify.js";
 
@@ -171,6 +173,12 @@ export async function runHarness(): Promise<HarnessResult> {
     );
     await step("Prove route and study options schema foundation", () =>
       proveRouteSchemaFoundation(pool!),
+    );
+    await step("Prove route-reference immutability (0017)", () =>
+      proveRouteReferenceImmutability(pool!),
+    );
+    await step("Prove route-manifest publication (A2B)", () =>
+      proveRoutePublication(pool!),
     );
     await step("Run syllabus DB integration", () =>
       executeSyllabusDbTests(verifiedStatus.dbUrl),

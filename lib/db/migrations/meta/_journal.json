@@ -120,6 +120,13 @@
       "when": 1788060000000,
       "tag": "0016_assessment_routes_and_study_options",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788070000000,
+      "tag": "0017_route_reference_immutability",
+      "breakpoints": true
     }
   ]
 }

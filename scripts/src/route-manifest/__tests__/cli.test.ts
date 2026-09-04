@@ -42,5 +42,25 @@ describe("route-manifest CLI", () => {
     );
     expect(failCode).toBe(1);
     expect(errors.some((line) => line.includes("FAIL"))).toBe(true);
+
+    errors.length = 0;
+    const previousFlag = process.env.LOCKDIN_ALLOW_LOCAL_ROUTE_PUBLICATION;
+    delete process.env.LOCKDIN_ALLOW_LOCAL_ROUTE_PUBLICATION;
+    const publishDenied = await runRouteManifestCli(
+      ["--mode=publish", "--file=synthetic.json"],
+      {
+        output,
+        readJson: () => raw,
+      },
+    );
+    if (previousFlag === undefined) {
+      delete process.env.LOCKDIN_ALLOW_LOCAL_ROUTE_PUBLICATION;
+    } else {
+      process.env.LOCKDIN_ALLOW_LOCAL_ROUTE_PUBLICATION = previousFlag;
+    }
+    expect(publishDenied).toBe(1);
+    expect(
+      errors.some((line) => line.includes("local_publication_unauthorized")),
+    ).toBe(true);
   });
 });

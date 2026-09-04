@@ -9,4 +9,6 @@ export * from "./hash.js";
 export * from "./resolve.js";
 export * from "./catalog-loader.js";
 export * from "./load.js";
+export * from "./publish-safety.js";
+export * from "./publish.js";
 export { runRouteManifestCli } from "./cli.js";

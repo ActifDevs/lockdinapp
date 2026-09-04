@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import { withTriggerBypassCleanup } from "./trigger-bypass-cleanup.js";
 
 const SUBJECT_A = "L7A101";
 const SUBJECT_B = "L7A102";
@@ -75,33 +76,35 @@ async function insertAuthUser(pool: Pool, id: string, email: string): Promise<vo
 }
 
 export async function cleanupRouteSchemaFixtures(pool: Pool): Promise<void> {
-  await pool.query(`DELETE FROM public.user_subject_option_selections WHERE user_id = ANY($1::uuid[])`, [
-    [USER_1_ID, USER_2_ID],
-  ]);
-  await pool.query(`DELETE FROM public.user_subjects WHERE user_id = ANY($1::uuid[])`, [
-    [USER_1_ID, USER_2_ID],
-  ]);
-  await pool.query(`DELETE FROM public.profiles WHERE id = ANY($1::uuid[])`, [
-    [USER_1_ID, USER_2_ID],
-  ]);
-  await pool.query(`DELETE FROM auth.users WHERE id = ANY($1::uuid[])`, [
-    [USER_1_ID, USER_2_ID],
-  ]);
-  await pool.query(
-    `
-    DELETE FROM public.assessment_route_sets
-    WHERE syllabus_version_id IN (
-      SELECT v.id
-      FROM public.syllabus_versions v
-      JOIN public.subjects s ON s.id = v.subject_id
-      WHERE s.code = ANY($1::text[])
-    )
-    `,
-    [[SUBJECT_A, SUBJECT_B]],
-  );
-  await pool.query(`DELETE FROM public.subjects WHERE code = ANY($1::text[])`, [
-    [SUBJECT_A, SUBJECT_B],
-  ]);
+  await withTriggerBypassCleanup(pool, async (client) => {
+    await client.query(`DELETE FROM public.user_subject_option_selections WHERE user_id = ANY($1::uuid[])`, [
+      [USER_1_ID, USER_2_ID],
+    ]);
+    await client.query(`DELETE FROM public.user_subjects WHERE user_id = ANY($1::uuid[])`, [
+      [USER_1_ID, USER_2_ID],
+    ]);
+    await client.query(`DELETE FROM public.profiles WHERE id = ANY($1::uuid[])`, [
+      [USER_1_ID, USER_2_ID],
+    ]);
+    await client.query(`DELETE FROM auth.users WHERE id = ANY($1::uuid[])`, [
+      [USER_1_ID, USER_2_ID],
+    ]);
+    await client.query(
+      `
+      DELETE FROM public.assessment_route_sets
+      WHERE syllabus_version_id IN (
+        SELECT v.id
+        FROM public.syllabus_versions v
+        JOIN public.subjects s ON s.id = v.subject_id
+        WHERE s.code = ANY($1::text[])
+      )
+      `,
+      [[SUBJECT_A, SUBJECT_B]],
+    );
+    await client.query(`DELETE FROM public.subjects WHERE code = ANY($1::text[])`, [
+      [SUBJECT_A, SUBJECT_B],
+    ]);
+  });
 }
 
 export async function proveRouteSchemaFoundation(pool: Pool): Promise<void> {
@@ -221,15 +224,15 @@ export async function proveRouteSchemaFoundation(pool: Pool): Promise<void> {
   // =========================================================================
   // 1. ROUTE SETS & PUBLICATION LIFECYCLE
   // =========================================================================
+  // 0017: route sets may only be inserted as draft; publish via lifecycle transition.
   const routeSetA1_1 = (
     await pool.query<{ id: number }>(
       `
       INSERT INTO public.assessment_route_sets (
-        syllabus_version_id, route_revision_key, lifecycle, manifest_sha256, published_at
+        syllabus_version_id, route_revision_key, lifecycle, manifest_sha256
       ) VALUES (
-        $1, 'routes-a1-v1', 'published',
-        '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-        now()
+        $1, 'routes-a1-v1', 'draft',
+        '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
       )
       RETURNING id
       `,
@@ -249,7 +252,7 @@ export async function proveRouteSchemaFoundation(pool: Pool): Promise<void> {
     )
   ).rows[0]!;
 
-  // B. Uniqueness: At most one PUBLISHED route set per syllabus version
+  // Direct INSERT as published is rejected by 0017
   await expectRejected(
     () =>
       pool.query(
@@ -257,15 +260,15 @@ export async function proveRouteSchemaFoundation(pool: Pool): Promise<void> {
         INSERT INTO public.assessment_route_sets (
           syllabus_version_id, route_revision_key, lifecycle, manifest_sha256, published_at
         ) VALUES (
-          $1, 'routes-a1-v2', 'published',
+          $1, 'routes-a1-direct-pub', 'published',
           'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789',
           now()
         )
         `,
-        [versionA1.id],
+        [versionB1.id],
       ),
-    "assessment_route_sets_one_published_per_version",
-    "[db-integrity] Second published route set was accepted for the same syllabus version.",
+    "published/retired route-reference contract is immutable",
+    "[db-integrity] Direct published route-set insert was accepted.",
   );
 
   // Non-empty route revision key constraint
@@ -283,20 +286,89 @@ export async function proveRouteSchemaFoundation(pool: Pool): Promise<void> {
     "[db-integrity] Empty route revision key was accepted.",
   );
 
-  // Published lifecycle requires published_at and manifest_sha256
+  // Published lifecycle requires published_at and manifest_sha256 (via draft → published)
+  const draftMissingPubContract = (
+    await pool.query<{ id: number }>(
+      `
+      INSERT INTO public.assessment_route_sets (
+        syllabus_version_id, route_revision_key, lifecycle
+      ) VALUES ($1, 'routes-draft-to-pub', 'draft')
+      RETURNING id
+      `,
+      [versionB1.id],
+    )
+  ).rows[0]!;
   await expectRejected(
     () =>
       pool.query(
         `
-        INSERT INTO public.assessment_route_sets (
-          syllabus_version_id, route_revision_key, lifecycle
-        ) VALUES ($1, 'routes-draft-to-pub', 'published')
+        UPDATE public.assessment_route_sets
+        SET lifecycle = 'published'
+        WHERE id = $1
         `,
-        [versionA2.id],
+        [draftMissingPubContract.id],
       ),
     "assessment_route_sets_published_contract",
     "[db-integrity] Published route set without manifest hash or timestamp was accepted.",
   );
+  await pool.query(`DELETE FROM public.assessment_route_sets WHERE id = $1`, [
+    draftMissingPubContract.id,
+  ]);
+
+  // B. Uniqueness: At most one PUBLISHED route set per syllabus version
+  // Prove on version B1 so main A1 fixture can remain draft for child inserts.
+  const publishedB1 = (
+    await pool.query<{ id: number }>(
+      `
+      INSERT INTO public.assessment_route_sets (
+        syllabus_version_id, route_revision_key, lifecycle, manifest_sha256
+      ) VALUES (
+        $1, 'routes-b1-v1', 'draft',
+        '1111111111111111111111111111111111111111111111111111111111111111'
+      )
+      RETURNING id
+      `,
+      [versionB1.id],
+    )
+  ).rows[0]!;
+  await pool.query(
+    `
+    UPDATE public.assessment_route_sets
+    SET lifecycle = 'published', published_at = now()
+    WHERE id = $1
+    `,
+    [publishedB1.id],
+  );
+  const secondB1Draft = (
+    await pool.query<{ id: number }>(
+      `
+      INSERT INTO public.assessment_route_sets (
+        syllabus_version_id, route_revision_key, lifecycle, manifest_sha256
+      ) VALUES (
+        $1, 'routes-b1-v2', 'draft',
+        '2222222222222222222222222222222222222222222222222222222222222222'
+      )
+      RETURNING id
+      `,
+      [versionB1.id],
+    )
+  ).rows[0]!;
+  await expectRejected(
+    () =>
+      pool.query(
+        `
+        UPDATE public.assessment_route_sets
+        SET lifecycle = 'published', published_at = now()
+        WHERE id = $1
+        `,
+        [secondB1Draft.id],
+      ),
+    "assessment_route_sets_one_published_per_version",
+    "[db-integrity] Second published route set was accepted for the same syllabus version.",
+  );
+  await pool.query(`DELETE FROM public.assessment_route_sets WHERE id = $1`, [
+    secondB1Draft.id,
+  ]);
 
   // =========================================================================
   // 2. ASSESSMENT ROUTES
