@@ -581,6 +581,26 @@ async function main(): Promise<void> {
   }
   console.log("\n9231 refresh ≡ r001:", refresh9231.slice(0, 16));
 
+  // 2b) Explicit supersession prepare (B5CR): clear overlapping published
+  // historical r001 windows before successor applicability. On a fresh B3 DB
+  // where r001 windows are already null this is an idempotent already-prepared
+  // NO-OP. On a hosted-from-restore baseline it clears the eight superseded
+  // overlapping windows without touching content or membership pins.
+  console.log("\n=== PREPARE SUPERSESSION (explicit) ===");
+  const planPath =
+    process.env.LOCKDIN_SUPERSESSION_PLAN?.trim() ||
+    path.resolve(
+      ROOT,
+      process.env.LOCKDIN_B5C_HOSTED_RESTORE_REHEARSAL === "1"
+        ? "docs/reference-data/syllabus-applicability/b5c-supersession-prepare-plan.hosted-restore.json"
+        : "docs/reference-data/syllabus-applicability/b5c-supersession-prepare-plan.json",
+    );
+  runPnpm("syllabus:prepare-supersession", [
+    "--",
+    "--apply",
+    `--plan=${planPath}`,
+  ]);
+
   // 3) Applicability for new drafts, then publish with retire where required
   for (const step of NEW_VERSIONS) {
     const manifestPath = path.resolve(

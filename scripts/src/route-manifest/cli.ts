@@ -10,7 +10,10 @@ import {
   canonicalizeRouteManifest,
   serializeCanonicalRouteManifest,
 } from "./canonicalize.js";
-import { assertLocalRoutePublicationAllowed } from "./publish-safety.js";
+import {
+  assertHostedRoutePublicationAllowed,
+  assertLocalRoutePublicationAllowed,
+} from "./publish-safety.js";
 import { publishRouteManifest } from "./publish.js";
 
 type Mode = "validate" | "hash" | "canonicalize" | "publish";
@@ -91,7 +94,12 @@ export async function runRouteManifestCli(
     }
 
     if (mode === "publish") {
-      assertLocalRoutePublicationAllowed(args);
+      if (args.includes("--hosted-cutover")) {
+        // Permanent hosted path: full cutover gate via env (or explicit gate).
+        assertHostedRoutePublicationAllowed({ argv: args });
+      } else {
+        assertLocalRoutePublicationAllowed(args);
+      }
       const result = await publishRouteManifest(raw, { dryRun });
       if (result.operation === "dry_run") {
         output.log("ROUTE MANIFEST PUBLISH: DRY-RUN");

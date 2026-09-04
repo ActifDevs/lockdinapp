@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "report": "docs/cursor/reports/133-phase7-hosted-hidden-catalogue-cutover-b5c.md",
+    "purpose": "B5CR explicit supersession preparation for hosted-from-restore cutovers where published historical r001 windows overlap successor windows",
+    "sequence": "import successors as drafts \u2192 prepare-supersession \u2192 apply successor applicability \u2192 publish successor \u2192 retire historical r001",
+    "historicalHashes": "exact hosted pre-B5C / B3 population r001 content_sha256",
+    "membershipPins": "optional per-target expectedMembershipPinCount; omitted in default plan so fresh B3 and hosted-restore both work. B5C rehearsal proves pins via membership snapshot SHA instead."
+  },
+  "targets": [
+    {
+      "subjectCode": "9489",
+      "historicalRevisionKey": "9489-r001",
+      "expectedHistoricalContentSha256": "d451305b402521724f58a6cf51fb9a795ba989681dd102410a0c22c270ee26c7",
+      "successorRevisionKey": "9489-r002",
+      "successorApplicability": {
+        "from": {
+          "year": 2027,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2029,
+          "series": "Oct/Nov"
+        }
+      }
+    },
+    {
+      "subjectCode": "9609",
+      "historicalRevisionKey": "9609-r001",
+      "expectedHistoricalContentSha256": "47bef6703c0d26f37bac77200f2fa4dfbd4e265948a912c8b447f840f9d723ef",
+      "successorRevisionKey": "9609-r002",
+      "successorApplicability": {
+        "from": {
+          "year": 2026,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2028,
+          "series": "Oct/Nov"
+        }
+      }
+    },
+    {
+      "subjectCode": "9618",
+      "historicalRevisionKey": "9618-r001",
+      "expectedHistoricalContentSha256": "cbc4240de8d64cb32c855194187b288a094764b0d2d9e2e6dc3cd40a2470ae75",
+      "successorRevisionKey": "9618-r002",
+      "successorApplicability": {
+        "from": {
+          "year": 2027,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2029,
+          "series": "Oct/Nov"
+        }
+      }
+    },
+    {
+      "subjectCode": "9700",
+      "historicalRevisionKey": "9700-r001",
+      "expectedHistoricalContentSha256": "058a5aba48c0f80ef3bc3d4dc67ad2e056b37cdef476c2ae5e39d1de563fc1f6",
+      "successorRevisionKey": "9700-r002",
+      "successorApplicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2027,
+          "series": "Oct/Nov"
+        }
+      }
+    },
+    {
+      "subjectCode": "9701",
+      "historicalRevisionKey": "9701-r001",
+      "expectedHistoricalContentSha256": "987a41ef98117648459fffe40f60835a5193918d3467ea60528d6138f725d486",
+      "successorRevisionKey": "9701-r002",
+      "successorApplicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2027,
+          "series": "Oct/Nov"
+        }
+      }
+    },
+    {
+      "subjectCode": "9702",
+      "historicalRevisionKey": "9702-r001",
+      "expectedHistoricalContentSha256": "286920d02cbfae80964bb21642aeef619052ef6094949526b45aa5448b8643be",
+      "successorRevisionKey": "9702-r002",
+      "successorApplicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2027,
+          "series": "Oct/Nov"
+        }
+      }
+    },
+    {
+      "subjectCode": "9708",
+      "historicalRevisionKey": "9708-r001",
+      "expectedHistoricalContentSha256": "5bfc60acd8587c67006315702685aea431cc80e46726669b90956f91ef270a8d",
+      "successorRevisionKey": "9708-r002",
+      "successorApplicability": {
+        "from": {
+          "year": 2026,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2028,
+          "series": "Oct/Nov"
+        }
+      }
+    },
+    {
+      "subjectCode": "9709",
+      "historicalRevisionKey": "9709-r001",
+      "expectedHistoricalContentSha256": "e720d0d50929a2cc1e298eda51f3d931ad65a77c6ebdb6ffb1e5516d9c4a566a",
+      "successorRevisionKey": "9709-r002",
+      "successorApplicability": {
+        "from": {
+          "year": 2026,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      }
+    }
+  ]
+}

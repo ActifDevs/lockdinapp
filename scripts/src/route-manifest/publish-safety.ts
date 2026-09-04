@@ -56,10 +56,10 @@ export function assertLocalRoutePublicationAllowed(args: string[] = []): void {
  */
 export function assertHostedRoutePublicationAllowed(input: {
   argv?: string[];
-  hostedGate: Parameters<
+  hostedGate?: Parameters<
     typeof assertCatalogueMutationAuthorized
   >[0]["hostedGate"];
-}): void {
+} = {}): void {
   const argv = input.argv ?? process.argv.slice(2);
   if (!argv.includes("--hosted-cutover")) {
     throw new RouteManifestError(
@@ -68,6 +68,7 @@ export function assertHostedRoutePublicationAllowed(input: {
     );
   }
   try {
+    // hostedGate optional: assertCatalogueMutationAuthorized loads env when absent.
     assertCatalogueMutationAuthorized({
       argv,
       hostedGate: input.hostedGate,

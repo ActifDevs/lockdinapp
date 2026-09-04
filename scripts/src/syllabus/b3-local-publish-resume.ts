@@ -225,6 +225,27 @@ async function main(): Promise<void> {
   if (!databaseUrl || !isLoopbackUrl(databaseUrl)) {
     throw new Error("LOCAL DATABASE SAFETY NOT PROVEN");
   }
+
+  // Explicit supersession prepare before successor applicability (B5CR).
+  // Idempotent when windows already cleared / retired.
+  // Prefer hosted-restore plan (with pin counts) when present on a restored
+  // B5C backup; otherwise use the default pin-agnostic plan.
+  console.log("=== PREPARE SUPERSESSION (explicit) ===");
+  const hostedRestorePlan = path.join(
+    ROOT,
+    "docs/reference-data/syllabus-applicability/b5c-supersession-prepare-plan.hosted-restore.json",
+  );
+  const defaultPlan = path.join(
+    ROOT,
+    "docs/reference-data/syllabus-applicability/b5c-supersession-prepare-plan.json",
+  );
+  const planPath =
+    process.env.LOCKDIN_SUPERSESSION_PLAN?.trim() ||
+    (process.env.LOCKDIN_B5C_HOSTED_RESTORE_REHEARSAL === "1"
+      ? hostedRestorePlan
+      : defaultPlan);
+  run("syllabus:prepare-supersession", ["--apply", `--plan=${planPath}`]);
+
   const pool = getPool();
   try {
     for (const step of STEPS) {
