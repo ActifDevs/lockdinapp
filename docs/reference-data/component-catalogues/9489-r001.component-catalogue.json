@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "subjectCode": "9489",
+  "syllabusRevisionKey": "9489-r001",
+  "purpose": "Canonical version-scoped assessment components required before route/year-mapping publication. Does not attach AS learning outcomes to P1/P2.",
+  "note": "Existing 9489-r001 CSV currently hard-codes 2027 P1/P2 occurrence mapping. Year mappings govern exam-year focus. Do not manufacture LO\u2192component links for catalogue creation.",
+  "components": [
+    {
+      "paperCode": "9489/1",
+      "level": "AS Level",
+      "componentName": "Paper 1 Historical Sources",
+      "durationMinutes": 75,
+      "marks": 40,
+      "sourceWeightingPercentNote": "CSV AS 40; route A uses 20"
+    },
+    {
+      "paperCode": "9489/2",
+      "level": "AS Level",
+      "componentName": "Paper 2 Outline Study",
+      "durationMinutes": 105,
+      "marks": 60,
+      "sourceWeightingPercentNote": "CSV AS 60; route A uses 30"
+    },
+    {
+      "paperCode": "9489/3",
+      "level": "A Level",
+      "componentName": "Paper 3 Historical Interpretations",
+      "durationMinutes": 75,
+      "marks": 40,
+      "sourceWeightingPercentNote": "20"
+    },
+    {
+      "paperCode": "9489/4",
+      "level": "A Level",
+      "componentName": "Paper 4 Depth Study",
+      "durationMinutes": 105,
+      "marks": 60,
+      "sourceWeightingPercentNote": "30"
+    }
+  ],
+  "b3ImportPath": "Ensure assessment_components rows exist for these four natural keys on 9489-r001 before route-manifest:publish. Do not reassign the 448+ AS content rows permanently to P1 or P2."
+}

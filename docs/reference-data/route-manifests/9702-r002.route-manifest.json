@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "subjectCode": "9702",
+  "syllabusRevisionKey": "9702-r002",
+  "routeRevisionKey": "9702-routes-r002-v1",
+  "sources": [
+    {
+      "sourceKey": "cambridge_9702_2025_2027",
+      "documentId": "664565",
+      "title": "Cambridge International AS & A Level Physics 9702 Syllabus for 2025, 2026 and 2027",
+      "validity": "2025-2027",
+      "locator": "Assessment overview pp. 11-12",
+      "url": "https://www.cambridgeinternational.org/Images/664565-2025-2027-syllabus.pdf"
+    }
+  ],
+  "routes": [
+    {
+      "key": "as_single_series",
+      "label": "AS Level — Papers 1–3 this exam series",
+      "qualificationTarget": "as_level",
+      "pathwayType": "single_series",
+      "progressionEligibility": "eligible",
+      "orderIndex": 0,
+      "evidenceRefs": [
+        "cambridge_9702_2025_2027#as"
+      ],
+      "components": [
+        {
+          "paperCode": "9702/1",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "31.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9702/2",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "46.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9702/3",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "23.0000",
+          "orderIndex": 2
+        }
+      ]
+    },
+    {
+      "key": "a_staged_completion",
+      "label": "Complete A Level — carry forward AS, take Papers 4 + 5",
+      "qualificationTarget": "a_level",
+      "pathwayType": "staged_completion",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 1,
+      "evidenceRefs": [
+        "cambridge_9702_2025_2027#staged"
+      ],
+      "components": [
+        {
+          "paperCode": "9702/1",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "15.5000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9702/2",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "23.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9702/3",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "11.5000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9702/4",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "38.5000",
+          "orderIndex": 3
+        },
+        {
+          "paperCode": "9702/5",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "11.5000",
+          "orderIndex": 4
+        }
+      ]
+    },
+    {
+      "key": "a_full_same_series",
+      "label": "Full A Level — Papers 1–5 this exam series",
+      "qualificationTarget": "a_level",
+      "pathwayType": "full_same_series",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 2,
+      "evidenceRefs": [
+        "cambridge_9702_2025_2027#full"
+      ],
+      "components": [
+        {
+          "paperCode": "9702/1",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "15.5000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9702/2",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "23.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9702/3",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "11.5000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9702/4",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "38.5000",
+          "orderIndex": 3
+        },
+        {
+          "paperCode": "9702/5",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "11.5000",
+          "orderIndex": 4
+        }
+      ]
+    }
+  ],
+  "studyOptionGroups": [],
+  "yearRotationMappings": [],
+  "review": {
+    "status": "authored_pending_owner_review_for_new_revision",
+    "reviewers": [
+      "Lockdin B2 Authoring"
+    ],
+    "reviewedAt": "2026-09-04",
+    "auditReport": "docs/cursor/reports/127-phase7-16-subject-reference-adoption-plan.md"
+  }
+}

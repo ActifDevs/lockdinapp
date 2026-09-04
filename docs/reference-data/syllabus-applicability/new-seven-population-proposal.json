@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "kind": "population_manifest_proposal",
+  "status": "B2_AUTHORING_ONLY_NOT_APPLIED",
+  "seriesPolicyDefault": {
+    "Feb/Mar": false,
+    "May/June": true,
+    "Oct/Nov": true
+  },
+  "versions": [
+    {
+      "subjectCode": "8021",
+      "logicalRevisionKey": "8021-r001",
+      "applicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2027,
+          "series": "Oct/Nov"
+        }
+      },
+      "candidateCsv": "data/syllabi/candidates/new-seven/8021_english_general_paper_2025-2027.csv"
+    },
+    {
+      "subjectCode": "8021",
+      "logicalRevisionKey": "8021-r002",
+      "applicability": {
+        "from": {
+          "year": 2028,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      },
+      "candidateCsv": "data/syllabi/candidates/new-seven/8021_english_general_paper_2028-2030.csv"
+    },
+    {
+      "subjectCode": "9093",
+      "logicalRevisionKey": "9093-r001",
+      "applicability": {
+        "from": {
+          "year": 2027,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2028,
+          "series": "Oct/Nov"
+        }
+      },
+      "candidateCsv": "data/syllabi/candidates/new-seven/9093_english_language.csv",
+      "note": "Family window from official 721359 syllabus matching candidate assessment structure"
+    },
+    {
+      "subjectCode": "9626",
+      "logicalRevisionKey": "9626-r001",
+      "applicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2027,
+          "series": "Oct/Nov"
+        }
+      },
+      "candidateCsv": "data/syllabi/candidates/new-seven/9626_Information_Technology_2025-2027.csv"
+    },
+    {
+      "subjectCode": "9626",
+      "logicalRevisionKey": "9626-r002",
+      "applicability": {
+        "from": {
+          "year": 2028,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      },
+      "candidateCsv": "data/syllabi/candidates/new-seven/9626_Information_Technology_2028-2030.csv"
+    },
+    {
+      "subjectCode": "9696",
+      "logicalRevisionKey": "9696-r001",
+      "applicability": {
+        "from": {
+          "year": 2025,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2026,
+          "series": "Oct/Nov"
+        }
+      },
+      "candidateCsv": "data/syllabi/candidates/new-seven/9696_geography_2025-2026.csv"
+    },
+    {
+      "subjectCode": "9696",
+      "logicalRevisionKey": "9696-r002",
+      "applicability": {
+        "from": {
+          "year": 2027,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2029,
+          "series": "Oct/Nov"
+        }
+      },
+      "candidateCsv": "data/syllabi/candidates/new-seven/9696_geography_2027-2029.csv"
+    },
+    {
+      "subjectCode": "9699",
+      "logicalRevisionKey": "9699-r001",
+      "applicability": {
+        "from": {
+          "year": 2027,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2028,
+          "series": "Oct/Nov"
+        }
+      },
+      "candidateCsv": "data/syllabi/candidates/new-seven/9699_sociology_2027-2028_candidate.csv"
+    },
+    {
+      "subjectCode": "9706",
+      "logicalRevisionKey": "9706-r001",
+      "applicability": {
+        "from": {
+          "year": 2026,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2028,
+          "series": "Oct/Nov"
+        }
+      },
+      "candidateCsv": "data/syllabi/candidates/new-seven/9706_accounting.csv"
+    },
+    {
+      "subjectCode": "9990",
+      "logicalRevisionKey": "9990-r001",
+      "applicability": {
+        "from": {
+          "year": 2027,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2027,
+          "series": "Oct/Nov"
+        }
+      },
+      "candidateCsv": "data/syllabi/candidates/new-seven/9990_psychology_2027_family_candidate.csv"
+    },
+    {
+      "subjectCode": "9990",
+      "logicalRevisionKey": "9990-r002",
+      "applicability": {
+        "from": {
+          "year": 2028,
+          "series": "May/June"
+        },
+        "to": {
+          "year": 2030,
+          "series": "Oct/Nov"
+        }
+      },
+      "candidateCsv": "data/syllabi/candidates/new-seven/9990_psychology_2028-2030_family_candidate.csv"
+    }
+  ]
+}

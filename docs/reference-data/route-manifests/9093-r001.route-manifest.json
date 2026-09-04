@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "subjectCode": "9093",
+  "syllabusRevisionKey": "9093-r001",
+  "routeRevisionKey": "9093-routes-v1",
+  "sources": [
+    {
+      "sourceKey": "cambridge_9093_2027_2028",
+      "documentId": "721359",
+      "title": "Cambridge International AS & A Level English Language 9093 Syllabus for 2027 and 2028",
+      "validity": "2027-2028",
+      "locator": "Assessment overview / three routes; candidate CSV 9093_english_language.csv",
+      "url": "https://www.cambridgeinternational.org/Images/721359-2027-2028-syllabus.pdf"
+    }
+  ],
+  "routes": [
+    {
+      "key": "as_single_series",
+      "label": "AS Level \u2014 Papers 1 + 2 this exam series",
+      "qualificationTarget": "as_level",
+      "pathwayType": "single_series",
+      "progressionEligibility": "eligible",
+      "orderIndex": 0,
+      "evidenceRefs": [
+        "cambridge_9093_2027_2028#as"
+      ],
+      "components": [
+        {
+          "paperCode": "9093/1",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "50.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9093/2",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "50.0000",
+          "orderIndex": 1
+        }
+      ]
+    },
+    {
+      "key": "a_staged_completion",
+      "label": "Complete A Level \u2014 carry forward AS, take Papers 3 + 4",
+      "qualificationTarget": "a_level",
+      "pathwayType": "staged_completion",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 1,
+      "evidenceRefs": [
+        "cambridge_9093_2027_2028#staged"
+      ],
+      "components": [
+        {
+          "paperCode": "9093/1",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9093/2",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9093/3",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9093/4",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 3
+        }
+      ]
+    },
+    {
+      "key": "a_full_same_series",
+      "label": "Full A Level \u2014 Papers 1\u20134 this exam series",
+      "qualificationTarget": "a_level",
+      "pathwayType": "full_same_series",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 2,
+      "evidenceRefs": [
+        "cambridge_9093_2027_2028#full"
+      ],
+      "components": [
+        {
+          "paperCode": "9093/1",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9093/2",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9093/3",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9093/4",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 3
+        }
+      ]
+    }
+  ],
+  "studyOptionGroups": [],
+  "yearRotationMappings": [],
+  "review": {
+    "status": "authored_pending_owner_review",
+    "reviewers": [
+      "Lockdin B2 Authoring"
+    ],
+    "reviewedAt": "2026-09-04",
+    "auditReport": "docs/cursor/reports/127-phase7-16-subject-reference-adoption-plan.md"
+  }
+}

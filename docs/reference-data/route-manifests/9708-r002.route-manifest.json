@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "subjectCode": "9708",
+  "syllabusRevisionKey": "9708-r002",
+  "routeRevisionKey": "9708-routes-r002-v1",
+  "sources": [
+    {
+      "sourceKey": "cambridge_9708_2026_2028",
+      "documentId": "697428",
+      "title": "Cambridge International AS & A Level Economics 9708 Syllabus",
+      "validity": "2026-2028",
+      "locator": "Assessment overview",
+      "url": "https://www.cambridgeinternational.org/Images/697428-2026-2028-syllabus.pdf"
+    }
+  ],
+  "routes": [
+    {
+      "key": "as_single_series",
+      "label": "AS Level — Papers 1 + 2 this exam series",
+      "qualificationTarget": "as_level",
+      "pathwayType": "single_series",
+      "progressionEligibility": "eligible",
+      "orderIndex": 0,
+      "evidenceRefs": [
+        "cambridge_9708_2026_2028#as"
+      ],
+      "components": [
+        {
+          "paperCode": "9708/1",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "33.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9708/2",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "67.0000",
+          "orderIndex": 1
+        }
+      ]
+    },
+    {
+      "key": "a_staged_completion",
+      "label": "Complete A Level — carry forward AS, take Papers 3 + 4",
+      "qualificationTarget": "a_level",
+      "pathwayType": "staged_completion",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 1,
+      "evidenceRefs": [
+        "cambridge_9708_2026_2028#staged"
+      ],
+      "components": [
+        {
+          "paperCode": "9708/1",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "17.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9708/2",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "33.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9708/3",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "17.0000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9708/4",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "33.0000",
+          "orderIndex": 3
+        }
+      ]
+    },
+    {
+      "key": "a_full_same_series",
+      "label": "Full A Level — Papers 1–4 this exam series",
+      "qualificationTarget": "a_level",
+      "pathwayType": "full_same_series",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 2,
+      "evidenceRefs": [
+        "cambridge_9708_2026_2028#full"
+      ],
+      "components": [
+        {
+          "paperCode": "9708/1",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "17.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9708/2",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "33.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9708/3",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "17.0000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9708/4",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "33.0000",
+          "orderIndex": 3
+        }
+      ]
+    }
+  ],
+  "studyOptionGroups": [],
+  "yearRotationMappings": [],
+  "review": {
+    "status": "authored_pending_owner_review_for_new_revision",
+    "reviewers": [
+      "Lockdin B2 Authoring"
+    ],
+    "reviewedAt": "2026-09-04",
+    "auditReport": "docs/cursor/reports/127-phase7-16-subject-reference-adoption-plan.md"
+  }
+}

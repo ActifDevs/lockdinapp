@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "subjectCode": "9699",
+  "syllabusRevisionKey": "9699-r001",
+  "routeRevisionKey": "9699-routes-v1",
+  "sources": [
+    {
+      "sourceKey": "cambridge_9699_2027_2028",
+      "documentId": "9699-2027-2028",
+      "title": "Cambridge International AS & A Level Sociology 9699 Syllabus for 2027 and 2028",
+      "validity": "2027-2028",
+      "locator": "Assessment overview; Paper 4 areas \u22652 of 3",
+      "url": "https://www.cambridgeinternational.org/programmes-and-qualifications/cambridge-international-as-and-a-level-sociology-9699/"
+    }
+  ],
+  "routes": [
+    {
+      "key": "as_single_series",
+      "label": "AS Level \u2014 Papers 1 + 2 this exam series",
+      "qualificationTarget": "as_level",
+      "pathwayType": "single_series",
+      "progressionEligibility": "eligible",
+      "orderIndex": 0,
+      "evidenceRefs": [
+        "cambridge_9699_2027_2028#as"
+      ],
+      "components": [
+        {
+          "paperCode": "9699/1",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "50.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9699/2",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "50.0000",
+          "orderIndex": 1
+        }
+      ]
+    },
+    {
+      "key": "a_staged_completion",
+      "label": "Complete A Level \u2014 carry forward AS, take Papers 3 + 4",
+      "qualificationTarget": "a_level",
+      "pathwayType": "staged_completion",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 1,
+      "evidenceRefs": [
+        "cambridge_9699_2027_2028#staged"
+      ],
+      "components": [
+        {
+          "paperCode": "9699/1",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9699/2",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9699/3",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "21.0000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9699/4",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "29.0000",
+          "orderIndex": 3
+        }
+      ]
+    },
+    {
+      "key": "a_full_same_series",
+      "label": "Full A Level \u2014 Papers 1\u20134 this exam series",
+      "qualificationTarget": "a_level",
+      "pathwayType": "full_same_series",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 2,
+      "evidenceRefs": [
+        "cambridge_9699_2027_2028#full"
+      ],
+      "components": [
+        {
+          "paperCode": "9699/1",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9699/2",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9699/3",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "21.0000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9699/4",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "29.0000",
+          "orderIndex": 3
+        }
+      ]
+    }
+  ],
+  "studyOptionGroups": [
+    {
+      "key": "paper_4_globalisation_media_religion",
+      "label": "Paper 4 Globalisation, Media and Religion",
+      "qualificationTarget": "a_level",
+      "applicableComponent": {
+        "paperCode": "9699/4",
+        "level": "A Level"
+      },
+      "orderIndex": 0,
+      "minSelections": 2,
+      "maxSelections": 3,
+      "options": [
+        {
+          "key": "globalisation",
+          "label": "Globalisation",
+          "description": null,
+          "orderIndex": 0,
+          "units": [
+            {
+              "unitTitle": "Key debates, concepts and perspectives"
+            },
+            {
+              "unitTitle": "Contemporary issues"
+            }
+          ]
+        },
+        {
+          "key": "media",
+          "label": "Media",
+          "description": null,
+          "orderIndex": 1,
+          "units": [
+            {
+              "unitTitle": "Ownership and control of media"
+            },
+            {
+              "unitTitle": "Media representation and effects"
+            }
+          ]
+        },
+        {
+          "key": "religion",
+          "label": "Religion",
+          "description": null,
+          "orderIndex": 2,
+          "units": [
+            {
+              "unitTitle": "Religion and social order"
+            },
+            {
+              "unitTitle": "The influence of religion"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "yearRotationMappings": [],
+  "review": {
+    "status": "authored_pending_owner_review",
+    "reviewers": [
+      "Lockdin B2 Authoring"
+    ],
+    "reviewedAt": "2026-09-04",
+    "auditReport": "docs/cursor/reports/127-phase7-16-subject-reference-adoption-plan.md"
+  }
+}

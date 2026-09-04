@@ -1,0 +1,205 @@
+{
+  "schemaVersion": 1,
+  "subjectCode": "9231",
+  "syllabusRevisionKey": "9231-r001",
+  "routeRevisionKey": "9231-routes-v1",
+  "sources": [
+    {
+      "sourceKey": "cambridge_9231_2026_2027",
+      "documentId": "697357",
+      "title": "Cambridge International AS & A Level Further Mathematics 9231 Syllabus for 2026 and 2027",
+      "validity": "2026-2027",
+      "locator": "Assessment overview pp. 10-12",
+      "url": "https://www.cambridgeinternational.org/Images/697357-2026-2027-syllabus.pdf"
+    }
+  ],
+  "routes": [
+    {
+      "key": "as_further_mechanics",
+      "label": "AS Level \u2014 Further Mechanics (Papers 1 + 3)",
+      "qualificationTarget": "as_level",
+      "pathwayType": "single_series",
+      "progressionEligibility": "eligible",
+      "orderIndex": 0,
+      "evidenceRefs": [
+        "cambridge_9231_2026_2027#as_mech"
+      ],
+      "components": [
+        {
+          "paperCode": "9231/1",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "60.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9231/3",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "40.0000",
+          "orderIndex": 1
+        }
+      ]
+    },
+    {
+      "key": "as_further_statistics",
+      "label": "AS Level \u2014 Further Probability & Statistics (Papers 1 + 4)",
+      "qualificationTarget": "as_level",
+      "pathwayType": "single_series",
+      "progressionEligibility": "eligible",
+      "orderIndex": 1,
+      "evidenceRefs": [
+        "cambridge_9231_2026_2027#as_stat"
+      ],
+      "components": [
+        {
+          "paperCode": "9231/1",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "60.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9231/4",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "40.0000",
+          "orderIndex": 1
+        }
+      ]
+    },
+    {
+      "key": "a_staged_from_mechanics",
+      "label": "Complete A Level \u2014 after AS Further Mechanics",
+      "qualificationTarget": "a_level",
+      "pathwayType": "staged_completion",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 2,
+      "evidenceRefs": [
+        "cambridge_9231_2026_2027#staged_mech"
+      ],
+      "components": [
+        {
+          "paperCode": "9231/1",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "30.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9231/3",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "20.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9231/2",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "30.0000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9231/4",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "20.0000",
+          "orderIndex": 3
+        }
+      ]
+    },
+    {
+      "key": "a_staged_from_statistics",
+      "label": "Complete A Level \u2014 after AS Further Probability & Statistics",
+      "qualificationTarget": "a_level",
+      "pathwayType": "staged_completion",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 3,
+      "evidenceRefs": [
+        "cambridge_9231_2026_2027#staged_stat"
+      ],
+      "components": [
+        {
+          "paperCode": "9231/1",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "30.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9231/4",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "20.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9231/2",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "30.0000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9231/3",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "20.0000",
+          "orderIndex": 3
+        }
+      ]
+    },
+    {
+      "key": "a_full_same_series",
+      "label": "Full A Level \u2014 all four papers this exam series",
+      "qualificationTarget": "a_level",
+      "pathwayType": "full_same_series",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 4,
+      "evidenceRefs": [
+        "cambridge_9231_2026_2027#full"
+      ],
+      "components": [
+        {
+          "paperCode": "9231/1",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "30.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9231/2",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "30.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9231/3",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "20.0000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9231/4",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "20.0000",
+          "orderIndex": 3
+        }
+      ]
+    }
+  ],
+  "studyOptionGroups": [],
+  "yearRotationMappings": [],
+  "review": {
+    "status": "authored_pending_owner_review",
+    "reviewers": [
+      "Lockdin B2 Authoring"
+    ],
+    "reviewedAt": "2026-09-04",
+    "auditReport": "docs/cursor/reports/121-phase7-study-route-official-evidence-audit.md"
+  }
+}

@@ -1,0 +1,637 @@
+{
+  "schemaVersion": 1,
+  "subjectCode": "9489",
+  "syllabusRevisionKey": "9489-r001",
+  "routeRevisionKey": "9489-routes-v1",
+  "sources": [
+    {
+      "sourceKey": "cambridge_9489_2027_2029",
+      "documentId": "718292",
+      "title": "Cambridge International AS & A Level History 9489 Syllabus for 2027, 2028 and 2029 (Version 2)",
+      "validity": "2027-2029",
+      "locator": "Assessment overview pp. 10-11; Yearly rotation pp. 37-38",
+      "url": "https://www.cambridgeinternational.org/Images/718292-2027-2029-syllabus.pdf"
+    }
+  ],
+  "routes": [
+    {
+      "key": "as_single_series",
+      "label": "AS Level \u2014 Papers 1 + 2 this exam series",
+      "qualificationTarget": "as_level",
+      "pathwayType": "single_series",
+      "progressionEligibility": "eligible",
+      "orderIndex": 0,
+      "evidenceRefs": [
+        "cambridge_9489_2027_2029#as"
+      ],
+      "components": [
+        {
+          "paperCode": "9489/1",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "40.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9489/2",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "60.0000",
+          "orderIndex": 1
+        }
+      ]
+    },
+    {
+      "key": "a_staged_completion",
+      "label": "Complete A Level \u2014 carry forward AS, take Papers 3 + 4",
+      "qualificationTarget": "a_level",
+      "pathwayType": "staged_completion",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 1,
+      "evidenceRefs": [
+        "cambridge_9489_2027_2029#staged"
+      ],
+      "components": [
+        {
+          "paperCode": "9489/1",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "20.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9489/2",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "30.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9489/3",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "20.0000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9489/4",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "30.0000",
+          "orderIndex": 3
+        }
+      ]
+    },
+    {
+      "key": "a_full_same_series",
+      "label": "Full A Level \u2014 Papers 1\u20134 this exam series",
+      "qualificationTarget": "a_level",
+      "pathwayType": "full_same_series",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 2,
+      "evidenceRefs": [
+        "cambridge_9489_2027_2029#full"
+      ],
+      "components": [
+        {
+          "paperCode": "9489/1",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "20.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9489/2",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "30.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9489/3",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "20.0000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9489/4",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "30.0000",
+          "orderIndex": 3
+        }
+      ]
+    }
+  ],
+  "studyOptionGroups": [
+    {
+      "key": "as_history_option",
+      "label": "AS History Option",
+      "qualificationTarget": "both",
+      "applicableComponent": null,
+      "orderIndex": 0,
+      "minSelections": 1,
+      "maxSelections": 1,
+      "options": [
+        {
+          "key": "modern_europe_1774_1924",
+          "label": "Modern Europe, 1774\u20131924",
+          "description": null,
+          "orderIndex": 0,
+          "units": [
+            {
+              "unitTitle": "France 1774-1814"
+            },
+            {
+              "unitTitle": "Liberalism and nationalism in Germany 1815-71"
+            },
+            {
+              "unitTitle": "Russia from autocracy to revolution 1881-1924"
+            }
+          ]
+        },
+        {
+          "key": "the_history_of_the_usa_1820_1941",
+          "label": "The History of the USA, 1820\u20131941",
+          "description": null,
+          "orderIndex": 1,
+          "units": [
+            {
+              "unitTitle": "The Civil War and Reconstruction 1820-77"
+            },
+            {
+              "unitTitle": "The Gilded Age and the Progressive Era 1870-1920"
+            },
+            {
+              "unitTitle": "The Great Crash the Great Depression and the New Deal 1920-41"
+            }
+          ]
+        },
+        {
+          "key": "international_history_1870_1939",
+          "label": "International History, 1870\u20131939",
+          "description": null,
+          "orderIndex": 2,
+          "units": [
+            {
+              "unitTitle": "Imperialism and the emergence of world powers c.1870-1918"
+            },
+            {
+              "unitTitle": "International relations 1919-29"
+            },
+            {
+              "unitTitle": "International history 1929-39"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "paper_3_topic",
+      "label": "Paper 3 Prescribed Topic",
+      "qualificationTarget": "a_level",
+      "applicableComponent": {
+        "paperCode": "9489/3",
+        "level": "A Level"
+      },
+      "orderIndex": 1,
+      "minSelections": 1,
+      "maxSelections": 1,
+      "options": [
+        {
+          "key": "origins_first_world_war",
+          "label": "The origins of the First World War",
+          "description": null,
+          "orderIndex": 0,
+          "units": [
+            {
+              "unitTitle": "The origins of the First World War"
+            }
+          ]
+        },
+        {
+          "key": "the_holocaust",
+          "label": "The Holocaust",
+          "description": null,
+          "orderIndex": 1,
+          "units": [
+            {
+              "unitTitle": "The Holocaust"
+            }
+          ]
+        },
+        {
+          "key": "cold_war",
+          "label": "The origins and development of the Cold War",
+          "description": null,
+          "orderIndex": 2,
+          "units": [
+            {
+              "unitTitle": "The origins and development of the Cold War"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "paper_4_depth_study",
+      "label": "Paper 4 Depth Study Option",
+      "qualificationTarget": "a_level",
+      "applicableComponent": {
+        "paperCode": "9489/4",
+        "level": "A Level"
+      },
+      "orderIndex": 2,
+      "minSelections": 1,
+      "maxSelections": 1,
+      "options": [
+        {
+          "key": "european_depth_study",
+          "label": "Depth Study 1: European History in the interwar years, 1919\u201341",
+          "description": null,
+          "orderIndex": 0,
+          "units": [
+            {
+              "unitTitle": "Mussolini's Italy 1919-41"
+            },
+            {
+              "unitTitle": "Stalin's Russia 1924-41"
+            },
+            {
+              "unitTitle": "Hitler's Germany 1929-41"
+            }
+          ]
+        },
+        {
+          "key": "american_depth_study",
+          "label": "Depth Study 2: The USA, 1945\u201393",
+          "description": null,
+          "orderIndex": 1,
+          "units": [
+            {
+              "unitTitle": "Truman Eisenhower and post-war USA 1945-61"
+            },
+            {
+              "unitTitle": "A time of challenges: the USA 1961-74"
+            },
+            {
+              "unitTitle": "The USA 1974-93"
+            }
+          ]
+        },
+        {
+          "key": "international_depth_study",
+          "label": "Depth Study 3: International History, 1909\u201394",
+          "description": null,
+          "orderIndex": 2,
+          "units": [
+            {
+              "unitTitle": "The Soviet Empire in Eastern Europe 1953-91"
+            },
+            {
+              "unitTitle": "End of minority rule in South Africa and Zimbabwe 1948-94"
+            },
+            {
+              "unitTitle": "The route to independence: Malaysia and Indonesia c.1909-67"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "yearRotationMappings": [
+    {
+      "examYear": 2027,
+      "optionKey": "modern_europe_1774_1924",
+      "component": {
+        "paperCode": "9489/1",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "France 1774-1814"
+      },
+      "assessmentRole": "source_paper"
+    },
+    {
+      "examYear": 2027,
+      "optionKey": "modern_europe_1774_1924",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "Liberalism and nationalism in Germany 1815-71"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2027,
+      "optionKey": "modern_europe_1774_1924",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "Russia from autocracy to revolution 1881-1924"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2028,
+      "optionKey": "modern_europe_1774_1924",
+      "component": {
+        "paperCode": "9489/1",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "Liberalism and nationalism in Germany 1815-71"
+      },
+      "assessmentRole": "source_paper"
+    },
+    {
+      "examYear": 2028,
+      "optionKey": "modern_europe_1774_1924",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "France 1774-1814"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2028,
+      "optionKey": "modern_europe_1774_1924",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "Russia from autocracy to revolution 1881-1924"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2029,
+      "optionKey": "modern_europe_1774_1924",
+      "component": {
+        "paperCode": "9489/1",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "Russia from autocracy to revolution 1881-1924"
+      },
+      "assessmentRole": "source_paper"
+    },
+    {
+      "examYear": 2029,
+      "optionKey": "modern_europe_1774_1924",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "France 1774-1814"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2029,
+      "optionKey": "modern_europe_1774_1924",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "Liberalism and nationalism in Germany 1815-71"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2027,
+      "optionKey": "the_history_of_the_usa_1820_1941",
+      "component": {
+        "paperCode": "9489/1",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "The Gilded Age and the Progressive Era 1870-1920"
+      },
+      "assessmentRole": "source_paper"
+    },
+    {
+      "examYear": 2027,
+      "optionKey": "the_history_of_the_usa_1820_1941",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "The Civil War and Reconstruction 1820-77"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2027,
+      "optionKey": "the_history_of_the_usa_1820_1941",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "The Great Crash the Great Depression and the New Deal 1920-41"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2028,
+      "optionKey": "the_history_of_the_usa_1820_1941",
+      "component": {
+        "paperCode": "9489/1",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "The Great Crash the Great Depression and the New Deal 1920-41"
+      },
+      "assessmentRole": "source_paper"
+    },
+    {
+      "examYear": 2028,
+      "optionKey": "the_history_of_the_usa_1820_1941",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "The Civil War and Reconstruction 1820-77"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2028,
+      "optionKey": "the_history_of_the_usa_1820_1941",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "The Gilded Age and the Progressive Era 1870-1920"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2029,
+      "optionKey": "the_history_of_the_usa_1820_1941",
+      "component": {
+        "paperCode": "9489/1",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "The Civil War and Reconstruction 1820-77"
+      },
+      "assessmentRole": "source_paper"
+    },
+    {
+      "examYear": 2029,
+      "optionKey": "the_history_of_the_usa_1820_1941",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "The Gilded Age and the Progressive Era 1870-1920"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2029,
+      "optionKey": "the_history_of_the_usa_1820_1941",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "The Great Crash the Great Depression and the New Deal 1920-41"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2027,
+      "optionKey": "international_history_1870_1939",
+      "component": {
+        "paperCode": "9489/1",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "Imperialism and the emergence of world powers c.1870-1918"
+      },
+      "assessmentRole": "source_paper"
+    },
+    {
+      "examYear": 2027,
+      "optionKey": "international_history_1870_1939",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "International relations 1919-29"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2027,
+      "optionKey": "international_history_1870_1939",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "International history 1929-39"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2028,
+      "optionKey": "international_history_1870_1939",
+      "component": {
+        "paperCode": "9489/1",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "International relations 1919-29"
+      },
+      "assessmentRole": "source_paper"
+    },
+    {
+      "examYear": 2028,
+      "optionKey": "international_history_1870_1939",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "Imperialism and the emergence of world powers c.1870-1918"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2028,
+      "optionKey": "international_history_1870_1939",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "International history 1929-39"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2029,
+      "optionKey": "international_history_1870_1939",
+      "component": {
+        "paperCode": "9489/1",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "International history 1929-39"
+      },
+      "assessmentRole": "source_paper"
+    },
+    {
+      "examYear": 2029,
+      "optionKey": "international_history_1870_1939",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "Imperialism and the emergence of world powers c.1870-1918"
+      },
+      "assessmentRole": "outline_paper"
+    },
+    {
+      "examYear": 2029,
+      "optionKey": "international_history_1870_1939",
+      "component": {
+        "paperCode": "9489/2",
+        "level": "AS Level"
+      },
+      "unit": {
+        "unitTitle": "International relations 1919-29"
+      },
+      "assessmentRole": "outline_paper"
+    }
+  ],
+  "review": {
+    "status": "authored_pending_owner_review",
+    "reviewers": [
+      "Lockdin B2 Authoring"
+    ],
+    "reviewedAt": "2026-09-04",
+    "auditReport": "docs/cursor/reports/127-phase7-16-subject-reference-adoption-plan.md"
+  }
+}

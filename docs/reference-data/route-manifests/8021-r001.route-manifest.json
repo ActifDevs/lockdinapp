@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "subjectCode": "8021",
+  "syllabusRevisionKey": "8021-r001",
+  "routeRevisionKey": "8021-routes-r001",
+  "sources": [
+    {
+      "sourceKey": "cambridge_8021_2025_2027",
+      "documentId": "2025-2027",
+      "title": "Cambridge International AS Level English General Paper 8021 (2025-2027)",
+      "validity": "2025-2027",
+      "locator": "Assessment overview; candidate CSV 8021_english_general_paper_2025-2027.csv",
+      "url": "https://www.cambridgeinternational.org/programmes-and-qualifications/cambridge-international-as-level-english-general-paper-8021/"
+    }
+  ],
+  "routes": [
+    {
+      "key": "as_single_series",
+      "label": "AS Level \u2014 Papers 1 + 2 this exam series",
+      "qualificationTarget": "as_level",
+      "pathwayType": "single_series",
+      "progressionEligibility": "eligible",
+      "orderIndex": 0,
+      "evidenceRefs": [
+        "cambridge_8021_2025_2027#as"
+      ],
+      "components": [
+        {
+          "paperCode": "8021/1",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "50.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "8021/2",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "50.0000",
+          "orderIndex": 1
+        }
+      ]
+    }
+  ],
+  "studyOptionGroups": [],
+  "yearRotationMappings": [],
+  "review": {
+    "status": "authored_pending_owner_review",
+    "reviewers": [
+      "Lockdin B2 Authoring"
+    ],
+    "reviewedAt": "2026-09-04",
+    "auditReport": "docs/cursor/reports/127-phase7-16-subject-reference-adoption-plan.md"
+  }
+}

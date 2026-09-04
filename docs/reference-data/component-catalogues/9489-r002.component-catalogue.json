@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "subjectCode": "9489",
+  "syllabusRevisionKey": "9489-r002",
+  "purpose": "Canonical P1\u2013P4 for proposed 9489-r002 (2027\u20132029 refresh). Fresh CSV binds AS LOs as component-null (448); P1/P2 must exist at version scope without permanent AS LO links.",
+  "note": "Do not attach the 448 AS content rows permanently to P1/P2. Year mappings assign exam-year focus. Existing 9489-r001 remains historically pinned until authorized migration.",
+  "components": [
+    {
+      "paperCode": "9489/1",
+      "level": "AS Level",
+      "componentName": "Paper 1 Historical Sources",
+      "durationMinutes": 75,
+      "marks": 40,
+      "sourceWeightingPercentNote": "CSV AS 40; route A uses 20"
+    },
+    {
+      "paperCode": "9489/2",
+      "level": "AS Level",
+      "componentName": "Paper 2 Outline Study",
+      "durationMinutes": 105,
+      "marks": 60,
+      "sourceWeightingPercentNote": "CSV AS 60; route A uses 30"
+    },
+    {
+      "paperCode": "9489/3",
+      "level": "A Level",
+      "componentName": "Paper 3 Historical Interpretations",
+      "durationMinutes": 75,
+      "marks": 40,
+      "sourceWeightingPercentNote": "20"
+    },
+    {
+      "paperCode": "9489/4",
+      "level": "A Level",
+      "componentName": "Paper 4 Depth Study",
+      "durationMinutes": 105,
+      "marks": 60,
+      "sourceWeightingPercentNote": "30"
+    }
+  ],
+  "b3ImportPath": "Import refresh CSV as new immutable 9489-r002; seed assessment_components for 9489/1\u20139489/4; publish 9489-r002 route manifest; do not mutate 9489-r001 or repin memberships without separate authorization."
+}

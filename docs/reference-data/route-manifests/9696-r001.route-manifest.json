@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 1,
+  "subjectCode": "9696",
+  "syllabusRevisionKey": "9696-r001",
+  "routeRevisionKey": "9696-routes-r001",
+  "sources": [
+    {
+      "sourceKey": "cambridge_9696_2025_2026",
+      "documentId": "2025-2026",
+      "title": "Cambridge International AS & A Level Geography 9696 (2025-2026)",
+      "validity": "2025-2026",
+      "locator": "Assessment overview; Paper 3/4 option selections 2-of-4",
+      "url": "https://www.cambridgeinternational.org/programmes-and-qualifications/cambridge-international-as-and-a-level-geography-9696/"
+    }
+  ],
+  "routes": [
+    {
+      "key": "as_single_series",
+      "label": "AS Level \u2014 Papers 1 + 2 this exam series",
+      "qualificationTarget": "as_level",
+      "pathwayType": "single_series",
+      "progressionEligibility": "eligible",
+      "orderIndex": 0,
+      "evidenceRefs": [
+        "cambridge_9696_2025_2026#as"
+      ],
+      "components": [
+        {
+          "paperCode": "9696/1",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "50.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9696/2",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "50.0000",
+          "orderIndex": 1
+        }
+      ]
+    },
+    {
+      "key": "a_staged_completion",
+      "label": "Complete A Level \u2014 carry forward AS, take Papers 3 + 4",
+      "qualificationTarget": "a_level",
+      "pathwayType": "staged_completion",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 1,
+      "evidenceRefs": [
+        "cambridge_9696_2025_2026#staged"
+      ],
+      "components": [
+        {
+          "paperCode": "9696/1",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9696/2",
+          "level": "AS Level",
+          "role": "carried_forward",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9696/3",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9696/4",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 3
+        }
+      ]
+    },
+    {
+      "key": "a_full_same_series",
+      "label": "Full A Level \u2014 Papers 1\u20134 this exam series",
+      "qualificationTarget": "a_level",
+      "pathwayType": "full_same_series",
+      "progressionEligibility": "not_applicable",
+      "orderIndex": 2,
+      "evidenceRefs": [
+        "cambridge_9696_2025_2026#full"
+      ],
+      "components": [
+        {
+          "paperCode": "9696/1",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 0
+        },
+        {
+          "paperCode": "9696/2",
+          "level": "AS Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 1
+        },
+        {
+          "paperCode": "9696/3",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 2
+        },
+        {
+          "paperCode": "9696/4",
+          "level": "A Level",
+          "role": "current_sitting",
+          "qualificationWeightingPercent": "25.0000",
+          "orderIndex": 3
+        }
+      ]
+    }
+  ],
+  "studyOptionGroups": [
+    {
+      "key": "paper_3_advanced_physical",
+      "label": "Paper 3 Advanced Physical Geography Options",
+      "qualificationTarget": "a_level",
+      "applicableComponent": {
+        "paperCode": "9696/3",
+        "level": "A Level"
+      },
+      "orderIndex": 0,
+      "minSelections": 2,
+      "maxSelections": 2,
+      "options": [
+        {
+          "key": "tropical_environments",
+          "label": "Tropical environments",
+          "description": null,
+          "orderIndex": 0,
+          "units": [
+            {
+              "unitTitle": "7 Tropical environments"
+            }
+          ]
+        },
+        {
+          "key": "coastal_environments",
+          "label": "Coastal environments",
+          "description": null,
+          "orderIndex": 1,
+          "units": [
+            {
+              "unitTitle": "8 Coastal environments"
+            }
+          ]
+        },
+        {
+          "key": "hazardous_environments",
+          "label": "Hazardous environments",
+          "description": null,
+          "orderIndex": 2,
+          "units": [
+            {
+              "unitTitle": "9 Hazardous environments"
+            }
+          ]
+        },
+        {
+          "key": "hot_arid_semi_arid",
+          "label": "Hot arid and semi-arid environments",
+          "description": null,
+          "orderIndex": 3,
+          "units": [
+            {
+              "unitTitle": "10 Hot arid and semi-arid environments"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "paper_4_advanced_human",
+      "label": "Paper 4 Advanced Human Geography Options",
+      "qualificationTarget": "a_level",
+      "applicableComponent": {
+        "paperCode": "9696/4",
+        "level": "A Level"
+      },
+      "orderIndex": 1,
+      "minSelections": 2,
+      "maxSelections": 2,
+      "options": [
+        {
+          "key": "production_location_change",
+          "label": "Production, location and change",
+          "description": null,
+          "orderIndex": 0,
+          "units": [
+            {
+              "unitTitle": "11 Production, location and change"
+            }
+          ]
+        },
+        {
+          "key": "environmental_management",
+          "label": "Environmental management",
+          "description": null,
+          "orderIndex": 1,
+          "units": [
+            {
+              "unitTitle": "12 Environmental management"
+            }
+          ]
+        },
+        {
+          "key": "global_interdependence",
+          "label": "Global interdependence",
+          "description": null,
+          "orderIndex": 2,
+          "units": [
+            {
+              "unitTitle": "13 Global interdependence"
+            }
+          ]
+        },
+        {
+          "key": "economic_transition",
+          "label": "Economic transition",
+          "description": null,
+          "orderIndex": 3,
+          "units": [
+            {
+              "unitTitle": "14 Economic transition"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "yearRotationMappings": [],
+  "review": {
+    "status": "authored_pending_owner_review",
+    "reviewers": [
+      "Lockdin B2 Authoring"
+    ],
+    "reviewedAt": "2026-09-04",
+    "auditReport": "docs/cursor/reports/127-phase7-16-subject-reference-adoption-plan.md"
+  }
+}
