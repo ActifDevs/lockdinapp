@@ -31,6 +31,11 @@ export const assessmentComponentsTable = pgTable(
       table.paperCode,
       table.level,
     ),
+    // Parent candidate key for same-version composite FKs (route components, option groups, year mappings).
+    unique("assessment_components_id_version_unique").on(
+      table.id,
+      table.syllabusVersionId,
+    ),
   ],
 );
 

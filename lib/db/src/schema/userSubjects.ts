@@ -6,11 +6,13 @@ import {
   pgTable,
   primaryKey,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { assessmentRoutesTable } from "./assessmentRoutes";
 import { subjectsTable } from "./subjects";
 import { examSittingSeriesEnum, syllabusVersionsTable } from "./syllabusVersions";
 
@@ -19,8 +21,8 @@ import { examSittingSeriesEnum, syllabusVersionsTable } from "./syllabusVersions
  * Canonical subjects and syllabus content remain shared reference data.
  *
  * `intended_exam_*` is authoritative membership session metadata (Model C).
- * 6.3C2A stores it when the client supplies structured session data.
- * New pins still use DEFAULT (`is_current`) until the later C2B cutover.
+ * `assessment_route_id` is nullable for legacy memberships and references a
+ * canonical route within the exact pinned syllabus version.
  */
 export const userSubjectsTable = pgTable(
   "user_subjects",
@@ -30,6 +32,7 @@ export const userSubjectsTable = pgTable(
       .notNull()
       .references(() => subjectsTable.id, { onDelete: "restrict" }),
     syllabusVersionId: integer("syllabus_version_id").notNull(),
+    assessmentRouteId: integer("assessment_route_id"),
     intendedExamYear: integer("intended_exam_year"),
     intendedExamSeries: examSittingSeriesEnum("intended_exam_series"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -40,13 +43,30 @@ export const userSubjectsTable = pgTable(
       name: "user_subjects_user_id_subject_id_pk",
       columns: [table.userId, table.subjectId],
     }),
+    unique("user_subjects_user_id_subject_id_syllabus_version_id_unique").on(
+      table.userId,
+      table.subjectId,
+      table.syllabusVersionId,
+    ),
     foreignKey({
       name: "user_subjects_subject_version_fk",
       columns: [table.subjectId, table.syllabusVersionId],
       foreignColumns: [syllabusVersionsTable.subjectId, syllabusVersionsTable.id],
     }).onDelete("restrict"),
+    foreignKey({
+      name: "user_subjects_assessment_route_fk",
+      columns: [table.assessmentRouteId, table.syllabusVersionId],
+      foreignColumns: [
+        assessmentRoutesTable.id,
+        assessmentRoutesTable.syllabusVersionId,
+      ],
+    }).onDelete("restrict"),
     index("user_subjects_subject_version_idx").on(
       table.subjectId,
+      table.syllabusVersionId,
+    ),
+    index("user_subjects_assessment_route_version_idx").on(
+      table.assessmentRouteId,
       table.syllabusVersionId,
     ),
     check(

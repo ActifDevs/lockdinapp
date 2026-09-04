@@ -8,11 +8,30 @@ const SHARED_TABLES = [
   "syllabus_learning_outcomes",
   "assessment_components",
   "learning_outcome_components",
+  "assessment_route_sets",
+  "assessment_routes",
+  "assessment_route_components",
+  "assessment_study_option_groups",
+  "assessment_study_options",
+  "assessment_study_option_units",
+  "assessment_study_option_year_mappings",
+];
+
+/** Route/reference tables introduced in 0016 — RLS-protected, browser-writable denied. */
+const ROUTE_REFERENCE_RLS_TABLES = [
+  "assessment_route_sets",
+  "assessment_routes",
+  "assessment_route_components",
+  "assessment_study_option_groups",
+  "assessment_study_options",
+  "assessment_study_option_units",
+  "assessment_study_option_year_mappings",
 ];
 
 const USER_TABLES = [
   "profiles",
   "user_subjects",
+  "user_subject_option_selections",
   "topic_progress",
   "tasks",
   "past_paper_attempts",
@@ -32,6 +51,14 @@ const EXPECTED_POLICIES = [
   "profiles_select_own",
   "profiles_update_own",
   "user_subjects_select_own",
+  "user_subject_option_selections_select_own",
+  "assessment_route_sets_select_authenticated",
+  "assessment_routes_select_authenticated",
+  "assessment_route_components_select_authenticated",
+  "assessment_study_option_groups_select_authenticated",
+  "assessment_study_options_select_authenticated",
+  "assessment_study_option_units_select_authenticated",
+  "assessment_study_option_year_mappings_select_authenticated",
   "topic_progress_select_own",
   "tasks_select_own",
   "tasks_insert_own",
@@ -87,6 +114,42 @@ export async function verifyFinalSchema(
       return {
         success: false,
         error: "Required user-table RLS is incomplete.",
+      };
+    }
+
+    const routeRls = await pool.query<{
+      relname: string;
+      relrowsecurity: boolean;
+    }>(
+      `
+      SELECT c.relname, c.relrowsecurity
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relname = ANY($1::text[])
+    `,
+      [ROUTE_REFERENCE_RLS_TABLES],
+    );
+    if (
+      routeRls.rows.length !== ROUTE_REFERENCE_RLS_TABLES.length ||
+      routeRls.rows.some((row) => !row.relrowsecurity)
+    ) {
+      return {
+        success: false,
+        error: "Required route-reference-table RLS is incomplete.",
+      };
+    }
+
+    const routeColumn = await pool.query<{ column_name: string }>(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'user_subjects'
+        AND column_name = 'assessment_route_id'
+    `);
+    if (routeColumn.rows.length !== 1) {
+      return {
+        success: false,
+        error: "user_subjects.assessment_route_id column is missing.",
       };
     }
 
@@ -295,7 +358,7 @@ export async function verifySyntheticFixturesRemoved(
   const result = await pool.query<{ count: string }>(`
     SELECT count(*)::text AS count
     FROM public.subjects
-    WHERE code IN ('TEST9998', 'TEST9997', 'TEST6301', 'TEST6302', 'C2A01', 'C2A02', 'C2B101', 'C2B102', 'APPX01', 'C2B201', 'C2B202', 'R002X1', 'HTTP01', 'HTTP02', 'HTTP03', 'HTTP04', 'HTTP05', 'HTTP06')
+    WHERE code IN ('TEST9998', 'TEST9997', 'TEST6301', 'TEST6302', 'C2A01', 'C2A02', 'C2B101', 'C2B102', 'APPX01', 'C2B201', 'C2B202', 'R002X1', 'HTTP01', 'HTTP02', 'HTTP03', 'HTTP04', 'HTTP05', 'HTTP06', 'L7A101', 'L7A102')
   `);
   if (result.rows[0]?.count !== "0") {
     throw new Error("[db-harness] Synthetic syllabus fixture cleanup failed.");

@@ -33,6 +33,7 @@ import { proveSeriesPolicyFoundation } from "./series-policy-proof.js";
 import { proveApplicabilityPopulation } from "./applicability-population-proof.js";
 import { proveStrictAssignment } from "./strict-assignment-proof.js";
 import { proveFutureRevisionLifecycle } from "./future-revision-lifecycle-proof.js";
+import { proveRouteSchemaFoundation } from "./route-schema-foundation-proof.js";
 import { proveHttpIntegration } from "./http-integration.js";
 import { verifyFinalSchema, verifySyntheticFixturesRemoved } from "./verify.js";
 
@@ -167,6 +168,9 @@ export async function runHarness(): Promise<HarnessResult> {
     );
     await step("Prove disposable r001 to r002 lifecycle", () =>
       proveFutureRevisionLifecycle(pool!),
+    );
+    await step("Prove route and study options schema foundation", () =>
+      proveRouteSchemaFoundation(pool!),
     );
     await step("Run syllabus DB integration", () =>
       executeSyllabusDbTests(verifiedStatus.dbUrl),

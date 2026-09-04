@@ -854,6 +854,7 @@ describe("profile and atomic onboarding (local)", () => {
       "updated_at",
       "intended_exam_year",
       "intended_exam_series",
+      "assessment_route_id",
     ]);
     const required = new Set([
       "user_id",
@@ -867,6 +868,10 @@ describe("profile and atomic onboarding (local)", () => {
         .filter((row) => required.has(String(row.column_name)))
         .every((row) => row.is_nullable === "NO"),
     ).toBe(true);
+    expect(
+      columns.rows.find((row) => row.column_name === "assessment_route_id")
+        ?.is_nullable,
+    ).toBe("YES");
 
     const constraints = await db.execute(sql`
       select conname
@@ -881,6 +886,8 @@ describe("profile and atomic onboarding (local)", () => {
         "user_subjects_user_id_auth_users_id_fk",
         "user_subjects_subject_id_subjects_id_fk",
         "user_subjects_subject_version_fk",
+        "user_subjects_user_id_subject_id_syllabus_version_id_unique",
+        "user_subjects_assessment_route_fk",
       ]),
     );
 

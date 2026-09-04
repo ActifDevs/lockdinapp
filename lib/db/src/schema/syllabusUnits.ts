@@ -20,7 +20,10 @@ export const syllabusUnitsTable = pgTable(
     title: text("title").notNull(),
     orderIndex: integer("order_index").notNull().default(0),
   },
-  (table) => [unique("syllabus_units_version_title_unique").on(table.syllabusVersionId, table.title)],
+  (table) => [
+    unique("syllabus_units_version_title_unique").on(table.syllabusVersionId, table.title),
+    unique("syllabus_units_id_version_unique").on(table.id, table.syllabusVersionId),
+  ],
 );
 
 export const insertSyllabusUnitSchema = createInsertSchema(syllabusUnitsTable).omit({ id: true });
