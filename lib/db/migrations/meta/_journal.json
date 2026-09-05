@@ -134,6 +134,13 @@
       "when": 1788080000000,
       "tag": "0018_subject_visibility_and_route_assignment",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788090000000,
+      "tag": "0019_route_option_group_applicability",
+      "breakpoints": true
     }
   ]
 }

@@ -226,6 +226,7 @@ export const ListSubjectAssessmentRoutesResponse = zod.object({
   "id": zod.number(),
   "groupKey": zod.string(),
   "displayLabel": zod.string(),
+  "applicableQualificationTarget": zod.enum(['as_level', 'a_level', 'both']),
   "minSelections": zod.number(),
   "maxSelections": zod.number(),
   "orderIndex": zod.number(),
@@ -560,6 +561,7 @@ export const DeleteExamDateResponse = zod.void()
  * Returns only the caller's durable memberships with shared metadata-only subject references.
  * @summary List the authenticated user's selected subjects
  */
+
 export const listCurrentUserSubjectsResponseIntendedExamSessionOneYearMin = 1000;
 export const listCurrentUserSubjectsResponseIntendedExamSessionOneYearMax = 9999;
 
@@ -580,6 +582,7 @@ export const ListCurrentUserSubjectsResponseItem = zod.object({
   "qualification": zod.string()
 }),
   "assessmentRouteId": zod.number().nullable().describe('Canonical version-scoped assessment route. Null for legacy memberships\nuntil the member intentionally assigns a route.\n'),
+  "optionIds": zod.array(zod.number().min(1)).describe('Canonical persisted study-option IDs for this membership.'),
   "intendedExamSession": zod.object({
   "year": zod.number().min(listCurrentUserSubjectsResponseIntendedExamSessionOneYearMin).max(listCurrentUserSubjectsResponseIntendedExamSessionOneYearMax),
   "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
@@ -628,6 +631,7 @@ export const ReplaceCurrentUserSubjectsBody = zod.object({
 }).describe('Version-scoped route + study-option selection for one subject.\nServer revalidates route\/options against the resolved published route set.\n')).optional()
 })
 
+
 export const replaceCurrentUserSubjectsResponseIntendedExamSessionOneYearMin = 1000;
 export const replaceCurrentUserSubjectsResponseIntendedExamSessionOneYearMax = 9999;
 
@@ -648,6 +652,7 @@ export const ReplaceCurrentUserSubjectsResponseItem = zod.object({
   "qualification": zod.string()
 }),
   "assessmentRouteId": zod.number().nullable().describe('Canonical version-scoped assessment route. Null for legacy memberships\nuntil the member intentionally assigns a route.\n'),
+  "optionIds": zod.array(zod.number().min(1)).describe('Canonical persisted study-option IDs for this membership.'),
   "intendedExamSession": zod.object({
   "year": zod.number().min(replaceCurrentUserSubjectsResponseIntendedExamSessionOneYearMin).max(replaceCurrentUserSubjectsResponseIntendedExamSessionOneYearMax),
   "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])
@@ -680,6 +685,7 @@ export const AssignCurrentUserSubjectAssessmentRouteBody = zod.object({
   "optionIds": zod.array(zod.number().min(1))
 })
 
+
 export const assignCurrentUserSubjectAssessmentRouteResponseIntendedExamSessionOneYearMin = 1000;
 export const assignCurrentUserSubjectAssessmentRouteResponseIntendedExamSessionOneYearMax = 9999;
 
@@ -700,6 +706,7 @@ export const AssignCurrentUserSubjectAssessmentRouteResponse = zod.object({
   "qualification": zod.string()
 }),
   "assessmentRouteId": zod.number().nullable().describe('Canonical version-scoped assessment route. Null for legacy memberships\nuntil the member intentionally assigns a route.\n'),
+  "optionIds": zod.array(zod.number().min(1)).describe('Canonical persisted study-option IDs for this membership.'),
   "intendedExamSession": zod.object({
   "year": zod.number().min(assignCurrentUserSubjectAssessmentRouteResponseIntendedExamSessionOneYearMin).max(assignCurrentUserSubjectAssessmentRouteResponseIntendedExamSessionOneYearMax),
   "series": zod.enum(['Feb/Mar', 'May/June', 'Oct/Nov'])

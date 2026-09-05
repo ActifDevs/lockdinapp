@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  applicableOptionGroups,
+  applicableOptionIds,
   filterComponentsByRouteDefault,
   initialRouteDraft,
   optionGroupValid,
@@ -14,6 +16,7 @@ import {
 const group12 = {
   id: 1,
   displayLabel: "Options",
+  applicableQualificationTarget: "both" as const,
   minSelections: 1,
   maxSelections: 1,
   options: [
@@ -50,6 +53,7 @@ const group23 = {
 const historyAsOption: StudyOptionGroupLike = {
   id: 4,
   displayLabel: "AS History Option",
+  applicableQualificationTarget: "both",
   minSelections: 1,
   maxSelections: 1,
   options: [
@@ -62,6 +66,7 @@ const historyAsOption: StudyOptionGroupLike = {
 const historyPaper3: StudyOptionGroupLike = {
   id: 5,
   displayLabel: "Paper 3 Prescribed Topic",
+  applicableQualificationTarget: "a_level",
   minSelections: 1,
   maxSelections: 1,
   options: [
@@ -74,6 +79,7 @@ const historyPaper3: StudyOptionGroupLike = {
 const historyPaper4: StudyOptionGroupLike = {
   id: 6,
   displayLabel: "Paper 4 Depth Study Option",
+  applicableQualificationTarget: "a_level",
   minSelections: 1,
   maxSelections: 1,
   options: [
@@ -118,6 +124,7 @@ const historyCatalogue: RouteCatalogueLike = {
 const geographyPhysical: StudyOptionGroupLike = {
   id: 20,
   displayLabel: "Paper 3 Advanced Physical Geography Options",
+  applicableQualificationTarget: "a_level",
   minSelections: 2,
   maxSelections: 2,
   options: [
@@ -130,6 +137,7 @@ const geographyPhysical: StudyOptionGroupLike = {
 const geographyHuman: StudyOptionGroupLike = {
   id: 21,
   displayLabel: "Paper 4 Advanced Human Geography Options",
+  applicableQualificationTarget: "a_level",
   minSelections: 2,
   maxSelections: 2,
   options: [
@@ -158,6 +166,7 @@ const geographyCatalogue: RouteCatalogueLike = {
 const psychologyGroup: StudyOptionGroupLike = {
   id: 30,
   displayLabel: "Specialist options",
+  applicableQualificationTarget: "a_level",
   minSelections: 2,
   maxSelections: 2,
   options: [
@@ -186,6 +195,7 @@ const psychologyCatalogue: RouteCatalogueLike = {
 const sociologyGroup: StudyOptionGroupLike = {
   id: 40,
   displayLabel: "Paper 4 Globalisation, Media and Religion",
+  applicableQualificationTarget: "a_level",
   minSelections: 2,
   maxSelections: 3,
   options: [
@@ -271,9 +281,7 @@ describe("route selection helpers", () => {
 
   it("supports deselect and per-group max cap", () => {
     expect(toggleStudyOptionSelection([10], 10, group12)).toEqual([]);
-    expect(toggleStudyOptionSelection([20, 21], 22, group22)).toEqual([
-      20, 21,
-    ]);
+    expect(toggleStudyOptionSelection([20, 21], 22, group22)).toEqual([20, 21]);
   });
 
   it("requires explicit route when multi-route", () => {
@@ -410,6 +418,72 @@ describe("B5D-003 History 9489 multi-group study options", () => {
     expect(payload).toEqual([
       { subjectId: 2, routeId: 16, optionIds: [10, 14, 17] },
     ]);
+  });
+});
+
+describe("B5D-005 History 9489 route applicability", () => {
+  it("requires only the both-target AS group for the AS route", () => {
+    expect(
+      applicableOptionGroups(historyCatalogue, 14).map((group) => group.id),
+    ).toEqual([historyAsOption.id]);
+    expect(
+      routeDraftValidationError(historyCatalogue, {
+        subjectId: 2,
+        routeId: 14,
+        optionIds: [],
+      }),
+    ).toMatch(/AS History Option/i);
+    expect(
+      routeDraftValidationError(historyCatalogue, {
+        subjectId: 2,
+        routeId: 14,
+        optionIds: [10],
+      }),
+    ).toBeUndefined();
+  });
+
+  it("requires all three applicable groups for Complete and Full A Level", () => {
+    for (const routeId of [15, 16]) {
+      expect(
+        applicableOptionGroups(historyCatalogue, routeId).map(
+          (group) => group.id,
+        ),
+      ).toEqual([historyAsOption.id, historyPaper3.id, historyPaper4.id]);
+      expect(
+        routeDraftValidationError(historyCatalogue, {
+          subjectId: 2,
+          routeId,
+          optionIds: [10, 14],
+        }),
+      ).toMatch(/Paper 4/i);
+      expect(
+        routeDraftValidationError(historyCatalogue, {
+          subjectId: 2,
+          routeId,
+          optionIds: [10, 14, 17],
+        }),
+      ).toBeUndefined();
+    }
+  });
+
+  it("removes stale A-Level options from an AS draft and payload", () => {
+    expect(applicableOptionIds(historyCatalogue, 14, [10, 14, 17])).toEqual([
+      10,
+    ]);
+    expect(
+      routeAssignmentsPayload(
+        [{ subjectId: 2, routeId: 14, optionIds: [10, 14, 17] }],
+        [historyCatalogue],
+      ),
+    ).toEqual([{ subjectId: 2, routeId: 14, optionIds: [10] }]);
+    expect(applicableOptionIds(historyCatalogue, 16, [10])).toEqual([10]);
+    expect(
+      routeDraftValidationError(historyCatalogue, {
+        subjectId: 2,
+        routeId: 16,
+        optionIds: [10],
+      }),
+    ).toMatch(/Paper 3/i);
   });
 });
 

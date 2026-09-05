@@ -202,6 +202,11 @@ export interface UserSubjectMembership {
      * @nullable
      */
   assessmentRouteId: number | null;
+  /**
+     * Canonical persisted study-option IDs for this membership.
+     * @items.minimum 1
+     */
+  optionIds: number[];
   intendedExamSession: IntendedExamSession | null;
   createdAt: string;
   updatedAt: string;
@@ -659,6 +664,15 @@ export interface AssessmentRouteSummary {
   components: AssessmentRouteComponentSummary[];
 }
 
+export type StudyOptionGroupSummaryApplicableQualificationTarget = typeof StudyOptionGroupSummaryApplicableQualificationTarget[keyof typeof StudyOptionGroupSummaryApplicableQualificationTarget];
+
+
+export const StudyOptionGroupSummaryApplicableQualificationTarget = {
+  as_level: 'as_level',
+  a_level: 'a_level',
+  both: 'both',
+} as const;
+
 export interface StudyOptionSummary {
   id: number;
   optionKey: string;
@@ -670,6 +684,7 @@ export interface StudyOptionGroupSummary {
   id: number;
   groupKey: string;
   displayLabel: string;
+  applicableQualificationTarget: StudyOptionGroupSummaryApplicableQualificationTarget;
   minSelections: number;
   maxSelections: number;
   orderIndex: number;

@@ -90,7 +90,10 @@ export async function loadPublishedRouteCatalogue(
         eq(assessmentRoutesTable.syllabusVersionId, syllabusVersionId),
       ),
     )
-    .orderBy(asc(assessmentRoutesTable.orderIndex), asc(assessmentRoutesTable.id));
+    .orderBy(
+      asc(assessmentRoutesTable.orderIndex),
+      asc(assessmentRoutesTable.id),
+    );
 
   const routeIds = routes.map((r) => r.id);
   const components =
@@ -128,7 +131,10 @@ export async function loadPublishedRouteCatalogue(
     .where(
       and(
         eq(assessmentStudyOptionGroupsTable.routeSetId, routeSet.id),
-        eq(assessmentStudyOptionGroupsTable.syllabusVersionId, syllabusVersionId),
+        eq(
+          assessmentStudyOptionGroupsTable.syllabusVersionId,
+          syllabusVersionId,
+        ),
       ),
     )
     .orderBy(
@@ -146,7 +152,10 @@ export async function loadPublishedRouteCatalogue(
           .where(
             and(
               inArray(assessmentStudyOptionsTable.groupId, groupIds),
-              eq(assessmentStudyOptionsTable.syllabusVersionId, syllabusVersionId),
+              eq(
+                assessmentStudyOptionsTable.syllabusVersionId,
+                syllabusVersionId,
+              ),
             ),
           )
           .orderBy(
@@ -184,6 +193,7 @@ export async function loadPublishedRouteCatalogue(
         id: group.id,
         groupKey: group.groupKey,
         displayLabel: group.displayLabel,
+        applicableQualificationTarget: group.applicableQualificationTarget,
         minSelections: group.minSelections,
         maxSelections: group.maxSelections,
         orderIndex: group.orderIndex,

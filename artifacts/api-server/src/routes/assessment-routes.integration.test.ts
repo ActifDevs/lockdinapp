@@ -20,6 +20,8 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
   let db: typeof import("@workspace/db").db;
   let token = "";
   let userId = "";
+  let otherUserId = "";
+  let otherToken = "";
   let selectableIds: number[] = [];
   let zeroRouteId = 0;
   let zeroRouteVersionId = 0;
@@ -27,11 +29,12 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
   let hiddenVersionId = 0;
   let multiId = 0;
   let multiVersionId = 0;
-  let multiRouteIds: number[] = [];
-  let multiOptionIds: number[] = [];
+  let multiRouteByKey = new Map<string, number>();
+  let multiOptionByKey = new Map<string, number>();
   let singleId = 0;
   let singleVersionId = 0;
   let singleRouteId = 0;
+  let wrongVersionOptionId = 0;
 
   const mkUser = async () => {
     const email = `b5br-${crypto.randomUUID()}@example.test`;
@@ -75,6 +78,9 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
     const user = await mkUser();
     userId = user.id;
     token = user.token;
+    const otherUser = await mkUser();
+    otherUserId = otherUser.id;
+    otherToken = otherUser.token;
 
     const subjects = await db.execute(sql`
       select code, id,
@@ -109,18 +115,25 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
         and rs.lifecycle = 'published'
       order by r.order_index
     `);
-    multiRouteIds = routes.rows.map((row) => Number(row.id));
+    multiRouteByKey = new Map(
+      routes.rows.map((row) => [String(row.route_key), Number(row.id)]),
+    );
 
     const options = await db.execute(sql`
-      select o.id
+      select o.id, o.option_key, g.group_key
       from assessment_study_options o
       join assessment_study_option_groups g on g.id = o.group_id
       join assessment_route_sets rs on rs.id = g.route_set_id
       where o.syllabus_version_id = ${multiVersionId}
         and rs.lifecycle = 'published'
-      order by o.order_index
+      order by g.order_index, o.order_index
     `);
-    multiOptionIds = options.rows.map((row) => Number(row.id));
+    multiOptionByKey = new Map(
+      options.rows.map((row) => [
+        `${String(row.group_key)}:${String(row.option_key)}`,
+        Number(row.id),
+      ]),
+    );
 
     const singleRoute = await db.execute(sql`
       select r.id
@@ -131,6 +144,39 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
       limit 1
     `);
     singleRouteId = Number(singleRoute.rows[0]!.id);
+
+    const wrongVersionFixture = await db.execute(sql`
+      with route_set as (
+        insert into assessment_route_sets (
+          syllabus_version_id, route_revision_key, lifecycle, manifest_sha256
+        ) values (
+          ${singleVersionId},
+          ${`wrong-version-${crypto.randomUUID()}`},
+          'draft',
+          ${crypto.randomUUID().replaceAll("-", "").padEnd(64, "0")}
+        )
+        returning id
+      ), option_group as (
+        insert into assessment_study_option_groups (
+          route_set_id, syllabus_version_id, group_key, display_label,
+          applicable_qualification_target, min_selections, max_selections,
+          order_index
+        )
+        select id, ${singleVersionId}, 'wrong_version', 'Wrong version',
+          'both', 1, 1, 0
+        from route_set
+        returning id, route_set_id
+      )
+      insert into assessment_study_options (
+        group_id, route_set_id, syllabus_version_id, option_key,
+        display_label, order_index
+      )
+      select id, route_set_id, ${singleVersionId}, 'wrong',
+        'Wrong-version option', 0
+      from option_group
+      returning id
+    `);
+    wrongVersionOptionId = Number(wrongVersionFixture.rows[0]!.id);
 
     const selectable = await db.execute(sql`
       select id from subjects
@@ -149,6 +195,7 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
 
   afterAll(async () => {
     if (userId) await admin.auth.admin.deleteUser(userId);
+    if (otherUserId) await admin.auth.admin.deleteUser(otherUserId);
   });
 
   it("omits hidden subjects from catalogue but resolves owned subject by id", async () => {
@@ -184,6 +231,18 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
     expect(multi.status).toBe(200);
     expect(multi.body.selectionMode).toBe("explicit");
     expect(multi.body.routes.length).toBeGreaterThanOrEqual(2);
+    expect(multi.body.optionGroups).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          groupKey: "as_topics",
+          applicableQualificationTarget: "both",
+        }),
+        expect.objectContaining({
+          groupKey: "paper_3",
+          applicableQualificationTarget: "a_level",
+        }),
+      ]),
+    );
 
     const cross = await request(app).get(
       `/api/subjects/${singleId}/syllabus-versions/${multiVersionId}/assessment-routes`,
@@ -243,6 +302,9 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
       }[]
     ).find((m) => m.subject.id === singleId);
     expect(row?.assessmentRouteId).toBe(singleRouteId);
+    expect((row as typeof row & { optionIds: number[] })?.optionIds).toEqual(
+      [],
+    );
 
     const hiddenAdd = await request(app)
       .put("/api/user-subjects")
@@ -296,12 +358,31 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
         routeAssignments: [
           {
             subjectId: multiId,
-            routeId: multiRouteIds[0],
-            optionIds: [multiOptionIds[0], 999999],
+            routeId: multiRouteByKey.get("as")!,
+            optionIds: [multiOptionByKey.get("as_topics:a")!, 999999],
           },
         ],
       });
     expect(invalidOption.status).toBeGreaterThanOrEqual(400);
+
+    const wrongVersionOption = await request(app)
+      .put("/api/user-subjects")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        subjectIds: [singleId, multiId],
+        intendedExamSession: VALID_MAY_JUNE_2027,
+        routeAssignments: [
+          {
+            subjectId: multiId,
+            routeId: multiRouteByKey.get("as")!,
+            optionIds: [
+              multiOptionByKey.get("as_topics:a")!,
+              wrongVersionOptionId,
+            ],
+          },
+        ],
+      });
+    expect(wrongVersionOption.status).toBeGreaterThanOrEqual(400);
 
     const badCardinality = await request(app)
       .put("/api/user-subjects")
@@ -312,8 +393,8 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
         routeAssignments: [
           {
             subjectId: multiId,
-            routeId: multiRouteIds[0],
-            optionIds: [multiOptionIds[0]],
+            routeId: multiRouteByKey.get("as")!,
+            optionIds: [],
           },
         ],
       });
@@ -344,14 +425,22 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
         routeAssignments: [
           {
             subjectId: multiId,
-            routeId: multiRouteIds[1] ?? multiRouteIds[0],
-            optionIds: [multiOptionIds[0], multiOptionIds[1]],
+            routeId: multiRouteByKey.get("al")!,
+            optionIds: [
+              multiOptionByKey.get("as_topics:a")!,
+              multiOptionByKey.get("paper_3:a")!,
+              multiOptionByKey.get("paper_4:a")!,
+            ],
           },
         ],
       });
     expect(ok.status).toBe(200);
     const multiRow = (
-      ok.body as { subject: { id: number }; assessmentRouteId: number | null }[]
+      ok.body as {
+        subject: { id: number };
+        assessmentRouteId: number | null;
+        optionIds: number[];
+      }[]
     ).find((m) => m.subject.id === multiId);
     expect(multiRow?.assessmentRouteId).toBeTruthy();
     const committedOptions = await db.execute(sql`
@@ -361,9 +450,121 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
         and selection.subject_id = ${multiId}
       order by selection.option_id
     `);
+    const fullOptionIds = [
+      multiOptionByKey.get("as_topics:a")!,
+      multiOptionByKey.get("paper_3:a")!,
+      multiOptionByKey.get("paper_4:a")!,
+    ].sort((a, b) => a - b);
     expect(committedOptions.rows.map((row) => Number(row.option_id))).toEqual(
-      [multiOptionIds[0], multiOptionIds[1]].sort((a, b) => a - b),
+      fullOptionIds,
     );
+    expect(multiRow?.optionIds).toEqual(fullOptionIds);
+  });
+
+  it("enforces route applicability and atomically removes stale A-Level options", async () => {
+    const pinBefore = await db.execute(sql`
+      select syllabus_version_id from user_subjects
+      where user_id = ${userId} and subject_id = ${multiId}
+    `);
+    const asOption = multiOptionByKey.get("as_topics:a")!;
+    const paper3Option = multiOptionByKey.get("paper_3:a")!;
+    const fullOptionIds = [
+      asOption,
+      paper3Option,
+      multiOptionByKey.get("paper_4:a")!,
+    ].sort((a, b) => a - b);
+    const hydrated = await request(app)
+      .get("/api/user-subjects")
+      .set("Authorization", `Bearer ${token}`);
+    expect(hydrated.status).toBe(200);
+    expect(
+      (
+        hydrated.body as { subject: { id: number }; optionIds: number[] }[]
+      ).find((row) => row.subject.id === multiId)?.optionIds,
+    ).toEqual(fullOptionIds);
+
+    const inapplicable = await request(app)
+      .put(`/api/user-subjects/${multiId}/assessment-route`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        routeId: multiRouteByKey.get("as")!,
+        optionIds: [asOption, paper3Option],
+      });
+    expect(inapplicable.status).toBe(400);
+
+    const unchanged = await db.execute(sql`
+      select count(*)::int as n from user_subject_option_selections
+      where user_id = ${userId} and subject_id = ${multiId}
+    `);
+    expect(Number(unchanged.rows[0]!.n)).toBe(3);
+
+    const asAssignment = await request(app)
+      .put(`/api/user-subjects/${multiId}/assessment-route`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ routeId: multiRouteByKey.get("as")!, optionIds: [asOption] });
+    expect(asAssignment.status).toBe(200);
+    expect(asAssignment.body.optionIds).toEqual([asOption]);
+
+    const after = await db.execute(sql`
+      select syllabus_version_id, assessment_route_id from user_subjects
+      where user_id = ${userId} and subject_id = ${multiId}
+    `);
+    const afterOptions = await db.execute(sql`
+      select option_id from user_subject_option_selections
+      where user_id = ${userId} and subject_id = ${multiId}
+      order by option_id
+    `);
+    expect(Number(after.rows[0]!.syllabus_version_id)).toBe(
+      Number(pinBefore.rows[0]!.syllabus_version_id),
+    );
+    expect(Number(after.rows[0]!.assessment_route_id)).toBe(
+      multiRouteByKey.get("as"),
+    );
+    expect(afterOptions.rows.map((row) => Number(row.option_id))).toEqual([
+      asOption,
+    ]);
+
+    const missingAs = await request(app)
+      .put(`/api/user-subjects/${multiId}/assessment-route`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ routeId: multiRouteByKey.get("as")!, optionIds: [] });
+    expect(missingAs.status).toBe(400);
+    expect(
+      (
+        await db.execute(sql`
+          select option_id from user_subject_option_selections
+          where user_id = ${userId} and subject_id = ${multiId}
+        `)
+      ).rows.map((row) => Number(row.option_id)),
+    ).toEqual([asOption]);
+  });
+
+  it("rejects incomplete Full A Level and another user's membership attempt", async () => {
+    const incompleteFull = await request(app)
+      .put(`/api/user-subjects/${multiId}/assessment-route`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        routeId: multiRouteByKey.get("al")!,
+        optionIds: [
+          multiOptionByKey.get("as_topics:a")!,
+          multiOptionByKey.get("paper_4:a")!,
+        ],
+      });
+    expect(incompleteFull.status).toBe(400);
+
+    const crossUser = await request(app)
+      .put(`/api/user-subjects/${multiId}/assessment-route`)
+      .set("Authorization", `Bearer ${otherToken}`)
+      .send({
+        routeId: multiRouteByKey.get("as")!,
+        optionIds: [multiOptionByKey.get("as_topics:a")!],
+      });
+    expect(crossUser.status).toBe(404);
+    const otherMemberships = await request(app)
+      .get("/api/user-subjects")
+      .set("Authorization", `Bearer ${otherToken}`);
+    expect(otherMemberships.status).toBe(200);
+    expect(otherMemberships.body).toEqual([]);
   });
 
   it("preserves legacy null-route membership and remediates intentionally", async () => {
@@ -394,6 +595,9 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
     ).find((m) => m.subject.id === singleId);
     expect(legacy?.assessmentRouteId).toBeNull();
     expect(legacy?.syllabusVersion.id).toBe(pin);
+    expect(
+      (legacy as typeof legacy & { optionIds: number[] })?.optionIds,
+    ).toEqual([]);
 
     const catalogue = await request(app).get(
       `/api/subjects/${singleId}/syllabus-versions/${pin}/assessment-routes`,
@@ -426,7 +630,7 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
     const res = await request(app)
       .put(`/api/user-subjects/${singleId}/assessment-route`)
       .set("Authorization", `Bearer ${token}`)
-      .send({ routeId: multiRouteIds[0], optionIds: [] });
+      .send({ routeId: multiRouteByKey.get("as")!, optionIds: [] });
     expect(res.status).toBeGreaterThanOrEqual(400);
 
     const pin = await db.execute(sql`

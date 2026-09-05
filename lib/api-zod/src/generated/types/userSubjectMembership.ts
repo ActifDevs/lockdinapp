@@ -18,6 +18,11 @@ export interface UserSubjectMembership {
      * @nullable
      */
   assessmentRouteId: number | null;
+  /**
+     * Canonical persisted study-option IDs for this membership.
+     * @items.minimum 1
+     */
+  optionIds: number[];
   intendedExamSession: IntendedExamSession | null;
   createdAt: string;
   updatedAt: string;

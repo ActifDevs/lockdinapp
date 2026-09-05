@@ -1300,6 +1300,13 @@ components:
           description: |
             Canonical version-scoped assessment route. Null for legacy memberships
             until the member intentionally assigns a route.
+        optionIds:
+          type: array
+          description: Canonical persisted study-option IDs for this membership.
+          items:
+            type: integer
+            minimum: 1
+          uniqueItems: true
         intendedExamSession:
           allOf:
             - $ref: "#/components/schemas/IntendedExamSession"
@@ -1314,6 +1321,7 @@ components:
         - subject
         - syllabusVersion
         - assessmentRouteId
+        - optionIds
         - intendedExamSession
         - createdAt
         - updatedAt
@@ -2117,6 +2125,9 @@ components:
           type: string
         displayLabel:
           type: string
+        applicableQualificationTarget:
+          type: string
+          enum: [as_level, a_level, both]
         minSelections:
           type: integer
         maxSelections:
@@ -2131,6 +2142,7 @@ components:
         - id
         - groupKey
         - displayLabel
+        - applicableQualificationTarget
         - minSelections
         - maxSelections
         - orderIndex

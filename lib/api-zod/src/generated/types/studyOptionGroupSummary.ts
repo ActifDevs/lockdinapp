@@ -5,12 +5,14 @@
  * A-Level Revision Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { StudyOptionGroupSummaryApplicableQualificationTarget } from './studyOptionGroupSummaryApplicableQualificationTarget';
 import type { StudyOptionSummary } from './studyOptionSummary';
 
 export interface StudyOptionGroupSummary {
   id: number;
   groupKey: string;
   displayLabel: string;
+  applicableQualificationTarget: StudyOptionGroupSummaryApplicableQualificationTarget;
   minSelections: number;
   maxSelections: number;
   orderIndex: number;

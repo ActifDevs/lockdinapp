@@ -94,6 +94,7 @@ const routeCatalogue = (
   optionGroups: Array<{
     id: number;
     displayLabel: string;
+    applicableQualificationTarget: "as_level" | "a_level" | "both";
     minSelections: number;
     maxSelections: number;
     options: Array<{ id: number; displayLabel: string }>;
@@ -110,7 +111,7 @@ const routeCatalogue = (
             id: subjectId * 1000 + 1,
             routeKey: "default",
             displayLabel: "Standard route",
-            qualificationTarget: "A Level",
+            qualificationTarget: "as_level",
           },
           ...(selectionMode === "explicit"
             ? [
@@ -118,7 +119,7 @@ const routeCatalogue = (
                   id: subjectId * 1000 + 2,
                   routeKey: "full",
                   displayLabel: "Full A Level",
-                  qualificationTarget: "A Level",
+                  qualificationTarget: "a_level",
                 },
               ]
             : []),
@@ -499,6 +500,7 @@ describe("Settings subject-session mutations", () => {
             {
               id: 51,
               displayLabel: "Depth study",
+              applicableQualificationTarget: "both",
               minSelections: 1,
               maxSelections: 1,
               options: [
@@ -516,7 +518,7 @@ describe("Settings subject-session mutations", () => {
               id: 2003,
               routeKey: "staged",
               displayLabel: "Staged A Level",
-              qualificationTarget: "A Level",
+              qualificationTarget: "a_level",
             },
           ],
         });
@@ -547,10 +549,10 @@ describe("Settings subject-session mutations", () => {
     );
     expect(
       screen.getByRole("checkbox", { name: "European history" }),
-    ).not.toBeChecked();
-    expect(save).toBeDisabled();
-    fireEvent.click(screen.getByRole("checkbox", { name: "American history" }));
+    ).toBeChecked();
+    expect(save).toBeEnabled();
     fireEvent.click(screen.getByRole("checkbox", { name: "European history" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "American history" }));
     expect(
       screen.getByRole("checkbox", { name: "American history" }),
     ).toBeChecked();
@@ -580,6 +582,7 @@ describe("Settings subject-session mutations", () => {
             {
               id: 4,
               displayLabel: "AS History Option",
+              applicableQualificationTarget: "both",
               minSelections: 1,
               maxSelections: 1,
               options: [
@@ -590,6 +593,7 @@ describe("Settings subject-session mutations", () => {
             {
               id: 5,
               displayLabel: "Paper 3 Prescribed Topic",
+              applicableQualificationTarget: "a_level",
               minSelections: 1,
               maxSelections: 1,
               options: [
@@ -600,6 +604,7 @@ describe("Settings subject-session mutations", () => {
             {
               id: 6,
               displayLabel: "Paper 4 Depth Study Option",
+              applicableQualificationTarget: "a_level",
               minSelections: 1,
               maxSelections: 1,
               options: [
@@ -665,6 +670,75 @@ describe("Settings subject-session mutations", () => {
         routeAssignments: [
           { subjectId: 2, routeId: 2002, optionIds: [10, 14, 17] },
         ],
+      },
+    });
+  });
+
+  it("B5D-005: History AS renders and submits only the applicable AS group", async () => {
+    api.routes.mockImplementation(
+      (subjectId: number, syllabusVersionId: number) =>
+        Promise.resolve(
+          routeCatalogue(subjectId, syllabusVersionId, "explicit", [
+            {
+              id: 4,
+              displayLabel: "AS History Option",
+              applicableQualificationTarget: "both",
+              minSelections: 1,
+              maxSelections: 1,
+              options: [{ id: 10, displayLabel: "Modern Europe" }],
+            },
+            {
+              id: 5,
+              displayLabel: "Paper 3 Prescribed Topic",
+              applicableQualificationTarget: "a_level",
+              minSelections: 1,
+              maxSelections: 1,
+              options: [{ id: 14, displayLabel: "The Holocaust" }],
+            },
+            {
+              id: 6,
+              displayLabel: "Paper 4 Depth Study Option",
+              applicableQualificationTarget: "a_level",
+              minSelections: 1,
+              maxSelections: 1,
+              options: [{ id: 17, displayLabel: "Depth Study 2" }],
+            },
+          ]),
+        ),
+    );
+    const mutateAsync = vi
+      .fn()
+      .mockResolvedValue([{ subject }, { subject: history }]);
+    api.replace.mockReturnValue({ mutateAsync, isPending: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /History/i }));
+    const routeGroup = await screen.findByRole("radiogroup", {
+      name: "How are you taking History?",
+    });
+    fireEvent.click(
+      within(routeGroup).getByRole("radio", { name: "Standard route" }),
+    );
+
+    expect(screen.getByText("AS History Option")).toBeVisible();
+    expect(
+      screen.queryByText("Paper 3 Prescribed Topic"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Paper 4 Depth Study Option"),
+    ).not.toBeInTheDocument();
+    const save = screen.getByRole("button", { name: "Save subjects" });
+    expect(save).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Modern Europe" }));
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
+
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledOnce());
+    expect(mutateAsync).toHaveBeenCalledWith({
+      data: {
+        subjectIds: [9, 2],
+        intendedExamSession: { year: 2027, series: "May/June" },
+        routeAssignments: [{ subjectId: 2, routeId: 2001, optionIds: [10] }],
       },
     });
   });

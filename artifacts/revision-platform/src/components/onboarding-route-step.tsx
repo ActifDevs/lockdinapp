@@ -9,6 +9,8 @@ import {
   type SubjectSessionOverrides,
 } from "@/lib/membership-session-selection";
 import {
+  applicableOptionGroups,
+  applicableOptionIds,
   initialRouteDraft,
   routeDraftValidationError,
   type RouteCatalogueLike,
@@ -215,7 +217,15 @@ export function OnboardingRouteStep({
                         onDraftsChange(
                           drafts.map((row) =>
                             row.subjectId === subject.id
-                              ? { ...row, routeId: route.id, optionIds: [] }
+                              ? {
+                                  ...row,
+                                  routeId: route.id,
+                                  optionIds: applicableOptionIds(
+                                    catalogue,
+                                    route.id,
+                                    row.optionIds,
+                                  ),
+                                }
                               : row,
                           ),
                         )
@@ -237,7 +247,7 @@ export function OnboardingRouteStep({
 
             {catalogue.selectionMode !== "none_available" ? (
               <StudyOptionPicker
-                groups={catalogue.optionGroups}
+                groups={applicableOptionGroups(catalogue, draft.routeId)}
                 selectedIds={draft.optionIds}
                 onChange={(optionIds) =>
                   onDraftsChange(

@@ -1,14 +1,8 @@
 import { Router, type IRouter } from "express";
 import { inArray } from "drizzle-orm";
-import {
-  db,
-  subjectsTable,
-  syllabusVersionsTable,
-} from "@workspace/db";
+import { db, subjectsTable, syllabusVersionsTable } from "@workspace/db";
 import { countTopicsForSyllabusVersions } from "../lib/syllabus-topic-counts";
-import {
-  REFERENCE_CONTEXT_UNAVAILABLE,
-} from "../lib/resolve-reference-syllabus-version";
+import { REFERENCE_CONTEXT_UNAVAILABLE } from "../lib/resolve-reference-syllabus-version";
 import {
   ListCurrentUserSubjectsResponse,
   ReplaceCurrentUserSubjectsBody,
@@ -42,12 +36,19 @@ type MembershipRow = {
 
 type MembershipSubject = typeof subjectsTable.$inferSelect;
 type MembershipVersion = typeof syllabusVersionsTable.$inferSelect;
+type MembershipOptionSelectionRow = {
+  user_id: string;
+  subject_id: number;
+  syllabus_version_id: number;
+  option_id: number;
+};
 
 export function buildMembershipResponse(
   memberships: MembershipRow[],
   subjects: MembershipSubject[],
   versions: MembershipVersion[],
   topicsBySubject: Map<number, number>,
+  optionSelections: MembershipOptionSelectionRow[],
 ) {
   const subjectById = new Map(subjects.map((subject) => [subject.id, subject]));
   const versionById = new Map(versions.map((version) => [version.id, version]));
@@ -57,6 +58,18 @@ export function buildMembershipResponse(
     const version = versionById.get(membership.syllabus_version_id);
     if (!subject || !version || version.subjectId !== membership.subject_id) {
       throw new Error("Membership reference data is inconsistent");
+    }
+    const optionIds = optionSelections
+      .filter(
+        (selection) =>
+          selection.user_id === membership.user_id &&
+          selection.subject_id === membership.subject_id &&
+          selection.syllabus_version_id === membership.syllabus_version_id,
+      )
+      .map((selection) => selection.option_id)
+      .sort((a, b) => a - b);
+    if (membership.assessment_route_id == null && optionIds.length > 0) {
+      throw new Error("Membership option state is inconsistent");
     }
     return {
       subject: {
@@ -73,6 +86,7 @@ export function buildMembershipResponse(
         qualification: version.qualification,
       },
       assessmentRouteId: membership.assessment_route_id ?? null,
+      optionIds,
       intendedExamSession: mapStoredIntendedExamSession(
         membership.intended_exam_year,
         membership.intended_exam_series,
@@ -107,8 +121,7 @@ function hasForbiddenMembershipField(body: unknown): boolean {
 
 function routeAssignmentsRpcPayload(
   assignments:
-    | { subjectId: number; routeId: number; optionIds: number[] }[]
-    | undefined,
+    { subjectId: number; routeId: number; optionIds: number[] }[] | undefined,
 ) {
   if (!assignments || assignments.length === 0) return undefined;
   return assignments.map((row) => ({
@@ -134,17 +147,27 @@ async function listMemberships(
 
   const subjectIds = memberships.map((row) => row.subject_id);
   const versionIds = memberships.map((row) => row.syllabus_version_id);
-  const [subjects, versions, versionTopicCounts] = await Promise.all([
-    db
-      .select()
-      .from(subjectsTable)
-      .where(inArray(subjectsTable.id, subjectIds)),
-    db
-      .select()
-      .from(syllabusVersionsTable)
-      .where(inArray(syllabusVersionsTable.id, versionIds)),
-    countTopicsForSyllabusVersions(versionIds),
-  ]);
+  const [subjects, versions, versionTopicCounts, optionSelectionResult] =
+    await Promise.all([
+      db
+        .select()
+        .from(subjectsTable)
+        .where(inArray(subjectsTable.id, subjectIds)),
+      db
+        .select()
+        .from(syllabusVersionsTable)
+        .where(inArray(syllabusVersionsTable.id, versionIds)),
+      countTopicsForSyllabusVersions(versionIds),
+      client
+        .from("user_subject_option_selections")
+        .select("user_id, subject_id, syllabus_version_id, option_id")
+        .eq("user_id", userId)
+        .in("subject_id", subjectIds)
+        .in("syllabus_version_id", versionIds)
+        .order("option_id"),
+    ]);
+
+  if (optionSelectionResult.error) throw optionSelectionResult.error;
 
   const topicsBySubject = new Map<number, number>();
   for (const membership of memberships) {
@@ -169,6 +192,7 @@ async function listMemberships(
     subjects,
     versions,
     topicsBySubject,
+    (optionSelectionResult.data ?? []) as MembershipOptionSelectionRow[],
   );
 }
 
@@ -221,7 +245,9 @@ router.put("/user-subjects", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const routeAssignments = routeAssignmentsRpcPayload(body.data.routeAssignments);
+  const routeAssignments = routeAssignmentsRpcPayload(
+    body.data.routeAssignments,
+  );
 
   const client = createUserScopedSupabaseClient(req.accessToken!);
   const replaceParams = {
@@ -291,7 +317,9 @@ router.put(
     const params = AssignCurrentUserSubjectAssessmentRouteParams.safeParse(
       req.params,
     );
-    const body = AssignCurrentUserSubjectAssessmentRouteBody.safeParse(req.body);
+    const body = AssignCurrentUserSubjectAssessmentRouteBody.safeParse(
+      req.body,
+    );
     if (!params.success || !body.success) {
       res.status(400).json({ error: "Invalid assessment route assignment" });
       return;
@@ -311,7 +339,9 @@ router.put(
         message,
       );
       if (assignmentError) {
-        res.status(assignmentError.status).json({ error: assignmentError.error });
+        res
+          .status(assignmentError.status)
+          .json({ error: assignmentError.error });
         return;
       }
       if (message.includes("membership_not_found")) {
@@ -327,7 +357,10 @@ router.put(
         res.status(400).json({ error: "Invalid assessment route assignment" });
         return;
       }
-      if (error.code === "42501" || message.includes("authentication_required")) {
+      if (
+        error.code === "42501" ||
+        message.includes("authentication_required")
+      ) {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }

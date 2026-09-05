@@ -224,16 +224,23 @@ async function insertSubjectGraph(
         `,
         [routeSet.rows[0]!.id, versionId],
       );
-      const group = await pool.query<{ id: number }>(
+      const groups = await pool.query<{ id: number; group_key: string }>(
         `
         INSERT INTO assessment_study_option_groups (
           route_set_id, syllabus_version_id, group_key, display_label,
-          min_selections, max_selections, order_index
+          applicable_qualification_target, min_selections, max_selections,
+          order_index
         )
-        VALUES ($1, $2, 'topics', 'Topics', 2, 2, 0)
-        RETURNING id
+        VALUES
+          ($1, $2, 'as_topics', 'AS Topics', 'both', 1, 1, 0),
+          ($1, $2, 'paper_3', 'Paper 3 Topic', 'a_level', 1, 1, 1),
+          ($1, $2, 'paper_4', 'Paper 4 Topic', 'a_level', 1, 1, 2)
+        RETURNING id, group_key
         `,
         [routeSet.rows[0]!.id, versionId],
+      );
+      const groupByKey = new Map(
+        groups.rows.map((group) => [group.group_key, group.id]),
       );
       await pool.query(
         `
@@ -241,11 +248,20 @@ async function insertSubjectGraph(
           group_id, route_set_id, syllabus_version_id, option_key, display_label, order_index
         )
         VALUES
-          ($1, $2, $3, 'a', 'Option A', 0),
-          ($1, $2, $3, 'b', 'Option B', 1),
-          ($1, $2, $3, 'c', 'Option C', 2)
+          ($1, $4, $5, 'a', 'AS Option A', 0),
+          ($1, $4, $5, 'b', 'AS Option B', 1),
+          ($2, $4, $5, 'a', 'Paper 3 Option A', 0),
+          ($2, $4, $5, 'b', 'Paper 3 Option B', 1),
+          ($3, $4, $5, 'a', 'Paper 4 Option A', 0),
+          ($3, $4, $5, 'b', 'Paper 4 Option B', 1)
         `,
-        [group.rows[0]!.id, routeSet.rows[0]!.id, versionId],
+        [
+          groupByKey.get("as_topics"),
+          groupByKey.get("paper_3"),
+          groupByKey.get("paper_4"),
+          routeSet.rows[0]!.id,
+          versionId,
+        ],
       );
       await pool.query(
         `
@@ -301,7 +317,9 @@ export async function seedHttpIntegrationCatalogue(pool: Pool): Promise<void> {
   });
 }
 
-export async function removeHttpIntegrationCatalogue(pool: Pool): Promise<void> {
+export async function removeHttpIntegrationCatalogue(
+  pool: Pool,
+): Promise<void> {
   // 0017 makes published route sets non-deletable. Clear memberships only;
   // catalogue rows remain until the next ensureCleanPublicSchema wipe.
   await pool.query(

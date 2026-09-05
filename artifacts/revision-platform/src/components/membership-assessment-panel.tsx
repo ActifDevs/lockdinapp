@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { StudyOptionPicker } from "@/components/study-option-picker";
 import { cn } from "@/lib/utils";
 import {
+  applicableOptionGroups,
+  applicableOptionIds,
   initialRouteDraft,
   routeDraftValidationError,
   type RouteCatalogueLike,
@@ -33,6 +35,7 @@ export function MembershipAssessmentPanel({
   const [draft, setDraft] = useState<SubjectRouteDraft | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hydrationWarning, setHydrationWarning] = useState<string | null>(null);
   const assign = useAssignCurrentUserSubjectAssessmentRoute();
 
   useEffect(() => {
@@ -48,10 +51,22 @@ export function MembershipAssessmentPanel({
         if (cancelled) return;
         setCatalogue(next);
         const base = initialRouteDraft(next);
+        const routeId = membership.assessmentRouteId ?? base.routeId;
+        const persistedOptionIds = membership.optionIds ?? [];
+        const optionIds = applicableOptionIds(
+          next,
+          routeId,
+          persistedOptionIds,
+        );
+        setHydrationWarning(
+          optionIds.length === persistedOptionIds.length
+            ? null
+            : "Some saved study options no longer apply to this route. Review and update your assessment choice.",
+        );
         setDraft({
           ...base,
-          routeId: membership.assessmentRouteId ?? base.routeId,
-          optionIds: [],
+          routeId,
+          optionIds,
         });
       } catch {
         if (!cancelled) setError("Could not load assessment configuration.");
@@ -67,12 +82,11 @@ export function MembershipAssessmentPanel({
     membership.subject.id,
     membership.syllabusVersion.id,
     membership.assessmentRouteId,
+    (membership.optionIds ?? []).join(","),
   ]);
 
   if (loading) {
-    return (
-      <p className="text-xs text-muted-foreground">Loading assessment…</p>
-    );
+    return <p className="text-xs text-muted-foreground">Loading assessment…</p>;
   }
 
   if (error || !catalogue || !draft) {
@@ -148,7 +162,11 @@ export function MembershipAssessmentPanel({
                   setDraft({
                     subjectId: membership.subject.id,
                     routeId: route.id,
-                    optionIds: [],
+                    optionIds: applicableOptionIds(
+                      catalogue,
+                      route.id,
+                      draft.optionIds,
+                    ),
                   })
                 }
               >
@@ -160,7 +178,7 @@ export function MembershipAssessmentPanel({
       ) : null}
 
       <StudyOptionPicker
-        groups={catalogue.optionGroups}
+        groups={applicableOptionGroups(catalogue, draft.routeId)}
         selectedIds={draft.optionIds}
         onChange={(optionIds) => setDraft({ ...draft, optionIds })}
       />
@@ -169,7 +187,9 @@ export function MembershipAssessmentPanel({
         type="button"
         size="sm"
         className="cursor-pointer"
-        disabled={assign.isPending || Boolean(validation) || draft.routeId == null}
+        disabled={
+          assign.isPending || Boolean(validation) || draft.routeId == null
+        }
         onClick={() => {
           if (draft.routeId == null || validation) return;
           assign.mutate(
@@ -181,7 +201,22 @@ export function MembershipAssessmentPanel({
               },
             },
             {
-              onSuccess: () => {
+              onSuccess: (updated) => {
+                const optionIds = applicableOptionIds(
+                  catalogue,
+                  updated.assessmentRouteId,
+                  updated.optionIds,
+                );
+                setDraft({
+                  subjectId: updated.subject.id,
+                  routeId: updated.assessmentRouteId,
+                  optionIds,
+                });
+                setHydrationWarning(
+                  optionIds.length === updated.optionIds.length
+                    ? null
+                    : "Saved assessment options could not be reconciled with this route. Reload and review your choices.",
+                );
                 toast({ title: "Assessment updated" });
                 onSaved?.();
               },
@@ -201,6 +236,11 @@ export function MembershipAssessmentPanel({
       {validation ? (
         <p className="text-xs text-destructive" role="alert">
           {validation}
+        </p>
+      ) : null}
+      {hydrationWarning ? (
+        <p className="text-xs text-amber-700 dark:text-amber-400" role="alert">
+          {hydrationWarning}
         </p>
       ) : null}
     </div>

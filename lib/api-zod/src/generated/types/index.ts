@@ -40,6 +40,7 @@ export * from './progressOverview';
 export * from './recentPerformanceItem';
 export * from './reportAccountCreatedInput';
 export * from './studyOptionGroupSummary';
+export * from './studyOptionGroupSummaryApplicableQualificationTarget';
 export * from './studyOptionSummary';
 export * from './subject';
 export * from './subjectAssessmentRouteCatalogue';

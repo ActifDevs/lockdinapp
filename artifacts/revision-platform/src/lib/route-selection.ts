@@ -3,10 +3,37 @@ export type RouteSelectionMode = "none_available" | "auto" | "explicit";
 export type StudyOptionGroupLike = {
   id: number;
   displayLabel: string;
+  applicableQualificationTarget: "as_level" | "a_level" | "both";
   minSelections: number;
   maxSelections: number;
   options: Array<{ id: number; displayLabel: string }>;
 };
+
+export function applicableOptionGroups(
+  catalogue: RouteCatalogueLike,
+  routeId: number | null,
+): StudyOptionGroupLike[] {
+  const route = catalogue.routes.find((candidate) => candidate.id === routeId);
+  if (!route) return [];
+  return catalogue.optionGroups.filter(
+    (group) =>
+      group.applicableQualificationTarget === "both" ||
+      group.applicableQualificationTarget === route.qualificationTarget,
+  );
+}
+
+export function applicableOptionIds(
+  catalogue: RouteCatalogueLike,
+  routeId: number | null,
+  optionIds: number[],
+): number[] {
+  const allowed = new Set(
+    applicableOptionGroups(catalogue, routeId).flatMap((group) =>
+      group.options.map((option) => option.id),
+    ),
+  );
+  return optionIds.filter((id) => allowed.has(id));
+}
 
 export type RouteCatalogueLike = {
   subjectId: number;
@@ -37,7 +64,9 @@ export function initialRouteDraft(
   catalogue: RouteCatalogueLike,
 ): SubjectRouteDraft {
   const autoRoute =
-    catalogue.selectionMode === "auto" ? catalogue.routes[0]?.id ?? null : null;
+    catalogue.selectionMode === "auto"
+      ? (catalogue.routes[0]?.id ?? null)
+      : null;
   return {
     subjectId: catalogue.subjectId,
     routeId: autoRoute,
@@ -100,7 +129,8 @@ export function routeDraftValidationError(
     return "Choose a valid assessment route.";
   }
 
-  for (const group of catalogue.optionGroups) {
+  const groups = applicableOptionGroups(catalogue, draft.routeId);
+  for (const group of groups) {
     if (!optionGroupValid(group, draft.optionIds)) {
       if (group.minSelections === group.maxSelections) {
         return `Select ${group.minSelections} option${group.minSelections === 1 ? "" : "s"} for ${group.displayLabel}.`;
@@ -110,7 +140,7 @@ export function routeDraftValidationError(
   }
 
   const allowed = new Set(
-    catalogue.optionGroups.flatMap((group) => group.options.map((o) => o.id)),
+    groups.flatMap((group) => group.options.map((o) => o.id)),
   );
   if (draft.optionIds.some((id) => !allowed.has(id))) {
     return "Remove unexpected study options.";
@@ -132,7 +162,11 @@ export function routeAssignmentsPayload(
       {
         subjectId: draft.subjectId,
         routeId: draft.routeId,
-        optionIds: draft.optionIds,
+        optionIds: applicableOptionIds(
+          catalogue,
+          draft.routeId,
+          draft.optionIds,
+        ),
       },
     ];
   });
@@ -144,7 +178,9 @@ export function allSubjectsHaveSelectableRoutes(
 ): boolean {
   return (
     catalogues.length > 0 &&
-    catalogues.every((catalogue) => catalogue.selectionMode !== "none_available")
+    catalogues.every(
+      (catalogue) => catalogue.selectionMode !== "none_available",
+    )
   );
 }
 
