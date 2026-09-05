@@ -27,6 +27,7 @@ type OnboardingRouteStepProps = {
   onDraftsChange: (drafts: SubjectRouteDraft[]) => void;
   catalogues: RouteCatalogueLike[];
   onCataloguesChange: (catalogues: RouteCatalogueLike[]) => void;
+  onLoadStateChange?: (state: "loading" | "ready" | "error") => void;
 };
 
 export function OnboardingRouteStep({
@@ -39,6 +40,7 @@ export function OnboardingRouteStep({
   onDraftsChange,
   catalogues,
   onCataloguesChange,
+  onLoadStateChange,
 }: OnboardingRouteStepProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,34 +55,57 @@ export function OnboardingRouteStep({
     async function load() {
       setLoading(true);
       setError(null);
+      onLoadStateChange?.("loading");
       try {
-        const nextCatalogues: RouteCatalogueLike[] = [];
-        for (const subject of selectedSubjects) {
-          const label = effectiveSessionLabel(
-            subject.id,
-            examSession,
-            subjectSessionOverrides,
-          );
-          const versionId = syllabusVersionIdForSubjectSession(
-            assignmentAvailability,
-            subject.id,
-            label,
-          );
-          if (!versionId) {
-            throw new Error(`Missing syllabus version for ${subject.name}`);
-          }
-          const catalogue = await listSubjectAssessmentRoutes(
-            subject.id,
-            versionId,
-          );
-          nextCatalogues.push(catalogue);
-        }
+        const nextCatalogues = await Promise.all(
+          selectedSubjects.map(async (subject) => {
+            const label = effectiveSessionLabel(
+              subject.id,
+              examSession,
+              subjectSessionOverrides,
+            );
+            const versionId = syllabusVersionIdForSubjectSession(
+              assignmentAvailability,
+              subject.id,
+              label,
+            );
+            if (!versionId) {
+              throw new Error(`Missing syllabus version for ${subject.name}`);
+            }
+            const catalogue = await listSubjectAssessmentRoutes(
+              subject.id,
+              versionId,
+            );
+            return catalogue;
+          }),
+        );
         if (cancelled) return;
+        const previousCatalogues = new Map(
+          catalogues.map((catalogue) => [catalogue.subjectId, catalogue]),
+        );
+        const previousDrafts = new Map(
+          drafts.map((draft) => [draft.subjectId, draft]),
+        );
         onCataloguesChange(nextCatalogues);
-        onDraftsChange(nextCatalogues.map((c) => initialRouteDraft(c)));
+        onDraftsChange(
+          nextCatalogues.map((catalogue) => {
+            const previousCatalogue = previousCatalogues.get(
+              catalogue.subjectId,
+            );
+            const previousDraft = previousDrafts.get(catalogue.subjectId);
+            const remainsValid =
+              previousCatalogue?.syllabusVersionId ===
+                catalogue.syllabusVersionId &&
+              previousDraft !== undefined &&
+              routeDraftValidationError(catalogue, previousDraft) === undefined;
+            return remainsValid ? previousDraft : initialRouteDraft(catalogue);
+          }),
+        );
+        onLoadStateChange?.("ready");
       } catch {
         if (!cancelled) {
           setError("Could not load assessment choices. Please try again.");
+          onLoadStateChange?.("error");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -90,15 +115,16 @@ export function OnboardingRouteStep({
     return () => {
       cancelled = true;
     };
-    // selectedSubjects is derived; key on selectedIds + subject list identity via ids.
+    // Selected subjects and availability are derived values; key on their content.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional stable deps
   }, [
     selectedIds.join(","),
     examSession,
     JSON.stringify(subjectSessionOverrides),
-    assignmentAvailability,
+    JSON.stringify(assignmentAvailability),
     onCataloguesChange,
     onDraftsChange,
+    onLoadStateChange,
   ]);
 
   if (loading) {
@@ -110,7 +136,11 @@ export function OnboardingRouteStep({
   }
 
   if (error) {
-    return <p className="text-sm text-destructive">{error}</p>;
+    return (
+      <p className="text-sm text-destructive" role="alert">
+        {error}
+      </p>
+    );
   }
 
   const needsAnyChoice = catalogues.some(
@@ -147,9 +177,7 @@ export function OnboardingRouteStep({
       {selectedSubjects.map((subject) => {
         const catalogue = catalogues.find((c) => c.subjectId === subject.id);
         const draft = drafts.find((d) => d.subjectId === subject.id);
-        if (!catalogue || !draft || catalogue.selectionMode === "none_available") {
-          return null;
-        }
+        if (!catalogue || !draft) return null;
         const validation = routeDraftValidationError(catalogue, draft);
         return (
           <section
@@ -157,6 +185,12 @@ export function OnboardingRouteStep({
             className="space-y-3 rounded-xl border bg-muted/10 p-4"
           >
             <h3 className="font-medium">{subject.name}</h3>
+            {catalogue.selectionMode === "none_available" ? (
+              <p className="text-sm text-destructive" role="alert">
+                Assessment routes are not available for this subject yet. Your
+                existing subjects will remain unchanged.
+              </p>
+            ) : null}
             {catalogue.selectionMode === "explicit" ? (
               <div
                 className="flex flex-col gap-2"
@@ -192,24 +226,31 @@ export function OnboardingRouteStep({
                   );
                 })}
               </div>
-            ) : (
+            ) : catalogue.selectionMode === "auto" ? (
               <p className="text-sm text-muted-foreground">
-                Using {catalogue.routes[0]?.displayLabel ?? "the only available route"}.
+                Using{" "}
+                {catalogue.routes[0]?.displayLabel ??
+                  "the only available route"}
+                .
               </p>
-            )}
+            ) : null}
 
-            <StudyOptionPicker
-              groups={catalogue.optionGroups}
-              selectedIds={draft.optionIds}
-              onChange={(optionIds) =>
-                onDraftsChange(
-                  drafts.map((row) =>
-                    row.subjectId === subject.id ? { ...row, optionIds } : row,
-                  ),
-                )
-              }
-            />
-            {validation ? (
+            {catalogue.selectionMode !== "none_available" ? (
+              <StudyOptionPicker
+                groups={catalogue.optionGroups}
+                selectedIds={draft.optionIds}
+                onChange={(optionIds) =>
+                  onDraftsChange(
+                    drafts.map((row) =>
+                      row.subjectId === subject.id
+                        ? { ...row, optionIds }
+                        : row,
+                    ),
+                  )
+                }
+              />
+            ) : null}
+            {validation && catalogue.selectionMode !== "none_available" ? (
               <p className="text-xs text-destructive" role="alert">
                 {validation}
               </p>

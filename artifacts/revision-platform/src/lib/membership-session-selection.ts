@@ -103,6 +103,10 @@ const SAFE_ASSIGNMENT_ERRORS = new Set([
   "No syllabus matches that exam session.",
   "That exam session cannot be assigned right now.",
   "Invalid subject session override.",
+  "Choose how you are taking this subject.",
+  "No assessment route is available for this subject yet.",
+  "Invalid assessment route assignment.",
+  "Select the required number of study options.",
 ]);
 
 export function productSafeAssignmentError(

@@ -236,8 +236,12 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
       .get("/api/user-subjects")
       .set("Authorization", `Bearer ${token}`);
     expect(memberships.status).toBe(200);
-    const row = (memberships.body as { subject: { id: number }; assessmentRouteId: number | null }[])
-      .find((m) => m.subject.id === singleId);
+    const row = (
+      memberships.body as {
+        subject: { id: number };
+        assessmentRouteId: number | null;
+      }[]
+    ).find((m) => m.subject.id === singleId);
     expect(row?.assessmentRouteId).toBe(singleRouteId);
 
     const hiddenAdd = await request(app)
@@ -258,6 +262,46 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
       select assessment_route_id from user_subjects
       where user_id = ${userId} and subject_id = ${singleId}
     `);
+
+    const missingRoute = await request(app)
+      .put("/api/user-subjects")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        subjectIds: [singleId, multiId],
+        intendedExamSession: VALID_MAY_JUNE_2027,
+      });
+    expect(missingRoute.status).toBe(400);
+    expect(missingRoute.body.error).toBe(
+      "Choose how you are taking this subject.",
+    );
+
+    const wrongSubjectRoute = await request(app)
+      .put("/api/user-subjects")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        subjectIds: [singleId, multiId],
+        intendedExamSession: VALID_MAY_JUNE_2027,
+        routeAssignments: [
+          { subjectId: multiId, routeId: singleRouteId, optionIds: [] },
+        ],
+      });
+    expect(wrongSubjectRoute.status).toBeGreaterThanOrEqual(400);
+
+    const invalidOption = await request(app)
+      .put("/api/user-subjects")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        subjectIds: [singleId, multiId],
+        intendedExamSession: VALID_MAY_JUNE_2027,
+        routeAssignments: [
+          {
+            subjectId: multiId,
+            routeId: multiRouteIds[0],
+            optionIds: [multiOptionIds[0], 999999],
+          },
+        ],
+      });
+    expect(invalidOption.status).toBeGreaterThanOrEqual(400);
 
     const badCardinality = await request(app)
       .put("/api/user-subjects")
@@ -283,11 +327,13 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
     const afterMemberships = await request(app)
       .get("/api/user-subjects")
       .set("Authorization", `Bearer ${token}`);
-    const ids = (
-      afterMemberships.body as { subject: { id: number } }[]
-    ).map((m) => m.subject.id);
+    const ids = (afterMemberships.body as { subject: { id: number } }[]).map(
+      (m) => m.subject.id,
+    );
     expect(ids).toEqual([singleId]);
-    expect(Number(beforeRoute.rows[0]!.assessment_route_id)).toBe(singleRouteId);
+    expect(Number(beforeRoute.rows[0]!.assessment_route_id)).toBe(
+      singleRouteId,
+    );
 
     const ok = await request(app)
       .put("/api/user-subjects")
@@ -308,6 +354,16 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
       ok.body as { subject: { id: number }; assessmentRouteId: number | null }[]
     ).find((m) => m.subject.id === multiId);
     expect(multiRow?.assessmentRouteId).toBeTruthy();
+    const committedOptions = await db.execute(sql`
+      select selection.option_id
+      from user_subject_option_selections selection
+      where selection.user_id = ${userId}
+        and selection.subject_id = ${multiId}
+      order by selection.option_id
+    `);
+    expect(committedOptions.rows.map((row) => Number(row.option_id))).toEqual(
+      [multiOptionIds[0], multiOptionIds[1]].sort((a, b) => a - b),
+    );
   });
 
   it("preserves legacy null-route membership and remediates intentionally", async () => {
@@ -399,9 +455,9 @@ describe("B5BR visibility + route membership HTTP/RPC", () => {
       .get("/api/user-subjects")
       .set("Authorization", `Bearer ${token}`);
     expect(list.status).toBe(200);
-    const owned = (
-      list.body as { subject: { id: number } }[]
-    ).map((m) => m.subject.id);
+    const owned = (list.body as { subject: { id: number } }[]).map(
+      (m) => m.subject.id,
+    );
     expect(owned).toContain(hiddenId);
 
     const catalogue = await request(app).get("/api/subjects");

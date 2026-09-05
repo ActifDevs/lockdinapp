@@ -1,11 +1,13 @@
 import { createElement, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,6 +16,7 @@ const api = vi.hoisted(() => ({
   memberships: vi.fn(),
   replace: vi.fn(),
   availability: vi.fn(),
+  routes: vi.fn(),
   ApiError: class ApiError extends Error {
     status: number;
     data: unknown;
@@ -51,15 +54,7 @@ vi.mock("@workspace/api-client-react", () => ({
     mutate: vi.fn(),
     isPending: false,
   }),
-  listSubjectAssessmentRoutes: vi.fn().mockResolvedValue({
-    subjectId: 1,
-    syllabusVersionId: 1,
-    routeSetId: null,
-    routeRevisionKey: null,
-    selectionMode: "none_available",
-    routes: [],
-    optionGroups: [],
-  }),
+  listSubjectAssessmentRoutes: api.routes,
   ApiError: api.ApiError,
 }));
 vi.mock("@/components/theme-provider", () => ({
@@ -92,6 +87,44 @@ import Settings from "./settings";
 const subject = { id: 9, name: "Mathematics", code: "9709", color: "#0f766e" };
 const chemistry = { id: 1, name: "Chemistry", code: "9701", color: "#2563eb" };
 const history = { id: 2, name: "History", code: "9489", color: "#dc2626" };
+const routeCatalogue = (
+  subjectId: number,
+  syllabusVersionId: number,
+  selectionMode: "none_available" | "auto" | "explicit" = "auto",
+  optionGroups: Array<{
+    id: number;
+    displayLabel: string;
+    minSelections: number;
+    maxSelections: number;
+    options: Array<{ id: number; displayLabel: string }>;
+  }> = [],
+) => ({
+  subjectId,
+  syllabusVersionId,
+  selectionMode,
+  routes:
+    selectionMode === "none_available"
+      ? []
+      : [
+          {
+            id: subjectId * 1000 + 1,
+            routeKey: "default",
+            displayLabel: "Standard route",
+            qualificationTarget: "A Level",
+          },
+          ...(selectionMode === "explicit"
+            ? [
+                {
+                  id: subjectId * 1000 + 2,
+                  routeKey: "full",
+                  displayLabel: "Full A Level",
+                  qualificationTarget: "A Level",
+                },
+              ]
+            : []),
+        ],
+  optionGroups,
+});
 const ok = (data: unknown) => ({
   data,
   isLoading: false,
@@ -124,25 +157,56 @@ beforeEach(() => {
     ]),
   );
   api.replace.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+  api.routes.mockImplementation(
+    (subjectId: number, syllabusVersionId: number) =>
+      Promise.resolve(routeCatalogue(subjectId, syllabusVersionId)),
+  );
   api.availability.mockReturnValue(
     ok([
       {
         subjectId: subject.id,
         sessions: [
-          { year: 2026, series: "Oct/Nov", label: "Oct/Nov 2026", syllabusVersionId: 10 },
-          { year: 2027, series: "May/June", label: "May/June 2027", syllabusVersionId: 10 },
+          {
+            year: 2026,
+            series: "Oct/Nov",
+            label: "Oct/Nov 2026",
+            syllabusVersionId: 10,
+          },
+          {
+            year: 2027,
+            series: "May/June",
+            label: "May/June 2027",
+            syllabusVersionId: 10,
+          },
         ],
       },
       {
         subjectId: chemistry.id,
         sessions: [
-          { year: 2026, series: "Oct/Nov", label: "Oct/Nov 2026", syllabusVersionId: 10 },
-          { year: 2027, series: "May/June", label: "May/June 2027", syllabusVersionId: 10 },
+          {
+            year: 2026,
+            series: "Oct/Nov",
+            label: "Oct/Nov 2026",
+            syllabusVersionId: 10,
+          },
+          {
+            year: 2027,
+            series: "May/June",
+            label: "May/June 2027",
+            syllabusVersionId: 10,
+          },
         ],
       },
       {
         subjectId: history.id,
-        sessions: [{ year: 2027, series: "May/June", label: "May/June 2027", syllabusVersionId: 10 }],
+        sessions: [
+          {
+            year: 2027,
+            series: "May/June",
+            label: "May/June 2027",
+            syllabusVersionId: 10,
+          },
+        ],
       },
     ]),
   );
@@ -238,7 +302,9 @@ describe("Settings subject-session mutations", () => {
     fireEvent.change(screen.getByLabelText("Session for History"), {
       target: { value: "May/June 2027" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save subjects" }));
+    const save = screen.getByRole("button", { name: "Save subjects" });
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
 
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledOnce());
     expect(mutateAsync).toHaveBeenCalledWith({
@@ -248,11 +314,75 @@ describe("Settings subject-session mutations", () => {
         subjectSessionOverrides: [
           { subjectId: 2, year: 2027, series: "May/June" },
         ],
+        routeAssignments: [
+          { subjectId: 1, routeId: 1001, optionIds: [] },
+          { subjectId: 2, routeId: 2001, optionIds: [] },
+        ],
       },
     });
     expect(mutateAsync.mock.calls[0]?.[0]).not.toHaveProperty(
       "syllabusVersionId",
     );
+  });
+
+  it("keeps route state independent across multiple new subjects", async () => {
+    api.routes.mockImplementation(
+      (subjectId: number, syllabusVersionId: number) =>
+        Promise.resolve(
+          routeCatalogue(subjectId, syllabusVersionId, "explicit"),
+        ),
+    );
+    const mutateAsync = vi
+      .fn()
+      .mockResolvedValue([
+        { subject },
+        { subject: chemistry },
+        { subject: history },
+      ]);
+    api.replace.mockReturnValue({ mutateAsync, isPending: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /Chemistry/i }));
+    let chemistryRoutes = await screen.findByRole("radiogroup", {
+      name: "How are you taking Chemistry?",
+    });
+    fireEvent.click(
+      within(chemistryRoutes).getByRole("radio", { name: "Full A Level" }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /History/i }));
+    const historyRoutes = await screen.findByRole("radiogroup", {
+      name: "How are you taking History?",
+    });
+    chemistryRoutes = screen.getByRole("radiogroup", {
+      name: "How are you taking Chemistry?",
+    });
+    await waitFor(() =>
+      expect(
+        within(chemistryRoutes).getByRole("radio", { name: "Full A Level" }),
+      ).toHaveAttribute("aria-checked", "true"),
+    );
+    expect(
+      within(historyRoutes).getByRole("radio", { name: "Full A Level" }),
+    ).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(
+      within(historyRoutes).getByRole("radio", { name: "Standard route" }),
+    );
+    const save = screen.getByRole("button", { name: "Save subjects" });
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
+
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledOnce());
+    expect(mutateAsync).toHaveBeenCalledWith({
+      data: {
+        subjectIds: [9, 1, 2],
+        intendedExamSession: { year: 2027, series: "May/June" },
+        routeAssignments: [
+          { subjectId: 1, routeId: 1002, optionIds: [] },
+          { subjectId: 2, routeId: 2001, optionIds: [] },
+        ],
+      },
+    });
   });
 
   it("allows a retained-only save without sending assignment sessions", async () => {
@@ -269,7 +399,12 @@ describe("Settings subject-session mutations", () => {
       ok([
         {
           subject,
-          syllabusVersion: { id: 10, label: "2025–2027", examBoard: "CAIE", qualification: "A Level" },
+          syllabusVersion: {
+            id: 10,
+            label: "2025–2027",
+            examBoard: "CAIE",
+            qualification: "A Level",
+          },
           assessmentRouteId: null,
           intendedExamSession: null,
           createdAt: "2026-01-01T00:00:00.000Z",
@@ -277,7 +412,12 @@ describe("Settings subject-session mutations", () => {
         },
         {
           subject: history,
-          syllabusVersion: { id: 11, label: "2025–2027", examBoard: "CAIE", qualification: "A Level" },
+          syllabusVersion: {
+            id: 11,
+            label: "2025–2027",
+            examBoard: "CAIE",
+            qualification: "A Level",
+          },
           assessmentRouteId: null,
           intendedExamSession: null,
           createdAt: "2026-01-01T00:00:00.000Z",
@@ -312,25 +452,24 @@ describe("Settings subject-session mutations", () => {
       },
     );
     fireEvent.click(screen.getByRole("button", { name: /Chemistry/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Save subjects" }));
+    expect(
+      screen.getByRole("button", { name: "Save subjects" }),
+    ).toBeDisabled();
     expect(mutateAsync).not.toHaveBeenCalled();
-    expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Choose a supported exam session" }),
-    );
   });
 
   it("preserves a safe assignment reason when the atomic save is rejected", async () => {
-    const mutateAsync = vi
-      .fn()
-      .mockRejectedValue(
-        new api.ApiError(409, {
-          error: "No syllabus matches that exam session.",
-        }),
-      );
+    const mutateAsync = vi.fn().mockRejectedValue(
+      new api.ApiError(409, {
+        error: "No syllabus matches that exam session.",
+      }),
+    );
     api.replace.mockReturnValue({ mutateAsync, isPending: false });
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /Chemistry/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Save subjects" }));
+    const save = screen.getByRole("button", { name: "Save subjects" });
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
     await waitFor(() =>
       expect(toast).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -339,5 +478,307 @@ describe("Settings subject-session mutations", () => {
         }),
       ),
     );
+    expect(
+      screen.getByText(
+        "No syllabus matches that exam session. Your subject selection was not changed.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("requires an explicit History route and one generic study option", async () => {
+    api.routes.mockImplementation(
+      (subjectId: number, syllabusVersionId: number) => {
+        if (subjectId !== history.id) {
+          return Promise.resolve(routeCatalogue(subjectId, syllabusVersionId));
+        }
+        const catalogue = routeCatalogue(
+          subjectId,
+          syllabusVersionId,
+          "explicit",
+          [
+            {
+              id: 51,
+              displayLabel: "Depth study",
+              minSelections: 1,
+              maxSelections: 1,
+              options: [
+                { id: 501, displayLabel: "European history" },
+                { id: 502, displayLabel: "American history" },
+              ],
+            },
+          ],
+        );
+        return Promise.resolve({
+          ...catalogue,
+          routes: [
+            ...catalogue.routes,
+            {
+              id: 2003,
+              routeKey: "staged",
+              displayLabel: "Staged A Level",
+              qualificationTarget: "A Level",
+            },
+          ],
+        });
+      },
+    );
+    const mutateAsync = vi
+      .fn()
+      .mockResolvedValue([{ subject }, { subject: history }]);
+    api.replace.mockReturnValue({ mutateAsync, isPending: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /History/i }));
+    const routeGroup = await screen.findByRole("radiogroup", {
+      name: "How are you taking History?",
+    });
+    expect(api.routes).toHaveBeenCalledWith(history.id, 10);
+    expect(within(routeGroup).getAllByRole("radio")).toHaveLength(3);
+    const save = screen.getByRole("button", { name: "Save subjects" });
+    expect(save).toBeDisabled();
+    fireEvent.click(
+      within(routeGroup).getByRole("radio", { name: "Standard route" }),
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "European history" }));
+    await waitFor(() => expect(save).toBeEnabled());
+
+    fireEvent.click(
+      within(routeGroup).getByRole("radio", { name: "Full A Level" }),
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "European history" }),
+    ).not.toBeChecked();
+    expect(save).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "American history" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "European history" }));
+    expect(
+      screen.getByRole("checkbox", { name: "American history" }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "European history" }),
+    ).not.toBeChecked();
+    fireEvent.click(save);
+
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledOnce());
+    expect(mutateAsync).toHaveBeenCalledWith({
+      data: {
+        subjectIds: [9, 2],
+        intendedExamSession: { year: 2027, series: "May/June" },
+        routeAssignments: [{ subjectId: 2, routeId: 2002, optionIds: [502] }],
+      },
+    });
+  });
+
+  it("clears a new subject route when its session changes", async () => {
+    api.routes.mockImplementation(
+      (subjectId: number, syllabusVersionId: number) =>
+        Promise.resolve(
+          routeCatalogue(subjectId, syllabusVersionId, "explicit"),
+        ),
+    );
+    const mutateAsync = vi
+      .fn()
+      .mockResolvedValue([{ subject }, { subject: chemistry }]);
+    api.replace.mockReturnValue({ mutateAsync, isPending: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /Chemistry/i }));
+    let routeGroup = await screen.findByRole("radiogroup", {
+      name: "How are you taking Chemistry?",
+    });
+    fireEvent.click(
+      within(routeGroup).getByRole("radio", { name: "Full A Level" }),
+    );
+    const save = screen.getByRole("button", { name: "Save subjects" });
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.change(screen.getByLabelText("Session for Chemistry"), {
+      target: { value: "Oct/Nov 2026" },
+    });
+    expect(save).toBeDisabled();
+    await waitFor(() =>
+      expect(api.routes).toHaveBeenCalledWith(chemistry.id, 10),
+    );
+    routeGroup = await screen.findByRole("radiogroup", {
+      name: "How are you taking Chemistry?",
+    });
+    const fullRoute = within(routeGroup).getByRole("radio", {
+      name: "Full A Level",
+    });
+    expect(fullRoute).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(fullRoute);
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
+
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledOnce());
+    expect(mutateAsync).toHaveBeenCalledWith({
+      data: {
+        subjectIds: [9, 1],
+        intendedExamSession: { year: 2027, series: "May/June" },
+        subjectSessionOverrides: [
+          { subjectId: 1, year: 2026, series: "Oct/Nov" },
+        ],
+        routeAssignments: [{ subjectId: 1, routeId: 1002, optionIds: [] }],
+      },
+    });
+  });
+
+  it("blocks every new enrollment when one route catalogue is unavailable", async () => {
+    api.routes.mockImplementation(
+      (subjectId: number, syllabusVersionId: number) =>
+        Promise.resolve(
+          subjectId === history.id
+            ? routeCatalogue(subjectId, syllabusVersionId, "none_available")
+            : routeCatalogue(subjectId, syllabusVersionId),
+        ),
+    );
+    const mutateAsync = vi.fn();
+    api.replace.mockReturnValue({ mutateAsync, isPending: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /Chemistry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /History/i }));
+    expect(
+      (
+        await screen.findAllByText(
+          /Assessment routes are not available for this subject yet/i,
+        )
+      )[0],
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Save subjects" }),
+    ).toBeDisabled();
+    expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("blocks save and shows a safe retry when route catalogues fail to load", async () => {
+    api.routes.mockRejectedValue(new Error("private route table detail"));
+    const mutateAsync = vi.fn();
+    api.replace.mockReturnValue({ mutateAsync, isPending: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /Chemistry/i }));
+    expect(
+      await screen.findByText(
+        "Could not load assessment choices. Please try again.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("private route table detail"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Save subjects" }),
+    ).toBeDisabled();
+    expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("keeps Save disabled until the route catalogue resolves", async () => {
+    let releaseRoutes: (() => void) | null = null;
+    api.routes.mockImplementation(
+      (subjectId: number, syllabusVersionId: number) =>
+        new Promise<void>((resolve) => {
+          releaseRoutes = resolve;
+        }).then(() => routeCatalogue(subjectId, syllabusVersionId)),
+    );
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /Chemistry/i }));
+    const save = screen.getByRole("button", { name: "Save subjects" });
+    expect(save).toBeDisabled();
+    await act(async () => {
+      releaseRoutes?.();
+    });
+    await waitFor(() => expect(save).toBeEnabled());
+  });
+
+  it("does not restore a stale route after subject deselection and reselection", async () => {
+    api.routes.mockImplementation(
+      (subjectId: number, syllabusVersionId: number) =>
+        Promise.resolve(
+          routeCatalogue(subjectId, syllabusVersionId, "explicit"),
+        ),
+    );
+    renderPage();
+
+    const chemistryButton = screen.getByRole("button", { name: /Chemistry/i });
+    fireEvent.click(chemistryButton);
+    let routeGroup = await screen.findByRole("radiogroup", {
+      name: "How are you taking Chemistry?",
+    });
+    fireEvent.click(
+      within(routeGroup).getByRole("radio", { name: "Full A Level" }),
+    );
+    const save = screen.getByRole("button", { name: "Save subjects" });
+    await waitFor(() => expect(save).toBeEnabled());
+
+    fireEvent.click(chemistryButton);
+    fireEvent.click(chemistryButton);
+    expect(save).toBeDisabled();
+    routeGroup = await screen.findByRole("radiogroup", {
+      name: "How are you taking Chemistry?",
+    });
+    expect(
+      within(routeGroup).getByRole("radio", { name: "Full A Level" }),
+    ).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("shows safe route API reasons inline and hides unknown server details", async () => {
+    const mutateAsync = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new api.ApiError(400, {
+          error: "Choose how you are taking this subject.",
+        }),
+      )
+      .mockRejectedValueOnce(
+        new api.ApiError(500, { error: "private route_assignment row 77" }),
+      );
+    api.replace.mockReturnValue({ mutateAsync, isPending: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /Chemistry/i }));
+    const save = screen.getByRole("button", { name: "Save subjects" });
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
+    expect(
+      await screen.findByText(
+        "Choose how you are taking this subject. Your subject selection was not changed.",
+      ),
+    ).toBeVisible();
+
+    fireEvent.click(save);
+    expect(
+      await screen.findByText(
+        "Your previous selection is unchanged. Please try again.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("private route_assignment row 77"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not resend or alter a retained assessment route", async () => {
+    api.memberships.mockReturnValue(
+      ok([
+        {
+          subject,
+          syllabusVersion: {
+            id: 10,
+            label: "2025–2027",
+            examBoard: "CAIE",
+            qualification: "A Level",
+          },
+          assessmentRouteId: 9001,
+          intendedExamSession: { year: 2026, series: "May/June" },
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ]),
+    );
+    const mutateAsync = vi.fn().mockResolvedValue([{ subject }]);
+    api.replace.mockReturnValue({ mutateAsync, isPending: false });
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Save subjects" }));
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledOnce());
+    expect(mutateAsync).toHaveBeenCalledWith({ data: { subjectIds: [9] } });
   });
 });

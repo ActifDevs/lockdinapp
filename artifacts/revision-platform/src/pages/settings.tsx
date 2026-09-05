@@ -37,7 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useNotificationPrefs } from "@/hooks/use-notification-prefs";
 import { toast } from "@/hooks/use-toast";
-import { useEffect, useState, type ElementType } from "react";
+import { useEffect, useRef, useState, type ElementType } from "react";
 import { PageHeader } from "@/components/page-header";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { cn } from "@/lib/utils";
@@ -49,10 +49,18 @@ import {
   effectiveSessionLabel,
   invalidSessionSubjectIds,
   productSafeAssignmentError,
+  syllabusVersionIdForSubjectSession,
   subjectSupportsSession,
   type SubjectSessionOverrides,
 } from "@/lib/membership-session-selection";
 import { MembershipAssessmentPanel } from "@/components/membership-assessment-panel";
+import { OnboardingRouteStep } from "@/components/onboarding-route-step";
+import {
+  routeAssignmentsPayload,
+  routeDraftValidationError,
+  type RouteCatalogueLike,
+  type SubjectRouteDraft,
+} from "@/lib/route-selection";
 import { ReadStateNotice } from "@/components/read-state-notice";
 import {
   omitDefaultQueryValue,
@@ -197,6 +205,17 @@ export default function Settings() {
   );
   const [newSubjectSessionOverrides, setNewSubjectSessionOverrides] =
     useState<SubjectSessionOverrides>({});
+  const [newSubjectRouteDrafts, setNewSubjectRouteDrafts] = useState<
+    SubjectRouteDraft[]
+  >([]);
+  const [newSubjectRouteCatalogues, setNewSubjectRouteCatalogues] = useState<
+    RouteCatalogueLike[]
+  >([]);
+  const [newSubjectRouteLoadState, setNewSubjectRouteLoadState] = useState<
+    "idle" | "loading" | "ready" | "error"
+  >("idle");
+  const [subjectSaveError, setSubjectSaveError] = useState<string | null>(null);
+  const newSubjectAssessmentRef = useRef<HTMLDivElement>(null);
   const catalogueUnavailable = subjectsError && subjects === undefined;
   const catalogueRefreshFailed = subjectsError && subjects !== undefined;
   const examOptions = [...getUpcomingExamSessions(), "Other"];
@@ -264,7 +283,49 @@ export default function Settings() {
   const newSubjectIds = selectedSubjectIds.filter(
     (subjectId) => !retainedSubjectIds.has(subjectId),
   );
+  const clearNewSubjectRouteState = (subjectIds?: readonly number[]) => {
+    const clear = subjectIds ? new Set(subjectIds) : null;
+    setNewSubjectRouteDrafts((current) =>
+      clear ? current.filter((row) => !clear.has(row.subjectId)) : [],
+    );
+    setNewSubjectRouteCatalogues((current) =>
+      clear ? current.filter((row) => !clear.has(row.subjectId)) : [],
+    );
+    setNewSubjectRouteLoadState("idle");
+    setSubjectSaveError(null);
+  };
+  const routeErrorForNewSubject = (subjectId: number) => {
+    const sessionLabel = effectiveSessionLabel(
+      subjectId,
+      newSubjectDefaultSession,
+      newSubjectSessionOverrides,
+    );
+    const versionId = syllabusVersionIdForSubjectSession(
+      assignmentAvailability ?? [],
+      subjectId,
+      sessionLabel,
+    );
+    if (!versionId) return "Choose a supported exam session.";
+    const catalogue = newSubjectRouteCatalogues.find(
+      (row) =>
+        row.subjectId === subjectId && row.syllabusVersionId === versionId,
+    );
+    const draft = newSubjectRouteDrafts.find(
+      (row) => row.subjectId === subjectId,
+    );
+    if (!catalogue || !draft) return "Assessment choices are still loading.";
+    return routeDraftValidationError(catalogue, draft);
+  };
+  const newSubjectRouteErrors = newSubjectIds.flatMap((subjectId) => {
+    const error = routeErrorForNewSubject(subjectId);
+    return error ? [{ subjectId, error }] : [];
+  });
+  const newSubjectRoutesReady =
+    newSubjectIds.length === 0 ||
+    (newSubjectRouteLoadState === "ready" &&
+      newSubjectRouteErrors.length === 0);
   const toggleSelectedSubject = (subjectId: number) => {
+    clearNewSubjectRouteState([subjectId]);
     setSelectedSubjectIds((current) => {
       if (current.includes(subjectId)) {
         setNewSubjectSessionOverrides((overrides) => {
@@ -323,11 +384,26 @@ export default function Settings() {
       newSubjectSessionOverrides,
       assignmentOptions,
     );
+    const routeError = newSubjectRouteErrors[0];
+    if (routeError) {
+      setSubjectSaveError(routeError.error);
+      newSubjectAssessmentRef.current?.scrollIntoView?.({
+        behavior: "smooth",
+        block: "center",
+      });
+      newSubjectAssessmentRef.current?.focus({ preventScroll: true });
+      return;
+    }
+    const routeAssignments = routeAssignmentsPayload(
+      newSubjectRouteDrafts,
+      newSubjectRouteCatalogues,
+    );
     try {
       const updated = await replaceSubjects.mutateAsync({
         data: {
           subjectIds: selectedSubjectIds,
           ...(newSubjectIds.length > 0 ? sessionPayload : {}),
+          ...(routeAssignments.length > 0 ? { routeAssignments } : {}),
         },
       });
       queryClient.setQueryData(getListCurrentUserSubjectsQueryKey(), updated);
@@ -369,11 +445,18 @@ export default function Settings() {
           ? (error.data as { error: string }).error
           : "";
       const safeReason = productSafeAssignmentError(message);
+      const description = safeReason
+        ? `${safeReason} Your subject selection was not changed.`
+        : "Your previous selection is unchanged. Please try again.";
+      setSubjectSaveError(description);
+      newSubjectAssessmentRef.current?.scrollIntoView?.({
+        behavior: "smooth",
+        block: "center",
+      });
+      newSubjectAssessmentRef.current?.focus({ preventScroll: true });
       toast({
         title: "Could not update subjects",
-        description: safeReason
-          ? `${safeReason} Your subject selection was not changed.`
-          : "Your previous selection is unchanged. Please try again.",
+        description,
         variant: "destructive",
       });
     }
@@ -590,7 +673,8 @@ export default function Settings() {
                   catalogueUnavailable ||
                   subjectsLoading ||
                   replaceSubjects.isPending ||
-                  selectedSubjectIds.length < 1
+                  selectedSubjectIds.length < 1 ||
+                  !newSubjectRoutesReady
                 }
               >
                 {replaceSubjects.isPending ? "Saving…" : "Save subjects"}
@@ -607,9 +691,10 @@ export default function Settings() {
               <select
                 id="new-subject-default-session"
                 value={newSubjectDefaultSession}
-                onChange={(event) =>
-                  setNewSubjectDefaultSession(event.target.value)
-                }
+                onChange={(event) => {
+                  clearNewSubjectRouteState();
+                  setNewSubjectDefaultSession(event.target.value);
+                }}
                 disabled={availabilityLoading || availabilityError}
                 className="flex h-10 w-full max-w-md rounded-md border border-input bg-background px-3 text-sm disabled:opacity-50"
               >
@@ -793,6 +878,7 @@ export default function Settings() {
                               value={override}
                               onChange={(event) => {
                                 const value = event.target.value;
+                                clearNewSubjectRouteState([subject.id]);
                                 setNewSubjectSessionOverrides((current) => {
                                   const next = { ...current };
                                   if (value) next[subject.id] = value;
@@ -847,6 +933,37 @@ export default function Settings() {
                     );
                   })}
                 </div>
+                {newSubjectIds.length > 0 &&
+                invalidSessionSubjectIds(
+                  newSubjectIds,
+                  newSubjectDefaultSession,
+                  newSubjectSessionOverrides,
+                  assignmentAvailability ?? [],
+                ).length === 0 ? (
+                  <div
+                    ref={newSubjectAssessmentRef}
+                    className="rounded-xl border border-border/60 bg-background/60 p-4"
+                    tabIndex={-1}
+                  >
+                    {subjectSaveError ? (
+                      <p className="mb-4 text-sm text-destructive" role="alert">
+                        {subjectSaveError}
+                      </p>
+                    ) : null}
+                    <OnboardingRouteStep
+                      subjects={subjects}
+                      selectedIds={newSubjectIds}
+                      examSession={newSubjectDefaultSession}
+                      subjectSessionOverrides={newSubjectSessionOverrides}
+                      assignmentAvailability={assignmentAvailability ?? []}
+                      drafts={newSubjectRouteDrafts}
+                      onDraftsChange={setNewSubjectRouteDrafts}
+                      catalogues={newSubjectRouteCatalogues}
+                      onCataloguesChange={setNewSubjectRouteCatalogues}
+                      onLoadStateChange={setNewSubjectRouteLoadState}
+                    />
+                  </div>
+                ) : null}
                 {ownedOutsideCatalogue.length > 0 ? (
                   <div className="space-y-3 rounded-xl border border-border/60 bg-background/60 p-4">
                     <p className="text-sm font-medium">
