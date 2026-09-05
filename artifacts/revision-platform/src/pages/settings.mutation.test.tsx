@@ -569,6 +569,106 @@ describe("Settings subject-session mutations", () => {
     });
   });
 
+  it("B5D-003: History Full A Level accepts one option from each of three 1/1 groups", async () => {
+    api.routes.mockImplementation(
+      (subjectId: number, syllabusVersionId: number) => {
+        if (subjectId !== history.id) {
+          return Promise.resolve(routeCatalogue(subjectId, syllabusVersionId));
+        }
+        return Promise.resolve(
+          routeCatalogue(subjectId, syllabusVersionId, "explicit", [
+            {
+              id: 4,
+              displayLabel: "AS History Option",
+              minSelections: 1,
+              maxSelections: 1,
+              options: [
+                { id: 10, displayLabel: "Modern Europe, 1774–1924" },
+                { id: 11, displayLabel: "The History of the USA, 1820–1941" },
+              ],
+            },
+            {
+              id: 5,
+              displayLabel: "Paper 3 Prescribed Topic",
+              minSelections: 1,
+              maxSelections: 1,
+              options: [
+                { id: 13, displayLabel: "The origins of the First World War" },
+                { id: 14, displayLabel: "The Holocaust" },
+              ],
+            },
+            {
+              id: 6,
+              displayLabel: "Paper 4 Depth Study Option",
+              minSelections: 1,
+              maxSelections: 1,
+              options: [
+                {
+                  id: 16,
+                  displayLabel: "Depth Study 1: European History",
+                },
+                { id: 17, displayLabel: "Depth Study 2: The USA, 1945–93" },
+              ],
+            },
+          ]),
+        );
+      },
+    );
+    const mutateAsync = vi
+      .fn()
+      .mockResolvedValue([{ subject }, { subject: history }]);
+    api.replace.mockReturnValue({ mutateAsync, isPending: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /History/i }));
+    const routeGroup = await screen.findByRole("radiogroup", {
+      name: "How are you taking History?",
+    });
+    const save = screen.getByRole("button", { name: "Save subjects" });
+    fireEvent.click(
+      within(routeGroup).getByRole("radio", { name: "Full A Level" }),
+    );
+    expect(save).toBeDisabled();
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Modern Europe, 1774–1924" }),
+    );
+    expect(save).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "The Holocaust" }));
+    expect(save).toBeDisabled();
+    // Same-group over-select must remain blocked after other groups fill.
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: "The History of the USA, 1820–1941",
+      }),
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "Modern Europe, 1774–1924" }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", {
+        name: "The History of the USA, 1820–1941",
+      }),
+    ).not.toBeChecked();
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Depth Study 2: The USA, 1945–93" }),
+    );
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
+
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledOnce());
+    expect(mutateAsync).toHaveBeenCalledWith({
+      data: {
+        subjectIds: [9, 2],
+        intendedExamSession: { year: 2027, series: "May/June" },
+        routeAssignments: [
+          { subjectId: 2, routeId: 2002, optionIds: [10, 14, 17] },
+        ],
+      },
+    });
+  });
+
   it("clears a new subject route when its session changes", async () => {
     api.routes.mockImplementation(
       (subjectId: number, syllabusVersionId: number) =>

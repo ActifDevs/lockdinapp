@@ -45,15 +45,32 @@ export function initialRouteDraft(
   };
 }
 
+/**
+ * Toggle one study option within a single option group.
+ * maxSelections applies only to options that belong to that group —
+ * selections in other groups do not consume this group's capacity.
+ */
 export function toggleStudyOptionSelection(
   selectedIds: number[],
   optionId: number,
-  maxSelections: number,
+  group: Pick<StudyOptionGroupLike, "maxSelections" | "options">,
 ): number[] {
   if (selectedIds.includes(optionId)) {
     return selectedIds.filter((id) => id !== optionId);
   }
-  if (selectedIds.length >= maxSelections) return selectedIds;
+
+  const groupOptionIds = new Set(group.options.map((option) => option.id));
+  if (!groupOptionIds.has(optionId)) {
+    return selectedIds;
+  }
+
+  const groupSelectedCount = selectedIds.filter((id) =>
+    groupOptionIds.has(id),
+  ).length;
+  if (groupSelectedCount >= group.maxSelections) {
+    return selectedIds;
+  }
+
   return [...selectedIds, optionId];
 }
 

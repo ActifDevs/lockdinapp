@@ -77,7 +77,7 @@ export function StudyOptionPicker({
                           toggleStudyOptionSelection(
                             selectedIds,
                             option.id,
-                            group.maxSelections,
+                            group,
                           ),
                         )
                       }
