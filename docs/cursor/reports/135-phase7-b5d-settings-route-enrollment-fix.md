@@ -1,8 +1,8 @@
 # LOCKDIN — PHASE 7 B5D-F1 SETTINGS ROUTE ENROLLMENT FIX
 
-**Date:** 2026-09-05 UTC  
-**Status:** PASS WITH REVIEW NOTES — implementation and automated verification complete; local/Preview browser QA was not available  
-**Baseline:** `e810a0d8e0cc5687c8c51d8991bacc8783de42d8` (`main`, matching freshly fetched `origin/main` at preflight)  
+**Date:** 2026-09-05 UTC
+**Status:** PASS WITH REVIEW NOTES — implementation and automated verification complete; local/Preview browser QA was not available
+**Baseline:** `e810a0d8e0cc5687c8c51d8991bacc8783de42d8` (`main`, matching freshly fetched `origin/main` at preflight)
 **Repository action:** Reviewable working-tree diff only. No commit, push, deployment, migration, hosted catalogue mutation, visibility change, membership backfill, or hosted membership mutation.
 
 ## Scope and frozen evidence
