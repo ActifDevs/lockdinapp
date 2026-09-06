@@ -27,6 +27,7 @@ vi.mock("@workspace/api-client-react", () => ({
     data: [
       { id: 1, name: "Chemistry", code: "9701" },
       { id: 2, name: "History", code: "9489" },
+      { id: 8021, name: "English General Paper", code: "8021" },
     ],
     isLoading: false,
     isError: false,
@@ -44,6 +45,10 @@ vi.mock("@workspace/api-client-react", () => ({
       {
         subjectId: 2,
         sessions: [{ year: 2027, series: "May/June", label: "May/June 2027", syllabusVersionId: 10 }],
+      },
+      {
+        subjectId: 8021,
+        sessions: [{ year: 2027, series: "May/June", label: "May/June 2027", syllabusVersionId: 28 }],
       },
     ],
     isLoading: false,
@@ -106,6 +111,18 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe("Onboarding multi-session assignment", () => {
+  it("renders a server-granted hidden subject without subject-specific UI logic", async () => {
+    const user = userEvent.setup();
+    render(<Onboarding />);
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+    await user.type(screen.getByLabelText("Username"), "amina_grant");
+    await user.click(screen.getByRole("button", { name: /continue/i }));
+
+    expect(
+      screen.getByRole("button", { name: /English General Paper/i }),
+    ).toBeVisible();
+  });
+
   it("requires a visible override for a subject that cannot use the global default", async () => {
     const user = await reachSessions();
     await user.click(screen.getByRole("button", { name: "Oct/Nov 2026" }));

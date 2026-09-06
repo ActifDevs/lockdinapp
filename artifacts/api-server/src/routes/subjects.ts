@@ -46,6 +46,7 @@ import {
   versionIdFromResolution,
 } from "../lib/reference-context-http";
 import { projectAssignmentSessionAvailability } from "../lib/assignment-session-availability";
+import { subjectSelectableForCaller } from "../lib/subject-visibility";
 
 const router: IRouter = Router();
 
@@ -69,12 +70,12 @@ const syllabusTopicReferenceColumns = {
  * neutral for syllabusProgress until a dedicated owned-progress merge is added
  * on those endpoints; caller topic progress is merged only on the syllabus GET.
  */
-router.get("/subjects", async (_req, res): Promise<void> => {
+router.get("/subjects", optionalAuth, async (req, res): Promise<void> => {
   // New-membership catalogue only. Owned/hidden subjects stay on membership APIs.
   const subjects = await db
     .select()
     .from(subjectsTable)
-    .where(eq(subjectsTable.selectableForNewMemberships, true))
+    .where(subjectSelectableForCaller(req.userId))
     .orderBy(subjectsTable.id);
 
   // Catalogue topicsTotal is the DEFAULT (`is_current`) graph only.
@@ -104,12 +105,13 @@ router.post("/subjects", async (_req, res): Promise<void> => {
  */
 router.get(
   "/subjects/assignment-sessions",
-  async (_req, res): Promise<void> => {
+  optionalAuth,
+  async (req, res): Promise<void> => {
     const [subjects, rows] = await Promise.all([
       db
         .select({ id: subjectsTable.id })
         .from(subjectsTable)
-        .where(eq(subjectsTable.selectableForNewMemberships, true))
+        .where(subjectSelectableForCaller(req.userId))
         .orderBy(subjectsTable.id),
       db
         .select({

@@ -144,6 +144,18 @@ function renderPage() {
 }
 
 describe("Settings catalogue read states", () => {
+  it("renders a server-granted hidden subject without subject-specific UI logic", () => {
+    api.subjects.mockReturnValue(
+      ok([
+        subject,
+        { id: 8021, name: "English General Paper", code: "8021" },
+      ]),
+    );
+    renderPage();
+
+    expect(screen.getByText("English General Paper")).toBeVisible();
+  });
+
   it("shows catalogue loading distinctly", () => {
     api.subjects.mockReturnValue({ ...ok(undefined), isLoading: true });
     renderPage();

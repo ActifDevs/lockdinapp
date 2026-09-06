@@ -50,8 +50,8 @@ export async function proveApplicabilityPopulation(pool: Pool): Promise<void> {
   for (const entry of manifest.versions) {
     const subject = await pool.query<{ id: number }>(
       `
-      INSERT INTO public.subjects (code, name, color)
-      VALUES ($1, $2, '#111111')
+      INSERT INTO public.subjects (code, name, color, selectable_for_new_memberships)
+      VALUES ($1, $2, '#111111', true)
       RETURNING id
       `,
       [entry.subjectCode, `${entry.subjectCode} Applicability`],
@@ -280,8 +280,8 @@ export async function proveApplicabilityPopulation(pool: Pool): Promise<void> {
 
   const extra = await pool.query<{ id: number }>(
     `
-    INSERT INTO public.subjects (code, name, color)
-    VALUES ('APPX01', 'Assignment still DEFAULT', '#222222')
+    INSERT INTO public.subjects (code, name, color, selectable_for_new_memberships)
+    VALUES ('APPX01', 'Assignment still DEFAULT', '#222222', true)
     RETURNING id
     `,
   );
@@ -317,6 +317,30 @@ export async function proveApplicabilityPopulation(pool: Pool): Promise<void> {
     ) VALUES ($1, 'May/June', true)
     `,
     [versionB.rows[0]!.id],
+  );
+  const routeSet = await pool.query<{ id: number }>(
+    `
+    INSERT INTO public.assessment_route_sets (
+      syllabus_version_id, route_revision_key, lifecycle, manifest_sha256
+    ) VALUES ($1, 'applicability-proof-routes', 'draft', $2)
+    RETURNING id
+    `,
+    [versionB.rows[0]!.id, "c".repeat(64)],
+  );
+  await pool.query(
+    `
+    INSERT INTO public.assessment_routes (
+      route_set_id, syllabus_version_id, route_key, display_label,
+      qualification_target, pathway_type, progression_eligibility, order_index
+    ) VALUES ($1, $2, 'al', 'A Level', 'a_level', 'full_same_series',
+      'not_applicable', 0)
+    `,
+    [routeSet.rows[0]!.id, versionB.rows[0]!.id],
+  );
+  await pool.query(
+    `UPDATE public.assessment_route_sets
+     SET lifecycle = 'published', published_at = now() WHERE id = $1`,
+    [routeSet.rows[0]!.id],
   );
   const resolvedB = await pool.query<{
     lockdin_resolve_applicable_syllabus_version: number;
@@ -381,8 +405,5 @@ export async function proveApplicabilityPopulation(pool: Pool): Promise<void> {
     USER_ID,
   ]);
   await pool.query(`DELETE FROM public.tasks WHERE user_id = $1::uuid`, [USER_ID]);
-  await pool.query(`DELETE FROM public.subjects WHERE code = ANY($1::text[])`, [
-    [...manifest.versions.map((row) => row.subjectCode), "APPX01"],
-  ]);
   await pool.query(`DELETE FROM auth.users WHERE id = $1::uuid`, [USER_ID]);
 }

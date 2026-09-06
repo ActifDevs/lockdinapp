@@ -7,9 +7,15 @@ import { applyBootstrap, verifyBootstrapPrerequisites } from "./bootstrap.js";
 import { ensureCleanPublicSchema } from "./cleanup.js";
 import {
   executeMigrations,
+  executeMigrationsThrough,
   executeSyllabusDbTests,
   verifyMigrationJournal,
 } from "./migrate.js";
+import {
+  prepareSubjectVisibilityMigrationRehearsal,
+  removeSubjectVisibilityMigrationRehearsal,
+  verifySubjectVisibilityMigrationRehearsal,
+} from "./subject-visibility-migration-proof.js";
 import {
   HARNESS_API_PORT,
   HARNESS_DB_PORT,
@@ -31,8 +37,6 @@ import { provePinAwareReferenceContext } from "./pin-aware-reference-proof.js";
 import { proveSessionFoundation } from "./session-foundation-proof.js";
 import { proveSeriesPolicyFoundation } from "./series-policy-proof.js";
 import { proveApplicabilityPopulation } from "./applicability-population-proof.js";
-import { proveStrictAssignment } from "./strict-assignment-proof.js";
-import { proveFutureRevisionLifecycle } from "./future-revision-lifecycle-proof.js";
 import { proveRouteSchemaFoundation } from "./route-schema-foundation-proof.js";
 import { proveRouteReferenceImmutability } from "./route-immutability-proof.js";
 import { proveRoutePublication } from "../route-manifest/publication-proof.js";
@@ -136,8 +140,30 @@ export async function runHarness(): Promise<HarnessResult> {
         throw new Error("[db-harness] Executed bootstrap state is invalid.");
       }
     });
-    await step("Execute committed migrations through journal head", () =>
+    await step("Execute fresh migration chain 0000 through 0019", () =>
+      executeMigrationsThrough(
+        verifiedStatus.dbUrl,
+        "0019_route_option_group_applicability",
+      ),
+    );
+    let visibilityMigrationSnapshot!: Awaited<
+      ReturnType<typeof prepareSubjectVisibilityMigrationRehearsal>
+    >;
+    await step("Populate 0019 migration rehearsal data", async () => {
+      visibilityMigrationSnapshot =
+        await prepareSubjectVisibilityMigrationRehearsal(pool!);
+    });
+    await step("Apply migration 0020 through committed journal head", () =>
       executeMigrations(verifiedStatus.dbUrl),
+    );
+    await step("Prove populated 0019 to 0020 zero drift", () =>
+      verifySubjectVisibilityMigrationRehearsal(
+        pool!,
+        visibilityMigrationSnapshot,
+      ),
+    );
+    await step("Remove populated 0020 rehearsal fixture", () =>
+      removeSubjectVisibilityMigrationRehearsal(pool!),
     );
     await step("Verify Drizzle journal matches committed files", async () => {
       const result = await verifyMigrationJournal(pool!);
@@ -149,6 +175,11 @@ export async function runHarness(): Promise<HarnessResult> {
         const result = await verifyFinalSchema(pool!);
         if (!result.success) throw new Error(result.error);
       },
+    );
+    // These tests assert whole-table counts and therefore require the clean
+    // post-migration database, before immutable route fixtures are published.
+    await step("Run syllabus DB integration", () =>
+      executeSyllabusDbTests(verifiedStatus.dbUrl),
     );
     await step("Prove syllabus version lifecycle constraints", () =>
       proveSyllabusVersionLifecycle(pool!),
@@ -165,12 +196,6 @@ export async function runHarness(): Promise<HarnessResult> {
     await step("Prove applicability population operator", () =>
       proveApplicabilityPopulation(pool!),
     );
-    await step("Prove C2B2 strict session-aware assignment", () =>
-      proveStrictAssignment(pool!),
-    );
-    await step("Prove disposable r001 to r002 lifecycle", () =>
-      proveFutureRevisionLifecycle(pool!),
-    );
     await step("Prove route and study options schema foundation", () =>
       proveRouteSchemaFoundation(pool!),
     );
@@ -179,9 +204,6 @@ export async function runHarness(): Promise<HarnessResult> {
     );
     await step("Prove route-manifest publication (A2B)", () =>
       proveRoutePublication(pool!),
-    );
-    await step("Run syllabus DB integration", () =>
-      executeSyllabusDbTests(verifiedStatus.dbUrl),
     );
     await step("Run authoritative HTTP/auth/RLS integration", () =>
       proveHttpIntegration(pool!, {

@@ -25,11 +25,22 @@ export const HTTP_HIDDEN_CODE = "HTTPHD";
 /** Selectable subject with two published routes — explicit selection required. */
 export const HTTP_MULTI_ROUTE_CODE = "HTTPML";
 
+export const B5E_REPRESENTATIVE_CODES = [
+  "8021",
+  "9093",
+  "9626",
+  "9696",
+  "9699",
+  "9706",
+  "9990",
+] as const;
+
 const ALL_SEED_CODES = [
   ...HTTP_SEED_CODES,
   HTTP_ZERO_ROUTE_CODE,
   HTTP_HIDDEN_CODE,
   HTTP_MULTI_ROUTE_CODE,
+  ...B5E_REPRESENTATIVE_CODES,
 ] as const;
 
 function hex64(seed: string): string {
@@ -277,6 +288,112 @@ async function insertSubjectGraph(
   return { subjectId, versionId };
 }
 
+async function insertB5eRepresentativeSubject(
+  pool: Pool,
+  args: {
+    code: (typeof B5E_REPRESENTATIVE_CODES)[number];
+    asOnly?: boolean;
+    groups?: Array<{ key: string; min: number; max: number; options: number }>;
+  },
+): Promise<void> {
+  const seeded = await insertSubjectGraph(pool, {
+    code: args.code,
+    name: `B5E Representative ${args.code}`,
+    color: "#205060",
+    selectable: false,
+    withSingleRoute: false,
+    withMultiRoute: false,
+  });
+  const existing = await pool.query(
+    `SELECT 1 FROM assessment_route_sets
+     WHERE syllabus_version_id = $1 AND lifecycle = 'published'`,
+    [seeded.versionId],
+  );
+  if ((existing.rowCount ?? 0) > 0) return;
+
+  const routeSet = await pool.query<{ id: number }>(
+    `
+    INSERT INTO assessment_route_sets (
+      syllabus_version_id, route_revision_key, lifecycle, manifest_sha256
+    ) VALUES ($1, $2, 'draft', $3)
+    RETURNING id
+    `,
+    [
+      seeded.versionId,
+      `${args.code}-routes-r001`,
+      hex64(`b5e-representative:${args.code}`),
+    ],
+  );
+  const routeSetId = routeSet.rows[0]!.id;
+  await pool.query(
+    `
+    INSERT INTO assessment_routes (
+      route_set_id, syllabus_version_id, route_key, display_label,
+      qualification_target, pathway_type, progression_eligibility, order_index
+    ) VALUES ($1, $2, 'as', 'AS Level', 'as_level', 'single_series', 'eligible', 0)
+    `,
+    [routeSetId, seeded.versionId],
+  );
+  if (!args.asOnly) {
+    await pool.query(
+      `
+      INSERT INTO assessment_routes (
+        route_set_id, syllabus_version_id, route_key, display_label,
+        qualification_target, pathway_type, progression_eligibility, order_index
+      ) VALUES ($1, $2, 'al', 'A Level', 'a_level', 'full_same_series',
+        'not_applicable', 1)
+      `,
+      [routeSetId, seeded.versionId],
+    );
+  }
+
+  for (const [groupIndex, group] of (args.groups ?? []).entries()) {
+    const insertedGroup = await pool.query<{ id: number }>(
+      `
+      INSERT INTO assessment_study_option_groups (
+        route_set_id, syllabus_version_id, group_key, display_label,
+        applicable_qualification_target, min_selections, max_selections,
+        order_index
+      ) VALUES ($1, $2, $3, $4, 'a_level', $5, $6, $7)
+      RETURNING id
+      `,
+      [
+        routeSetId,
+        seeded.versionId,
+        group.key,
+        `B5E ${args.code} ${group.key}`,
+        group.min,
+        group.max,
+        groupIndex,
+      ],
+    );
+    for (let optionIndex = 0; optionIndex < group.options; optionIndex += 1) {
+      await pool.query(
+        `
+        INSERT INTO assessment_study_options (
+          group_id, route_set_id, syllabus_version_id, option_key,
+          display_label, order_index
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+        `,
+        [
+          insertedGroup.rows[0]!.id,
+          routeSetId,
+          seeded.versionId,
+          `option_${optionIndex + 1}`,
+          `Option ${optionIndex + 1}`,
+          optionIndex,
+        ],
+      );
+    }
+  }
+
+  await pool.query(
+    `UPDATE assessment_route_sets
+     SET lifecycle = 'published', published_at = now() WHERE id = $1`,
+    [routeSetId],
+  );
+}
+
 export async function seedHttpIntegrationCatalogue(pool: Pool): Promise<void> {
   for (const [index, code] of HTTP_SEED_CODES.entries()) {
     await insertSubjectGraph(pool, {
@@ -314,6 +431,26 @@ export async function seedHttpIntegrationCatalogue(pool: Pool): Promise<void> {
     selectable: true,
     withSingleRoute: false,
     withMultiRoute: true,
+  });
+
+  await insertB5eRepresentativeSubject(pool, { code: "8021", asOnly: true });
+  await insertB5eRepresentativeSubject(pool, { code: "9093" });
+  await insertB5eRepresentativeSubject(pool, { code: "9626" });
+  await insertB5eRepresentativeSubject(pool, {
+    code: "9696",
+    groups: [
+      { key: "paper_3", min: 2, max: 2, options: 2 },
+      { key: "paper_4", min: 2, max: 2, options: 2 },
+    ],
+  });
+  await insertB5eRepresentativeSubject(pool, {
+    code: "9699",
+    groups: [{ key: "paper_4", min: 2, max: 3, options: 3 }],
+  });
+  await insertB5eRepresentativeSubject(pool, { code: "9706" });
+  await insertB5eRepresentativeSubject(pool, {
+    code: "9990",
+    groups: [{ key: "specialist", min: 2, max: 2, options: 2 }],
   });
 }
 

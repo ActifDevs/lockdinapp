@@ -63,6 +63,33 @@ async function insertAuthUser(pool: Pool, id: string, email: string): Promise<vo
   );
 }
 
+async function createPublishedSingleRoute(pool: Pool, versionId: number): Promise<void> {
+  const routeSet = await pool.query<{ id: number }>(
+    `
+    INSERT INTO public.assessment_route_sets (
+      syllabus_version_id, route_revision_key, lifecycle, manifest_sha256
+    ) VALUES ($1, $2, 'draft', $3)
+    RETURNING id
+    `,
+    [versionId, `session-proof-${versionId}`, "a".repeat(64)],
+  );
+  await pool.query(
+    `
+    INSERT INTO public.assessment_routes (
+      route_set_id, syllabus_version_id, route_key, display_label,
+      qualification_target, pathway_type, progression_eligibility, order_index
+    ) VALUES ($1, $2, 'al', 'A Level', 'a_level', 'full_same_series',
+      'not_applicable', 0)
+    `,
+    [routeSet.rows[0]!.id, versionId],
+  );
+  await pool.query(
+    `UPDATE public.assessment_route_sets
+     SET lifecycle = 'published', published_at = now() WHERE id = $1`,
+    [routeSet.rows[0]!.id],
+  );
+}
+
 async function withJwt<T>(
   pool: Pool,
   userId: string,
@@ -96,10 +123,10 @@ export async function proveSessionFoundation(pool: Pool): Promise<void> {
 
   const subjects = await pool.query<{ id: number; code: string }>(
     `
-    INSERT INTO public.subjects (code, name, color)
+    INSERT INTO public.subjects (code, name, color, selectable_for_new_memberships)
     VALUES
-      ('C2A01', 'C2A Physics', '#111111'),
-      ('C2A02', 'C2A Mathematics', '#222222')
+      ('C2A01', 'C2A Physics', '#111111', true),
+      ('C2A02', 'C2A Mathematics', '#222222', true)
     RETURNING id, code
     `,
   );
@@ -290,6 +317,9 @@ export async function proveSessionFoundation(pool: Pool): Promise<void> {
     throw new Error("[db-harness] Maths DEFAULT version is missing.");
   }
 
+  await createPublishedSingleRoute(pool, versionA.id);
+  await createPublishedSingleRoute(pool, mathsDefaultId);
+
   await withJwt(pool, USER_ID, async (client) => {
     await client.query(
       `
@@ -472,8 +502,5 @@ export async function proveSessionFoundation(pool: Pool): Promise<void> {
     USER_ID,
   ]);
   await pool.query(`DELETE FROM public.tasks WHERE user_id = $1::uuid`, [USER_ID]);
-  await pool.query(`DELETE FROM public.subjects WHERE code = ANY($1::text[])`, [
-    [SUBJECT_A, SUBJECT_B],
-  ]);
   await pool.query(`DELETE FROM auth.users WHERE id = $1::uuid`, [USER_ID]);
 }

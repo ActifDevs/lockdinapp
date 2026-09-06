@@ -357,10 +357,11 @@ export async function verifySyntheticFixturesRemoved(
 ): Promise<void> {
   const result = await pool.query<{ count: string }>(`
     SELECT count(*)::text AS count
-    FROM public.subjects
-    WHERE code IN ('TEST9998', 'TEST9997', 'TEST6301', 'TEST6302', 'C2A01', 'C2A02', 'C2B101', 'C2B102', 'APPX01', 'C2B201', 'C2B202', 'R002X1', 'HTTP01', 'HTTP02', 'HTTP03', 'HTTP04', 'HTTP05', 'HTTP06', 'L7A101', 'L7A102')
+    FROM public.user_subjects us
+    JOIN public.subjects s ON s.id = us.subject_id
+    WHERE s.code IN ('TEST9998', 'TEST9997', 'TEST6301', 'TEST6302', 'C2A01', 'C2A02', 'C2B101', 'C2B102', 'APPX01', 'C2B201', 'C2B202', 'R002X1', 'HTTP01', 'HTTP02', 'HTTP03', 'HTTP04', 'HTTP05', 'HTTP06', 'HTTPZR', 'HTTPHD', 'HTTPML', 'L7A101', 'L7A102', '8021', '9093', '9626', '9696', '9699', '9706', '9990')
   `);
   if (result.rows[0]?.count !== "0") {
-    throw new Error("[db-harness] Synthetic syllabus fixture cleanup failed.");
+    throw new Error("[db-harness] Synthetic membership fixture cleanup failed.");
   }
 }

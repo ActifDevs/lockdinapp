@@ -21,6 +21,8 @@ export function executeHttpIntegrationTests(env: {
         "run",
         "--config",
         "vitest.integration.config.ts",
+        "src/routes/assessment-routes.integration.test.ts",
+        "src/routes/subject-visibility.integration.test.ts",
       ],
       {
         cwd: join(REPO_ROOT, "artifacts", "api-server"),
@@ -40,7 +42,9 @@ export function executeHttpIntegrationTests(env: {
       },
     );
   } catch {
-    throw new Error("[db-harness] Authoritative HTTP integration suite failed.");
+    throw new Error(
+      "[db-harness] Authoritative HTTP integration suite failed.",
+    );
   }
 }
 

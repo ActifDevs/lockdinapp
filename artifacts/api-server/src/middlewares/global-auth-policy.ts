@@ -25,8 +25,8 @@ type ApiAuthException = {
 const API_AUTH_EXCEPTIONS: readonly ApiAuthException[] = [
   { method: "GET", path: "/healthz", mode: "public" },
   { method: "GET", path: "/healthz/db", mode: "public" },
-  { method: "GET", path: "/subjects", mode: "public" },
-  { method: "GET", path: "/subjects/assignment-sessions", mode: "public" },
+  { method: "GET", path: "/subjects", mode: "optional" },
+  { method: "GET", path: "/subjects/assignment-sessions", mode: "optional" },
   { method: "GET", path: "/subjects/:subjectId", mode: "public" },
   {
     method: "GET",

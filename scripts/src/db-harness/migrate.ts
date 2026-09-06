@@ -1,6 +1,16 @@
 import { execFileSync } from "node:child_process";
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { loadCommittedMigrations } from "./committed-migrations.js";
 import { REPO_ROOT } from "./stack.js";
 
@@ -46,6 +56,54 @@ export function executeMigrations(databaseUrl: string): void {
     throw new Error(
       `[db-harness] Committed Drizzle migrations failed.${detail ? `\n${detail}` : ""}`,
     );
+  }
+}
+
+/** Apply a committed prefix through `lastTag` for populated upgrade rehearsals. */
+export async function executeMigrationsThrough(
+  databaseUrl: string,
+  lastTag: string,
+): Promise<void> {
+  const migrations = loadCommittedMigrations();
+  const lastIndex = migrations.findIndex(
+    (migration) => migration.tag === lastTag,
+  );
+  if (lastIndex < 0) {
+    throw new Error(`[db-harness] Unknown migration cutoff ${lastTag}.`);
+  }
+
+  const selected = migrations.slice(0, lastIndex + 1);
+  const tempRoot = mkdtempSync(join(tmpdir(), "lockdin-migrations-"));
+  const metaDir = join(tempRoot, "meta");
+  mkdirSync(metaDir);
+  for (const migration of selected) {
+    copyFileSync(migration.sqlPath, join(tempRoot, migration.sqlFileName));
+  }
+  writeFileSync(
+    join(metaDir, "_journal.json"),
+    JSON.stringify(
+      {
+        version: "7",
+        dialect: "postgresql",
+        entries: selected.map(({ idx, tag, when }) => ({
+          idx,
+          version: "7",
+          when,
+          tag,
+          breakpoints: true,
+        })),
+      },
+      null,
+      2,
+    ),
+  );
+
+  const pool = new Pool({ connectionString: databaseUrl });
+  try {
+    await migrate(drizzle(pool), { migrationsFolder: tempRoot });
+  } finally {
+    await pool.end();
+    rmSync(tempRoot, { recursive: true, force: true });
   }
 }
 
