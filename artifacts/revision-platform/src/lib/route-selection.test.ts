@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applicableOptionGroups,
   applicableOptionIds,
+  classifyPastPaperComponent,
   filterComponentsByRouteDefault,
   initialRouteDraft,
   optionGroupValid,
@@ -243,6 +244,78 @@ const economicsNoOptionCatalogue: RouteCatalogueLike = {
 };
 
 describe("route selection helpers", () => {
+  it.each([
+    ["History", historyCatalogue, 42, "ON_ROUTE"],
+    ["Geography", geographyCatalogue, 42, "OFF_ROUTE_SAME_VERSION"],
+    ["Sociology", sociologyCatalogue, 42, "OFF_ROUTE_SAME_VERSION"],
+    ["Psychology", psychologyCatalogue, 42, "OFF_ROUTE_SAME_VERSION"],
+    ["No-option", economicsNoOptionCatalogue, 42, "OFF_ROUTE_SAME_VERSION"],
+  ])(
+    "%s classifies a same-version component against the selected route",
+    (_name, catalogue, componentId, expected) => {
+      const withComponents = {
+        ...catalogue,
+        routes: catalogue.routes.map((route, index) => ({
+          ...route,
+          components:
+            index === 0
+              ? [
+                  {
+                    componentId:
+                      expected === "ON_ROUTE" ? (componentId as number) : 41,
+                  },
+                ]
+              : [{ componentId: componentId as number }],
+        })),
+      };
+      expect(
+        classifyPastPaperComponent({
+          membership: {
+            syllabusVersionId: catalogue.syllabusVersionId,
+            assessmentRouteId: withComponents.routes[0]!.id,
+          },
+          routeCatalogue: withComponents,
+          componentId,
+          componentSyllabusVersionId: catalogue.syllabusVersionId,
+        }),
+      ).toBe(expected);
+    },
+  );
+
+  it("keeps on-route components warning-free and fails closed for unresolved data", () => {
+    const routeCatalogue = {
+      ...historyCatalogue,
+      routes: [
+        {
+          ...historyCatalogue.routes[0]!,
+          components: [{ componentId: 41 }],
+        },
+      ],
+    };
+    expect(
+      classifyPastPaperComponent({
+        membership: { syllabusVersionId: 19, assessmentRouteId: 14 },
+        routeCatalogue,
+        componentId: 41,
+      }),
+    ).toBe("ON_ROUTE");
+    expect(
+      classifyPastPaperComponent({
+        membership: { syllabusVersionId: 19, assessmentRouteId: 14 },
+        routeCatalogue,
+        componentId: 41,
+        componentSyllabusVersionId: 20,
+      }),
+    ).toBe("INVALID_VERSION_OR_UNRESOLVED");
+    expect(
+      classifyPastPaperComponent({
+        membership: { syllabusVersionId: 19, assessmentRouteId: 14 },
+        routeCatalogue: undefined,
+        componentId: 41,
+      }),
+    ).toBe("INVALID_VERSION_OR_UNRESOLVED");
+  });
+
   it("maps route counts to selection modes", () => {
     expect(selectionModeForRoutes(0)).toBe("none_available");
     expect(selectionModeForRoutes(1)).toBe("auto");

@@ -44,9 +44,57 @@ export type RouteCatalogueLike = {
     routeKey: string;
     displayLabel: string;
     qualificationTarget: string;
+    components?: Array<{ componentId: number }>;
   }>;
   optionGroups: StudyOptionGroupLike[];
 };
+
+export type PastPaperRouteClassification =
+  | "ON_ROUTE"
+  | "OFF_ROUTE_SAME_VERSION"
+  | "INVALID_VERSION_OR_UNRESOLVED";
+
+export function classifyPastPaperComponent(args: {
+  membership:
+    | {
+        syllabusVersionId: number;
+        assessmentRouteId: number | null;
+      }
+    | null
+    | undefined;
+  routeCatalogue: RouteCatalogueLike | null | undefined;
+  componentId: number | null | undefined;
+  componentSyllabusVersionId?: number | null;
+}): PastPaperRouteClassification {
+  const {
+    membership,
+    routeCatalogue,
+    componentId,
+    componentSyllabusVersionId,
+  } = args;
+  if (
+    !membership ||
+    !routeCatalogue ||
+    !Number.isInteger(componentId) ||
+    membership.assessmentRouteId == null ||
+    membership.syllabusVersionId !== routeCatalogue.syllabusVersionId ||
+    (componentSyllabusVersionId != null &&
+      componentSyllabusVersionId !== membership.syllabusVersionId)
+  ) {
+    return "INVALID_VERSION_OR_UNRESOLVED";
+  }
+
+  const route = routeCatalogue.routes.find(
+    (candidate) => candidate.id === membership.assessmentRouteId,
+  );
+  if (!route || !route.components) return "INVALID_VERSION_OR_UNRESOLVED";
+
+  return route.components.some(
+    (component) => component.componentId === componentId,
+  )
+    ? "ON_ROUTE"
+    : "OFF_ROUTE_SAME_VERSION";
+}
 
 export type SubjectRouteDraft = {
   subjectId: number;

@@ -54,7 +54,10 @@ import { ChartSkeleton } from "@/components/charts/chart-skeleton";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 import { formatPercentage } from "@/lib/format-percentage";
 import { buildAssessmentComponentOptions } from "@/lib/assessment-component-options";
-import { filterComponentsByRouteDefault } from "@/lib/route-selection";
+import {
+  classifyPastPaperComponent,
+  filterComponentsByRouteDefault,
+} from "@/lib/route-selection";
 import { ReadStateNotice } from "@/components/read-state-notice";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
@@ -217,7 +220,8 @@ export default function PastPapers() {
     },
   });
 
-  const selectedSubjectId = form.watch("subjectId");
+  const selectedSubjectIdValue = form.watch("subjectId");
+  const selectedSubjectId = Number(selectedSubjectIdValue ?? 0);
   const selectedSession = form.watch("session");
 
   const {
@@ -270,10 +274,24 @@ export default function PastPapers() {
     routeFiltered.offRoute.map((component) => component.id),
   );
   const selectedComponentId = form.watch("componentId");
+  const selectedComponentIdNumber = Number(selectedComponentId);
+  const selectedComponentClassification = classifyPastPaperComponent({
+    membership: selectedMembership
+      ? {
+          syllabusVersionId: selectedMembership.syllabusVersion.id,
+          assessmentRouteId: selectedMembership.assessmentRouteId,
+        }
+      : null,
+    routeCatalogue,
+    componentId:
+      Number.isInteger(selectedComponentIdNumber) &&
+      selectedComponentIdNumber > 0
+        ? selectedComponentIdNumber
+        : null,
+  });
   const selectingOffRoute =
-    routeFiltered.hasRouteFilter &&
-    typeof selectedComponentId === "number" &&
-    offRouteComponentIds.has(selectedComponentId);
+    selectedComponentClassification === "OFF_ROUTE_SAME_VERSION" &&
+    offRouteComponentIds.has(selectedComponentIdNumber);
   const attemptsRefreshFailed = attemptsError && papers !== undefined;
   const componentsRefreshFailed = componentsError && components !== undefined;
   const canSelectComponent =

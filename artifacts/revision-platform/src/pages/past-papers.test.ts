@@ -17,6 +17,7 @@ const apiMocks = vi.hoisted(() => ({
   useListCurrentUserSubjects: vi.fn(),
   useListPastPaperAttempts: vi.fn(),
   useListAssessmentComponents: vi.fn(),
+  useListSubjectAssessmentRoutes: vi.fn(),
   useCreatePastPaperAttempt: vi.fn(),
   useDeletePastPaperAttempt: vi.fn(),
 }));
@@ -41,19 +42,7 @@ vi.mock("@workspace/api-client-react", () => ({
   useListAssessmentComponents: apiMocks.useListAssessmentComponents,
   useListPastPaperAttempts: apiMocks.useListPastPaperAttempts,
   useListCurrentUserSubjects: apiMocks.useListCurrentUserSubjects,
-  useListSubjectAssessmentRoutes: () => ({
-    data: {
-      subjectId: 9,
-      syllabusVersionId: 10,
-      routeSetId: null,
-      routeRevisionKey: null,
-      selectionMode: "none_available",
-      routes: [],
-      optionGroups: [],
-    },
-    isLoading: false,
-    isError: false,
-  }),
+  useListSubjectAssessmentRoutes: apiMocks.useListSubjectAssessmentRoutes,
 }));
 
 vi.mock("@/components/charts/score-trend-line-chart", () => ({
@@ -187,6 +176,19 @@ beforeEach(() => {
     isError: false,
     error: null,
     refetch: vi.fn(),
+  });
+  apiMocks.useListSubjectAssessmentRoutes.mockReturnValue({
+    data: {
+      subjectId: 9,
+      syllabusVersionId: 10,
+      routeSetId: null,
+      routeRevisionKey: null,
+      selectionMode: "none_available",
+      routes: [],
+      optionGroups: [],
+    },
+    isLoading: false,
+    isError: false,
   });
   apiMocks.useCreatePastPaperAttempt.mockReturnValue({
     mutate: vi.fn(),
@@ -573,6 +575,81 @@ describe("past-paper ownership and year UI wiring", () => {
     expect(
       screen.getByRole("option", { name: /Pure Mathematics 1/ }),
     ).toBeVisible();
+  });
+
+  it("warns when a selected same-version component is outside the route", async () => {
+    apiMocks.useListCurrentUserSubjects.mockReturnValue({
+      data: [
+        {
+          subject: {
+            id: 9,
+            name: "Mathematics",
+            code: "9709",
+            color: "#0f766e",
+            topicsTotal: 20,
+          },
+          syllabusVersion: {
+            id: 10,
+            label: "2025–2027",
+            examBoard: "CAIE",
+            qualification: "A Level",
+          },
+          assessmentRouteId: 7,
+          intendedExamSession: null,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    apiMocks.useListSubjectAssessmentRoutes.mockReturnValue({
+      data: {
+        subjectId: 9,
+        syllabusVersionId: 10,
+        routeSetId: 1,
+        routeRevisionKey: "test",
+        selectionMode: "explicit",
+        routes: [
+          {
+            id: 7,
+            routeKey: "route",
+            displayLabel: "Route",
+            qualificationTarget: "a_level",
+            components: [{ componentId: 42 }],
+          },
+        ],
+        optionGroups: [],
+      },
+      isLoading: false,
+      isError: false,
+    });
+    renderPastPapers();
+    const componentSelect = screen
+      .getAllByRole("option", { name: "Mathematics" })
+      .at(-1)!
+      .closest("select")!;
+    fireEvent.change(componentSelect, { target: { value: "9" } });
+    const offRouteOption = await screen.findByRole("option", {
+      name: /9709\/1.*A Level/,
+    });
+    fireEvent.change(offRouteOption.closest("select")!, {
+      target: { value: "46" },
+    });
+    expect(
+      screen.getByText(
+        "This paper is outside your assessment route. Logging it will not change your route or syllabus.",
+      ),
+    ).toBeVisible();
+    fireEvent.change(offRouteOption.closest("select")!, {
+      target: { value: "42" },
+    });
+    expect(
+      screen.queryByText(
+        "This paper is outside your assessment route. Logging it will not change your route or syllabus.",
+      ),
+    ).not.toBeInTheDocument();
   });
 });
 
