@@ -35,7 +35,7 @@ import {
 import { OnboardingRouteStep } from "@/components/onboarding-route-step";
 import {
   routeAssignmentsPayload,
-  routeDraftValidationError,
+  validateRouteDraft,
   type RouteCatalogueLike,
   type SubjectRouteDraft,
 } from "@/lib/route-selection";
@@ -176,7 +176,7 @@ export default function Onboarding() {
           setError("Assessment choices are still loading.");
           return;
         }
-        const routeErr = routeDraftValidationError(catalogue, draft);
+        const routeErr = validateRouteDraft(catalogue, draft).error;
         if (routeErr) {
           setError(routeErr);
           return;
@@ -198,7 +198,7 @@ export default function Onboarding() {
         setError("Assessment choices are still loading.");
         return;
       }
-      const routeErr = routeDraftValidationError(catalogue, draft);
+      const routeErr = validateRouteDraft(catalogue, draft).error;
       if (routeErr) {
         setError(routeErr);
         setStep(5);

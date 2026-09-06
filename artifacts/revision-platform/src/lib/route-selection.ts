@@ -54,6 +54,12 @@ export type SubjectRouteDraft = {
   optionIds: number[];
 };
 
+export type RouteDraftValidation = {
+  applicableGroups: StudyOptionGroupLike[];
+  applicableOptionIds: number[];
+  error?: string;
+};
+
 export function selectionModeForRoutes(routeCount: number): RouteSelectionMode {
   if (routeCount <= 0) return "none_available";
   if (routeCount === 1) return "auto";
@@ -113,40 +119,78 @@ export function optionGroupValid(
   return count >= group.minSelections && count <= group.maxSelections;
 }
 
+export function validateRouteDraft(
+  catalogue: RouteCatalogueLike,
+  draft: SubjectRouteDraft,
+): RouteDraftValidation {
+  if (catalogue.selectionMode === "none_available") {
+    return {
+      applicableGroups: [],
+      applicableOptionIds: [],
+      error: "Assessment routes are not available for this subject yet.",
+    };
+  }
+
+  if (draft.routeId == null) {
+    return {
+      applicableGroups: [],
+      applicableOptionIds: [],
+      error: "Choose how you are taking this subject.",
+    };
+  }
+
+  if (!catalogue.routes.some((route) => route.id === draft.routeId)) {
+    return {
+      applicableGroups: [],
+      applicableOptionIds: [],
+      error: "Choose a valid assessment route.",
+    };
+  }
+
+  const groups = applicableOptionGroups(catalogue, draft.routeId);
+  const allowed = new Set(
+    groups.flatMap((group) => group.options.map((option) => option.id)),
+  );
+  const optionIds = draft.optionIds.filter((id) => allowed.has(id));
+  const invalidOptionIds =
+    optionIds.length !== draft.optionIds.length ||
+    new Set(draft.optionIds).size !== draft.optionIds.length;
+  if (invalidOptionIds) {
+    return {
+      applicableGroups: groups,
+      applicableOptionIds: [...allowed],
+      error: "Remove unexpected study options.",
+    };
+  }
+
+  for (const group of groups) {
+    if (!optionGroupValid(group, draft.optionIds)) {
+      if (group.minSelections === group.maxSelections) {
+        return {
+          applicableGroups: groups,
+          applicableOptionIds: [...allowed],
+          error: `Select ${group.minSelections} option${group.minSelections === 1 ? "" : "s"} for ${group.displayLabel}.`,
+        };
+      }
+      return {
+        applicableGroups: groups,
+        applicableOptionIds: [...allowed],
+        error: `Select ${group.minSelections}–${group.maxSelections} options for ${group.displayLabel}.`,
+      };
+    }
+  }
+
+  return {
+    applicableGroups: groups,
+    applicableOptionIds: [...allowed],
+  };
+}
+
 export function routeDraftValidationError(
   catalogue: RouteCatalogueLike,
   draft: SubjectRouteDraft,
 ): string | undefined {
-  if (catalogue.selectionMode === "none_available") {
-    return "Assessment routes are not available for this subject yet.";
-  }
-
-  if (draft.routeId == null) {
-    return "Choose how you are taking this subject.";
-  }
-
-  if (!catalogue.routes.some((route) => route.id === draft.routeId)) {
-    return "Choose a valid assessment route.";
-  }
-
-  const groups = applicableOptionGroups(catalogue, draft.routeId);
-  for (const group of groups) {
-    if (!optionGroupValid(group, draft.optionIds)) {
-      if (group.minSelections === group.maxSelections) {
-        return `Select ${group.minSelections} option${group.minSelections === 1 ? "" : "s"} for ${group.displayLabel}.`;
-      }
-      return `Select ${group.minSelections}–${group.maxSelections} options for ${group.displayLabel}.`;
-    }
-  }
-
-  const allowed = new Set(
-    groups.flatMap((group) => group.options.map((o) => o.id)),
-  );
-  if (draft.optionIds.some((id) => !allowed.has(id))) {
-    return "Remove unexpected study options.";
-  }
-
-  return undefined;
+  return validateRouteDraft(catalogue, draft).error;
 }
 
 export function routeAssignmentsPayload(

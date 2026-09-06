@@ -57,7 +57,7 @@ import { MembershipAssessmentPanel } from "@/components/membership-assessment-pa
 import { OnboardingRouteStep } from "@/components/onboarding-route-step";
 import {
   routeAssignmentsPayload,
-  routeDraftValidationError,
+  validateRouteDraft,
   type RouteCatalogueLike,
   type SubjectRouteDraft,
 } from "@/lib/route-selection";
@@ -314,7 +314,7 @@ export default function Settings() {
       (row) => row.subjectId === subjectId,
     );
     if (!catalogue || !draft) return "Assessment choices are still loading.";
-    return routeDraftValidationError(catalogue, draft);
+    return validateRouteDraft(catalogue, draft).error;
   };
   const newSubjectRouteErrors = newSubjectIds.flatMap((subjectId) => {
     const error = routeErrorForNewSubject(subjectId);

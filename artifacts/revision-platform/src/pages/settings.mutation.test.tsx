@@ -87,6 +87,7 @@ import Settings from "./settings";
 const subject = { id: 9, name: "Mathematics", code: "9709", color: "#0f766e" };
 const chemistry = { id: 1, name: "Chemistry", code: "9701", color: "#2563eb" };
 const history = { id: 2, name: "History", code: "9489", color: "#dc2626" };
+const geography = { id: 19, name: "Geography", code: "9696", color: "#16a34a" };
 const routeCatalogue = (
   subjectId: number,
   syllabusVersionId: number,
@@ -629,6 +630,7 @@ describe("Settings subject-session mutations", () => {
     const routeGroup = await screen.findByRole("radiogroup", {
       name: "How are you taking History?",
     });
+
     const save = screen.getByRole("button", { name: "Save subjects" });
     fireEvent.click(
       within(routeGroup).getByRole("radio", { name: "Full A Level" }),
@@ -669,6 +671,90 @@ describe("Settings subject-session mutations", () => {
         intendedExamSession: { year: 2027, series: "May/June" },
         routeAssignments: [
           { subjectId: 2, routeId: 2002, optionIds: [10, 14, 17] },
+        ],
+      },
+    });
+  });
+
+  it("enables Save subjects for Geography 2/2 + 2/2 and sends all four options", async () => {
+    api.subjects.mockReturnValue(ok([subject, chemistry, history, geography]));
+    api.availability.mockReturnValue(
+      ok([
+        {
+          subjectId: geography.id,
+          sessions: [
+            {
+              year: 2027,
+              series: "May/June",
+              label: "May/June 2027",
+              syllabusVersionId: 10,
+            },
+          ],
+        },
+      ]),
+    );
+    api.routes.mockImplementation(
+      (subjectId: number, syllabusVersionId: number) =>
+        subjectId === geography.id
+          ? Promise.resolve(
+              routeCatalogue(subjectId, syllabusVersionId, "explicit", [
+                {
+                  id: 27,
+                  displayLabel: "Paper 3",
+                  applicableQualificationTarget: "a_level",
+                  minSelections: 2,
+                  maxSelections: 2,
+                  options: [
+                    { id: 19, displayLabel: "Paper 3 option 1" },
+                    { id: 20, displayLabel: "Paper 3 option 2" },
+                    { id: 21, displayLabel: "Paper 3 option 3" },
+                  ],
+                },
+                {
+                  id: 28,
+                  displayLabel: "Paper 4",
+                  applicableQualificationTarget: "a_level",
+                  minSelections: 2,
+                  maxSelections: 2,
+                  options: [
+                    { id: 23, displayLabel: "Paper 4 option 1" },
+                    { id: 24, displayLabel: "Paper 4 option 2" },
+                    { id: 25, displayLabel: "Paper 4 option 3" },
+                  ],
+                },
+              ]),
+            )
+          : Promise.resolve(routeCatalogue(subjectId, syllabusVersionId)),
+    );
+    const mutateAsync = vi
+      .fn()
+      .mockResolvedValue([{ subject }, { subject: geography }]);
+    api.replace.mockReturnValue({ mutateAsync, isPending: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /Geography/i }));
+    const routeGroup = await screen.findByRole("radiogroup", {
+      name: "How are you taking Geography?",
+    });
+    const save = screen.getByRole("button", { name: "Save subjects" });
+    fireEvent.click(
+      within(routeGroup).getByRole("radio", { name: "Full A Level" }),
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "Paper 3 option 1" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Paper 3 option 2" }));
+    expect(save).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Paper 4 option 1" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Paper 4 option 2" }));
+
+    await waitFor(() => expect(save).toBeEnabled());
+    fireEvent.click(save);
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledOnce());
+    expect(mutateAsync).toHaveBeenCalledWith({
+      data: {
+        subjectIds: [9, 19],
+        intendedExamSession: { year: 2027, series: "May/June" },
+        routeAssignments: [
+          { subjectId: 19, routeId: 19002, optionIds: [19, 20, 23, 24] },
         ],
       },
     });

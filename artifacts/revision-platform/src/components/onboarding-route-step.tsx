@@ -12,7 +12,7 @@ import {
   applicableOptionGroups,
   applicableOptionIds,
   initialRouteDraft,
-  routeDraftValidationError,
+  validateRouteDraft,
   type RouteCatalogueLike,
   type SubjectRouteDraft,
 } from "@/lib/route-selection";
@@ -99,7 +99,7 @@ export function OnboardingRouteStep({
               previousCatalogue?.syllabusVersionId ===
                 catalogue.syllabusVersionId &&
               previousDraft !== undefined &&
-              routeDraftValidationError(catalogue, previousDraft) === undefined;
+              validateRouteDraft(catalogue, previousDraft).error === undefined;
             return remainsValid ? previousDraft : initialRouteDraft(catalogue);
           }),
         );
@@ -180,7 +180,7 @@ export function OnboardingRouteStep({
         const catalogue = catalogues.find((c) => c.subjectId === subject.id);
         const draft = drafts.find((d) => d.subjectId === subject.id);
         if (!catalogue || !draft) return null;
-        const validation = routeDraftValidationError(catalogue, draft);
+        const validation = validateRouteDraft(catalogue, draft).error;
         return (
           <section
             key={subject.id}

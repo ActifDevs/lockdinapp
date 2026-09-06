@@ -6,6 +6,7 @@ import {
   initialRouteDraft,
   optionGroupValid,
   routeAssignmentsPayload,
+  validateRouteDraft,
   routeDraftValidationError,
   selectionModeForRoutes,
   toggleStudyOptionSelection,
@@ -277,6 +278,70 @@ describe("route selection helpers", () => {
     expect(optionGroupValid(group23, [30, 31])).toBe(true);
     expect(optionGroupValid(group23, [30, 31, 32])).toBe(true);
     expect(optionGroupValid(group23, [30])).toBe(false);
+  });
+
+  it("validates independent Geography 2/2 groups as one route draft", () => {
+    const geography: RouteCatalogueLike = {
+      subjectId: 9696,
+      syllabusVersionId: 34,
+      selectionMode: "auto",
+      routes: [
+        {
+          id: 36,
+          routeKey: "a_full",
+          displayLabel: "Complete A Level",
+          qualificationTarget: "a_level",
+        },
+      ],
+      optionGroups: [
+        {
+          id: 27,
+          displayLabel: "Paper 3",
+          applicableQualificationTarget: "a_level",
+          minSelections: 2,
+          maxSelections: 2,
+          options: [
+            { id: 19, displayLabel: "Paper 3 option 1" },
+            { id: 20, displayLabel: "Paper 3 option 2" },
+            { id: 21, displayLabel: "Paper 3 option 3" },
+          ],
+        },
+        {
+          id: 28,
+          displayLabel: "Paper 4",
+          applicableQualificationTarget: "a_level",
+          minSelections: 2,
+          maxSelections: 2,
+          options: [
+            { id: 23, displayLabel: "Paper 4 option 1" },
+            { id: 24, displayLabel: "Paper 4 option 2" },
+            { id: 25, displayLabel: "Paper 4 option 3" },
+          ],
+        },
+      ],
+    };
+
+    expect(
+      validateRouteDraft(geography, {
+        subjectId: 9696,
+        routeId: 36,
+        optionIds: [19, 20],
+      }).error,
+    ).toMatch(/Paper 4/);
+    expect(
+      validateRouteDraft(geography, {
+        subjectId: 9696,
+        routeId: 36,
+        optionIds: [19, 20, 23, 24],
+      }).error,
+    ).toBeUndefined();
+    expect(
+      validateRouteDraft(geography, {
+        subjectId: 9696,
+        routeId: 36,
+        optionIds: [19, 20, 21, 23, 24],
+      }).error,
+    ).toMatch(/Paper 3/);
   });
 
   it("supports deselect and per-group max cap", () => {

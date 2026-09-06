@@ -11,7 +11,7 @@ import {
   applicableOptionGroups,
   applicableOptionIds,
   initialRouteDraft,
-  routeDraftValidationError,
+  validateRouteDraft,
   type RouteCatalogueLike,
   type SubjectRouteDraft,
 } from "@/lib/route-selection";
@@ -107,7 +107,7 @@ export function MembershipAssessmentPanel({
   }
 
   const needsRemediation = membership.assessmentRouteId == null;
-  const validation = routeDraftValidationError(catalogue, draft);
+  const validation = validateRouteDraft(catalogue, draft).error;
   const selectedRoute = catalogue.routes.find((r) => r.id === draft.routeId);
 
   return (
