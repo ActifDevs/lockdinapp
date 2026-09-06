@@ -12,7 +12,7 @@
 
 - **B5D-F3R application SHA:** `eb79025ad37681dbef57d4b0d2f4120237c4a739`
 - **Current origin/main (pre-close):** `d976335fa4d1b3f18187135a4164c6de1627f616`
-- **B5D close commit:** `8d26901b5cf0a0e3e8b9e2c7e5e4f5a6b7c8d9e0f`
+- **B5D close commit:** `548e29edb28c0e18ea468d4d982226501461d755`
 - **Deployment descendant proof:** The three commits after B5D-F3R are documentation-only reports (141, 142, 143). Git diff `eb79025..HEAD` shows only added documentation files with 504 insertions, zero product-code changes.
 - **Working-tree boundary:** Clean before Report 144 creation (only `.playwright-mcp/` untracked, a build artifact directory, removed before freeze)
 
@@ -247,7 +247,7 @@ Based on Report 143 authoritative snapshot and Report 142 baseline:
 
 ## Documentation
 
-- **Report 144:** CREATED
+- **Report 144:** CREATED and corrected (metadata housekeeping)
 
 ## Commit / Push
 
@@ -297,7 +297,10 @@ Compliance / beta-invitation restrictions remain separate.
 
 ## Recommendation
 
-**OWNER REVIEW + FREEZE REPORT 144**
+B5D is formally CLOSED.
 
-B5D is formally CLOSED with accepted review items.
-Next step: B5E controlled new-seven visibility preflight.
+Next authorized phase:
+B5E controlled new-seven visibility PRE-FLIGHT.
+
+Do NOT enable visibility in this task.
+Compliance / beta-invitation restrictions remain separate.
