@@ -19,6 +19,7 @@ import {
   FileText,
   GraduationCap,
   Home,
+  LifeBuoy,
   LogOut,
   Menu,
   Moon,
@@ -36,7 +37,7 @@ interface NavItem {
   href: string;
   icon: React.ElementType;
   /** Soft icon accent — meaning, not decoration */
-  tone: "home" | "plan" | "subjects" | "papers" | "progress" | "calendar" | "settings";
+  tone: "home" | "plan" | "subjects" | "papers" | "progress" | "calendar" | "settings" | "help";
 }
 
 interface NavGroup {
@@ -74,6 +75,7 @@ const bottomMore: NavItem[] = [
   { title: "Past papers", href: "/past-papers", icon: FileText, tone: "papers" },
   { title: "Calendar", href: "/calendar", icon: CalendarDays, tone: "calendar" },
   { title: "Settings", href: "/settings", icon: Settings, tone: "settings" },
+  { title: "Help", href: "/settings?tab=help", icon: LifeBuoy, tone: "help" },
 ];
 
 function navToneClass(tone: NavItem["tone"]) {

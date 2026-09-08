@@ -236,6 +236,7 @@ describe("Settings navigation state", () => {
     ["/settings?tab=subjects", "Subjects"],
     ["/settings?tab=appearance", "Appearance"],
     ["/settings?tab=notifications", "Alerts"],
+    ["/settings?tab=help", "Help & Support"],
   ])("restores %s as the %s tab", (path, label) => {
     window.history.replaceState({}, "", path);
     const view = renderPage();

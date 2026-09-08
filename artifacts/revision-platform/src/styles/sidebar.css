@@ -158,7 +158,8 @@
   .sidebar-icon-papers,
   .sidebar-icon-progress,
   .sidebar-icon-calendar,
-  .sidebar-icon-settings {
+  .sidebar-icon-settings,
+  .sidebar-icon-help {
     color: hsl(var(--sidebar-foreground) / 0.48);
   }
 
@@ -168,7 +169,8 @@
   .dark .sidebar-icon-papers,
   .dark .sidebar-icon-progress,
   .dark .sidebar-icon-calendar,
-  .dark .sidebar-icon-settings {
+  .dark .sidebar-icon-settings,
+  .dark .sidebar-icon-help {
     color: hsl(var(--sidebar-foreground) / 0.52);
   }
 
