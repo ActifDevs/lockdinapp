@@ -274,6 +274,23 @@ describe("Study Plan create-task mutations", () => {
     expect(mutate).not.toHaveBeenCalled();
   });
 
+  it("renders and associates required-field errors after empty submission", async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /Add task/i }));
+    fireEvent.click(
+      within(screen.getByRole("dialog", { name: "Add new task" })).getByRole(
+        "button",
+        { name: "Add task" },
+      ),
+    );
+
+    const title = screen.getByLabelText("Task Title");
+    const titleError = await screen.findByText("Title is required");
+    expect(title).toHaveAttribute("aria-invalid", "true");
+    expect(title.getAttribute("aria-describedby")).toContain(titleError.id);
+    expect(titleError).toBeVisible();
+  });
+
   it("clears stale modal error when opening a fresh dialog", async () => {
     const { rerender, client } = renderPage();
     fireEvent.click(screen.getByRole("button", { name: /Add task/i }));

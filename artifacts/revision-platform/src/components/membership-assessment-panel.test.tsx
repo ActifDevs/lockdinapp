@@ -140,6 +140,35 @@ describe("MembershipAssessmentPanel hydration and applicability", () => {
     ).toBeEnabled();
   });
 
+  it("uses arrow keys with roving tab stops and wraps route selection", async () => {
+    render(
+      <MembershipAssessmentPanel membership={membership(14, [10])} />,
+    );
+
+    const first = await screen.findByRole("radio", {
+      name: "AS Level — Papers 1 + 2 this exam series",
+    });
+    const second = screen.getByRole("radio", {
+      name: "Complete A Level — carry forward AS, take Papers 3 + 4",
+    });
+    const last = screen.getByRole("radio", {
+      name: "Full A Level — Papers 1–4 this exam series",
+    });
+
+    first.focus();
+    fireEvent.keyDown(first, { key: "ArrowLeft" });
+    expect(last).toHaveFocus();
+    expect(last).toHaveAttribute("aria-checked", "true");
+    expect(last).toHaveAttribute("tabindex", "0");
+    expect(first).toHaveAttribute("tabindex", "-1");
+
+    fireEvent.keyDown(last, { key: "ArrowRight" });
+    expect(first).toHaveFocus();
+    fireEvent.keyDown(first, { key: "ArrowDown" });
+    expect(second).toHaveFocus();
+    expect(second).toHaveAttribute("aria-checked", "true");
+  });
+
   it("filters A-Level-only groups on AS and submits only the applicable option", async () => {
     api.mutate.mockImplementation(
       (

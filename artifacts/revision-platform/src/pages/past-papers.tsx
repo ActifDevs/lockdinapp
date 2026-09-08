@@ -14,7 +14,7 @@ import {
   getGetSubjectPerformanceQueryKey,
 } from "@workspace/api-client-react";
 import { PastPaperAttemptInputSession } from "@workspace/api-client-react";
-import { useState, lazy, Suspense, useEffect } from "react";
+import { useState, lazy, Suspense, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Card,
@@ -103,6 +103,7 @@ type PaperFormValues = z.infer<typeof paperSchema>;
 export default function PastPapers() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const addDialogTriggerRef = useRef<HTMLElement | null>(null);
   const queryClient = useQueryClient();
 
   const {
@@ -176,6 +177,15 @@ export default function PastPapers() {
       },
     },
   });
+
+  const openAddDialog = () => {
+    addDialogTriggerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    createAttempt.reset();
+    setIsAddDialogOpen(true);
+  };
 
   const deleteAttempt = useDeletePastPaperAttempt({
     mutation: {
@@ -380,10 +390,7 @@ export default function PastPapers() {
         subtitle="Log timed attempts to unlock trends, predicted grades, and sharper focus."
         action={
           <Button
-            onClick={() => {
-              createAttempt.reset();
-              setIsAddDialogOpen(true);
-            }}
+            onClick={openAddDialog}
             disabled={!canLogPaper}
           >
             <Plus className="h-4 w-4" strokeWidth={2} aria-hidden /> Log paper
@@ -472,7 +479,7 @@ export default function PastPapers() {
                   description="Log at least two past papers to unlock score trends and see which subjects are rising."
                   actionLabel="Log a paper"
                   onAction={
-                    canLogPaper ? () => setIsAddDialogOpen(true) : undefined
+                    canLogPaper ? openAddDialog : undefined
                   }
                   variant="mint"
                   className="py-10"
@@ -522,7 +529,7 @@ export default function PastPapers() {
                   description="Every timed paper you log sharpens predicted grades and shows where to focus next."
                   actionLabel="Log your first paper"
                   onAction={
-                    canLogPaper ? () => setIsAddDialogOpen(true) : undefined
+                    canLogPaper ? openAddDialog : undefined
                   }
                   variant="mint"
                 />
@@ -687,6 +694,7 @@ export default function PastPapers() {
 
       <ResponsiveFormPanel
         open={isAddDialogOpen}
+        returnFocusRef={addDialogTriggerRef}
         onOpenChange={(open) => {
           setIsAddDialogOpen(open);
           if (!open) createAttempt.reset();

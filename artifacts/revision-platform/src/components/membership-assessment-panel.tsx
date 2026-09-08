@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import {
   listSubjectAssessmentRoutes,
   useAssignCurrentUserSubjectAssessmentRoute,
@@ -36,6 +36,7 @@ export function MembershipAssessmentPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hydrationWarning, setHydrationWarning] = useState<string | null>(null);
+  const routeRadioRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const assign = useAssignCurrentUserSubjectAssessmentRoute();
 
   useEffect(() => {
@@ -109,6 +110,33 @@ export function MembershipAssessmentPanel({
   const needsRemediation = membership.assessmentRouteId == null;
   const validation = validateRouteDraft(catalogue, draft).error;
   const selectedRoute = catalogue.routes.find((r) => r.id === draft.routeId);
+  const selectRoute = (routeId: number) => {
+    setDraft({
+      subjectId: membership.subject.id,
+      routeId,
+      optionIds: applicableOptionIds(catalogue, routeId, draft.optionIds),
+    });
+  };
+  const handleRouteKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    routeIndex: number,
+  ) => {
+    const direction =
+      event.key === "ArrowDown" || event.key === "ArrowRight"
+        ? 1
+        : event.key === "ArrowUp" || event.key === "ArrowLeft"
+          ? -1
+          : 0;
+    if (!direction) return;
+    event.preventDefault();
+    const nextIndex =
+      (routeIndex + direction + catalogue.routes.length) %
+      catalogue.routes.length;
+    const nextRoute = catalogue.routes[nextIndex];
+    if (!nextRoute) return;
+    selectRoute(nextRoute.id);
+    routeRadioRefs.current[nextIndex]?.focus();
+  };
 
   return (
     <div className="mt-3 space-y-3 rounded-lg border bg-background/60 p-3">
@@ -144,7 +172,7 @@ export function MembershipAssessmentPanel({
           role="radiogroup"
           aria-label={`How are you taking ${membership.subject.name}?`}
         >
-          {catalogue.routes.map((route) => {
+          {catalogue.routes.map((route, routeIndex) => {
             const selected = draft.routeId === route.id;
             return (
               <button
@@ -152,23 +180,18 @@ export function MembershipAssessmentPanel({
                 type="button"
                 role="radio"
                 aria-checked={selected}
+                tabIndex={selected || (draft.routeId == null && routeIndex === 0) ? 0 : -1}
+                ref={(node) => {
+                  routeRadioRefs.current[routeIndex] = node;
+                }}
                 className={cn(
-                  "rounded-md border px-3 py-2 text-left text-sm",
+                  "rounded-md border px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   selected
                     ? "border-primary bg-primary/5"
                     : "border-border hover:bg-muted/40",
                 )}
-                onClick={() =>
-                  setDraft({
-                    subjectId: membership.subject.id,
-                    routeId: route.id,
-                    optionIds: applicableOptionIds(
-                      catalogue,
-                      route.id,
-                      draft.optionIds,
-                    ),
-                  })
-                }
+                onClick={() => selectRoute(route.id)}
+                onKeyDown={(event) => handleRouteKeyDown(event, routeIndex)}
               >
                 {route.displayLabel}
               </button>

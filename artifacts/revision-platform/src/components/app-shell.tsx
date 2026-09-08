@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { BrandName } from "@/components/brand-name";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTheme } from "@/components/theme-provider";
 import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
 import {
@@ -336,6 +336,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, logout, user, firstName } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
   const [location] = useLocation();
   const { collapsed, toggleCollapsed } = useSidebarCollapsed();
 
@@ -430,6 +431,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <nav
           className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
           aria-label="Mobile primary"
+          onKeyDown={(event) => {
+            if (event.key !== "Escape" || !moreOpen) return;
+            event.preventDefault();
+            setMoreOpen(false);
+            moreButtonRef.current?.focus();
+          }}
         >
           <div className="mx-auto grid max-w-lg grid-cols-5">
             {bottomPrimary.map((item) => {
@@ -459,6 +466,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               );
             })}
             <button
+              ref={moreButtonRef}
               type="button"
               onClick={() => setMoreOpen((open) => !open)}
               className={cn(

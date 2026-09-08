@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   useListTasks,
   getListTasksQueryKey,
@@ -76,6 +76,7 @@ export default function StudyPlan() {
     resolveQueryParam(searchParams, "view", TASK_VIEWS, "today");
   const shouldNavigateToView = useIdempotentControlledNavigation(activeTab);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const addDialogTriggerRef = useRef<HTMLElement | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
@@ -151,6 +152,15 @@ export default function StudyPlan() {
       },
     },
   });
+
+  const openAddDialog = () => {
+    addDialogTriggerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    createTask.reset();
+    setIsAddDialogOpen(true);
+  };
 
   const updateTask = useUpdateTask({
     mutation: {
@@ -255,10 +265,7 @@ export default function StudyPlan() {
         subtitle="Build today's mission, protect your streak, and keep revision finishable."
         action={
           <Button
-            onClick={() => {
-              createTask.reset();
-              setIsAddDialogOpen(true);
-            }}
+            onClick={openAddDialog}
             disabled={!canCreateTask}
           >
             <Plus className="h-4 w-4" strokeWidth={2} aria-hidden /> Add task
@@ -374,10 +381,7 @@ export default function StudyPlan() {
                 }
                 onAction={
                   activeTab !== "completed" && canCreateTask
-                    ? () => {
-                        createTask.reset();
-                        setIsAddDialogOpen(true);
-                      }
+                    ? openAddDialog
                     : undefined
                 }
                 variant="mint"
@@ -405,6 +409,7 @@ export default function StudyPlan() {
 
       <ResponsiveFormPanel
         open={isAddDialogOpen}
+        returnFocusRef={addDialogTriggerRef}
         onOpenChange={(open) => {
           setIsAddDialogOpen(open);
           if (!open) createTask.reset();
