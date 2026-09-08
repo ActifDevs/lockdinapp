@@ -32,8 +32,6 @@ import {
   BookOpen,
   Calendar as CalendarIcon,
   Check,
-  HelpCircle,
-  ExternalLink,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
@@ -70,6 +68,7 @@ import {
   updateQueryParams,
 } from "@/lib/navigation-query-state";
 import { useIdempotentControlledNavigation } from "@/hooks/use-idempotent-controlled-navigation";
+import { HelpSupportCard } from "@/components/help-support-card";
 
 const SETTINGS_TABS = [
   "account",
@@ -1164,67 +1163,9 @@ export default function Settings() {
         </TabsContent>
 
         <TabsContent value="help" className="mt-6 space-y-6">
-          <SettingsSectionCard
-            icon={HelpCircle}
-            title="Help & Support"
-            description="Get help, report bugs, give feedback, or request account deletion."
-            tint="cream"
-          >
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                As a beta participant, you can use our support form to:
-              </p>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" aria-hidden />
-                  <span>Ask for help using Lockdin</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" aria-hidden />
-                  <span>Report a bug or issue</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" aria-hidden />
-                  <span>Give feedback or suggestions</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" aria-hidden />
-                  <span>Request privacy/account deletion</span>
-                </li>
-              </ul>
-              {import.meta.env.VITE_SUPPORT_FORM_URL ? (
-                <a
-                  href={import.meta.env.VITE_SUPPORT_FORM_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex"
-                >
-                  <Button className="w-full sm:w-auto">
-                    <span className="flex items-center gap-2">
-                      Open support form
-                      <ExternalLink className="h-4 w-4" aria-hidden />
-                    </span>
-                  </Button>
-                </a>
-              ) : (
-                <div className="rounded-lg border border-border/50 bg-muted/30 p-4">
-                  <p className="text-sm text-muted-foreground">
-                    The beta support form is not yet configured. Contact privacy@lockdin.app for assistance.
-                  </p>
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                For privacy or account deletion requests, you can also email{" "}
-                <a
-                  href="mailto:privacy@lockdin.app"
-                  className="text-primary hover:underline"
-                >
-                  privacy@lockdin.app
-                </a>
-                .
-              </p>
-            </div>
-          </SettingsSectionCard>
+          <HelpSupportCard
+            supportFormUrl={import.meta.env.VITE_SUPPORT_FORM_URL}
+          />
         </TabsContent>
       </Tabs>
     </div>

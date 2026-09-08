@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -38,7 +44,11 @@ afterEach(cleanup);
 describe("AppShell mobile More disclosure", () => {
   it("opens with Enter and closes with Escape while returning focus", async () => {
     const user = userEvent.setup();
-    render(<AppShell><p>Content</p></AppShell>);
+    render(
+      <AppShell>
+        <p>Content</p>
+      </AppShell>,
+    );
     const more = screen.getByRole("button", { name: "More navigation" });
     more.focus();
     await user.keyboard("{Enter}");
@@ -47,6 +57,10 @@ describe("AppShell mobile More disclosure", () => {
     const settings = within(
       screen.getByRole("navigation", { name: "Mobile primary" }),
     ).getByRole("link", { name: "Settings" });
+    const help = within(
+      screen.getByRole("navigation", { name: "Mobile primary" }),
+    ).getByRole("link", { name: "Help" });
+    expect(help).toHaveAttribute("href", "/settings?tab=help");
     settings.focus();
     fireEvent.keyDown(settings, { key: "Escape" });
     expect(more).toHaveAttribute("aria-expanded", "false");

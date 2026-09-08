@@ -4,7 +4,8 @@
 **Title:** Phase 7 Pre-Beta Implementation Slice 1  
 **Date:** 2026-09-08  
 **Report 159 Freeze SHA:** b6a32c2df3cfb91d30854e5faa617c95e59b00f8  
-**Implementation SHA:** 2f6861f
+**Product Implementation SHA:** 2f6861f58562cb43e28e50d2c5f660b4055b4a93
+**Report/Documentation Descendant:** e98ec27ce364bfafea774047b092cd6ae269e73c
 
 ---
 
@@ -28,10 +29,10 @@ This report documents the implementation of Phase 7 Pre-Beta Implementation Slic
 - HEAD = origin/main = `b6a32c2df3cfb91d30854e5faa617c95e59b00f8`
 - Working tree: CLEAN
 
-**Post-implementation state:**
-- HEAD: *[TO BE FILLED ON COMMIT]*
-- origin/main: *[TO BE FILLED ON COMMIT]*
-- Working tree: CLEAN
+**Post-implementation provenance (reconciled in Report 161):**
+- Product implementation commit: `2f6861f58562cb43e28e50d2c5f660b4055b4a93`
+- Later Report 160 documentation descendant: `e98ec27ce364bfafea774047b092cd6ae269e73c`
+- Report 161 pre-follow-up baseline: HEAD = origin/main = `e98ec27ce364bfafea774047b092cd6ae269e73c`; working tree CLEAN
 
 ---
 
@@ -381,20 +382,20 @@ For each function:
 - Build completed successfully
 - Chunk size warnings noted (pre-existing, not introduced by this slice)
 
-**Full Frontend Suite:**
-- Status: PASS (with noted flake)
+**Initial Full Frontend Suite:**
+- Status: 329/330; one failure recorded
 - 329/330 tests passing
-- 1 pre-existing flaky test in auth-provider.test.tsx (unrelated to this slice)
+- Failing test: `auth-provider.test.tsx` — "stale profile from User A cannot replace User B"
 
 **git diff --check:**
 - Status: PASS
 - No whitespace issues
 
-**Test Flake Note:**
-- 1 test in `auth-provider.test.tsx` failed: "stale profile from User A cannot replace User B"
-- This is a pre-existing flaky test unrelated to this implementation
-- Does not affect privacy corrections or Help & Support implementation
-- Documented for accuracy but not blocking this slice
+**Test-evidence correction (Report 161):**
+- The retained historical evidence proves the initial 329/330 result above.
+- No retained repository evidence proves the later chat claim of a 330/330 serialized rerun, so this report does not claim that rerun as verified.
+- Report 161 records a new, separate current run: 50/50 files and 334/334 tests PASS.
+- The current run includes the previously failing auth-provider test and new direct Help & Support coverage.
 
 ---
 
