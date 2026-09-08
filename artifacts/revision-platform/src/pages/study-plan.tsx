@@ -56,9 +56,16 @@ import { useIdempotentControlledNavigation } from "@/hooks/use-idempotent-contro
 
 const TASK_VIEWS = ["today", "upcoming", "completed", "all"] as const;
 
-const taskSchema = z.object({
+const subjectIdSchema = z.preprocess(
+  (value) => (value === "" || value == null ? 0 : value),
+  z.coerce
+    .number({ invalid_type_error: "Select a valid subject" })
+    .min(1, "Subject is required"),
+);
+
+export const taskSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  subjectId: z.coerce.number().min(1, "Subject is required"),
+  subjectId: subjectIdSchema,
   deadline: z.string().optional().or(z.literal("")),
   priority: z.enum(["low", "medium", "high"]),
   estimatedMinutes: z.coerce
@@ -264,10 +271,7 @@ export default function StudyPlan() {
         title="Study plan"
         subtitle="Build today's mission, protect your streak, and keep revision finishable."
         action={
-          <Button
-            onClick={openAddDialog}
-            disabled={!canCreateTask}
-          >
+          <Button onClick={openAddDialog} disabled={!canCreateTask}>
             <Plus className="h-4 w-4" strokeWidth={2} aria-hidden /> Add task
           </Button>
         }

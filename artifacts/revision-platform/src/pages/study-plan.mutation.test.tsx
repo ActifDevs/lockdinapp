@@ -21,13 +21,8 @@ const api = vi.hoisted(() => ({
 
 vi.mock("wouter", async (importOriginal) => ({
   ...(await importOriginal<typeof import("wouter")>()),
-  Link: ({
-    children,
-    href,
-  }: {
-    children: ReactNode;
-    href: string;
-  }) => createElement("a", { href }, children),
+  Link: ({ children, href }: { children: ReactNode; href: string }) =>
+    createElement("a", { href }, children),
 }));
 
 vi.mock("@/components/responsive-form-panel", () => ({
@@ -46,7 +41,16 @@ vi.mock("@/components/responsive-form-panel", () => ({
 }));
 
 vi.mock("@/components/ui/select", async () => {
-  const { createElement: create, Fragment: Frag } = await import("react");
+  const {
+    createContext,
+    createElement: create,
+    useContext,
+  } = await import("react");
+  const SelectContext = createContext<{
+    disabled?: boolean;
+    onValueChange?: (value: string) => void;
+    value?: string;
+  }>({});
   return {
     Select: ({
       children,
@@ -60,21 +64,40 @@ vi.mock("@/components/ui/select", async () => {
       defaultValue?: string;
     }) =>
       create(
-        "select",
-        {
-          disabled,
-          defaultValue: defaultValue ?? "",
-          onChange: (event: React.ChangeEvent<HTMLSelectElement>) =>
-            onValueChange?.(event.target.value),
-        },
+        SelectContext.Provider,
+        { value: { disabled, onValueChange, value: defaultValue ?? "" } },
         children,
       ),
-    SelectContent: ({ children }: { children: ReactNode }) =>
-      create(Frag, null, children),
+    SelectContent: ({ children }: { children: ReactNode }) => {
+      const select = useContext(SelectContext);
+      return create(
+        "select",
+        {
+          disabled: select.disabled,
+          value: select.value,
+          onChange: (event: React.ChangeEvent<HTMLSelectElement>) =>
+            select.onValueChange?.(event.target.value),
+        },
+        children,
+      );
+    },
     SelectItem: ({ children, value }: { children: ReactNode; value: string }) =>
       create("option", { value }, children),
-    SelectTrigger: () => null,
-    SelectValue: () => null,
+    SelectTrigger: ({ children, ...props }: { children?: ReactNode }) => {
+      const select = useContext(SelectContext);
+      return create(
+        "button",
+        {
+          type: "button",
+          role: "combobox",
+          disabled: select.disabled,
+          ...props,
+        },
+        children,
+      );
+    },
+    SelectValue: ({ placeholder }: { placeholder?: string }) =>
+      placeholder ?? null,
   };
 });
 
@@ -90,7 +113,7 @@ vi.mock("@workspace/api-client-react", () => ({
   useDeleteTask: api.remove,
 }));
 
-import StudyPlan from "./study-plan";
+import StudyPlan, { taskSchema } from "./study-plan";
 
 const membership = {
   subject: { id: 2, name: "Physics", code: "9702", color: "#2563eb" },
@@ -145,10 +168,12 @@ beforeEach(() => {
   };
   api.tasks.mockReturnValue(ok([]));
   api.memberships.mockReturnValue(ok([membership]));
-  api.create.mockImplementation((opts?: { mutation?: typeof createMutation }) => {
-    createMutation = opts?.mutation ?? {};
-    return createState;
-  });
+  api.create.mockImplementation(
+    (opts?: { mutation?: typeof createMutation }) => {
+      createMutation = opts?.mutation ?? {};
+      return createState;
+    },
+  );
   api.update.mockReturnValue({
     mutate: vi.fn(),
     isPending: false,
@@ -171,7 +196,9 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-function renderPage(client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
+function renderPage(
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   const view = render(
     <QueryClientProvider client={client}>
       <StudyPlan />
@@ -186,9 +213,12 @@ async function openAndFill() {
   fireEvent.change(screen.getByLabelText("Task Title"), {
     target: { value: "Review waves" },
   });
-  fireEvent.change(screen.getByRole("option", { name: "Physics" }).closest("select")!, {
-    target: { value: "2" },
-  });
+  fireEvent.change(
+    screen.getByRole("option", { name: "Physics" }).closest("select")!,
+    {
+      target: { value: "2" },
+    },
+  );
   return dialog;
 }
 
@@ -229,7 +259,9 @@ describe("Study Plan create-task mutations", () => {
   });
 
   it("retries after failure and invalidates task aggregates on success", async () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     const spy = vi.spyOn(client, "invalidateQueries");
     const { rerender } = renderPage(client);
     const dialog = await openAndFill();
@@ -285,10 +317,63 @@ describe("Study Plan create-task mutations", () => {
     );
 
     const title = screen.getByLabelText("Task Title");
+    const subject = screen.getByLabelText("Subject");
     const titleError = await screen.findByText("Title is required");
+    const subjectError = await screen.findByText("Subject is required");
     expect(title).toHaveAttribute("aria-invalid", "true");
     expect(title.getAttribute("aria-describedby")).toContain(titleError.id);
     expect(titleError).toBeVisible();
+    expect(subject).toHaveAttribute("aria-invalid", "true");
+    expect(subject.getAttribute("aria-describedby")).toContain(subjectError.id);
+    expect(subjectError).toBeVisible();
+    expect(title).toHaveFocus();
+    expect(mutate).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText(/expected number|nan|invalid_type/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each(["", undefined, null])(
+    "uses required copy for an empty subject value %#",
+    (subjectId) => {
+      const result = taskSchema.safeParse({
+        title: "Review waves",
+        subjectId,
+        priority: "medium",
+        deadline: "",
+        estimatedMinutes: "",
+      });
+      expect(result.success).toBe(false);
+      if (result.success) return;
+      expect(result.error.issues[0]?.message).toBe("Subject is required");
+    },
+  );
+
+  it("uses safe copy for a non-numeric subject and accepts a valid subject ID", () => {
+    const invalid = taskSchema.safeParse({
+      title: "Review waves",
+      subjectId: "not-a-subject",
+      priority: "medium",
+      deadline: "",
+      estimatedMinutes: "",
+    });
+    expect(invalid.success).toBe(false);
+    if (!invalid.success) {
+      expect(invalid.error.issues[0]?.message).toBe("Select a valid subject");
+      expect(invalid.error.issues[0]?.message).not.toMatch(
+        /number|nan|invalid_type/i,
+      );
+    }
+
+    expect(
+      taskSchema.safeParse({
+        title: "Review waves",
+        subjectId: "2",
+        priority: "medium",
+        deadline: "",
+        estimatedMinutes: "",
+      }).success,
+    ).toBe(true);
   });
 
   it("clears stale modal error when opening a fresh dialog", async () => {
