@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useListTasks,
   getListTasksQueryKey,
@@ -12,6 +12,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { CalendarCreateMenu } from "@/components/calendar/calendar-create-menu";
+import {
+  EMPTY_CALENDAR_FILTER,
+  filterCalendarExams,
+  filterCalendarTasks,
+} from "@/components/calendar/calendar-filter";
 import { CalendarMobileStrip } from "@/components/calendar/calendar-mobile-strip";
 import { CalendarRail } from "@/components/calendar/calendar-rail";
 import { MonthGrid } from "@/components/calendar/month-grid";
@@ -43,6 +48,7 @@ const CALENDAR_SUBTITLE =
 
 export default function CalendarPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [calendarFilter, setCalendarFilter] = useState(EMPTY_CALENDAR_FILTER);
   const today = useMemo(() => new Date(), []);
   const rawDateValues = searchParams.getAll("date");
   const rawMonthValues = searchParams.getAll("month");
@@ -131,6 +137,22 @@ export default function CalendarPage() {
   const isPending = tasksPending || examsPending;
   const isError = tasksError || examsError;
   const loadError = tasksLoadError ?? examsLoadError;
+  const filterSubjects = useMemo(
+    () =>
+      (memberships ?? []).map((membership) => ({
+        id: membership.subject.id,
+        name: membership.subject.name,
+      })),
+    [memberships],
+  );
+  const visibleTasks = useMemo(
+    () => filterCalendarTasks(tasks, calendarFilter),
+    [tasks, calendarFilter],
+  );
+  const visibleExams = useMemo(
+    () => filterCalendarExams(exams, calendarFilter),
+    [exams, calendarFilter],
+  );
 
   const refetchCalendar = () => {
     void refetchTasks();
@@ -139,24 +161,22 @@ export default function CalendarPage() {
 
   const tasksByDate = useMemo(() => {
     const map = new Map<string, Task[]>();
-    if (!tasks) return map;
-    tasks.forEach((t) => {
+    visibleTasks.forEach((t) => {
       if (!t.deadline) return;
       const key = t.deadline.split("T")[0];
       map.set(key, [...(map.get(key) ?? []), t]);
     });
     return map;
-  }, [tasks]);
+  }, [visibleTasks]);
 
   const examsByDate = useMemo(() => {
     const map = new Map<string, ExamDate[]>();
-    if (!exams) return map;
-    exams.forEach((e) => {
+    visibleExams.forEach((e) => {
       const key = e.date.split("T")[0];
       map.set(key, [...(map.get(key) ?? []), e]);
     });
     return map;
-  }, [exams]);
+  }, [visibleExams]);
 
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(viewMonth);
@@ -171,39 +191,37 @@ export default function CalendarPage() {
   const selExams = examsByDate.get(selKey) ?? [];
 
   const upcomingExams = useMemo(() => {
-    if (!exams) return [];
     const todayDate = new Date();
-    return exams
+    return visibleExams
       .map((e) => ({ ...e, _date: parseISO(e.date) }))
       .filter((e) => {
         const diff = differenceInCalendarDays(e._date, todayDate);
         return diff >= 0 && diff <= 60;
       })
       .sort((a, b) => differenceInCalendarDays(a._date, b._date));
-  }, [exams]);
+  }, [visibleExams]);
 
   const monthTaskCount = useMemo(() => {
-    if (!tasks) return 0;
-    return tasks.filter((t) => {
+    return visibleTasks.filter((t) => {
       if (!t.deadline) return false;
       const d = parseISO(t.deadline);
       return isSameMonth(d, viewMonth);
     }).length;
-  }, [tasks, viewMonth]);
+  }, [visibleTasks, viewMonth]);
 
   const monthExamCount = useMemo(() => {
-    if (!exams) return 0;
-    return exams.filter((e) => isSameMonth(parseISO(e.date), viewMonth)).length;
-  }, [exams, viewMonth]);
+    return visibleExams.filter((e) =>
+      isSameMonth(parseISO(e.date), viewMonth),
+    ).length;
+  }, [visibleExams, viewMonth]);
 
   const plannedMinutes = useMemo(() => {
-    if (!tasks) return 0;
-    return tasks.reduce((sum, task) => {
+    return visibleTasks.reduce((sum, task) => {
       if (!task.deadline || !task.estimatedMinutes) return sum;
       if (!isSameMonth(parseISO(task.deadline), viewMonth)) return sum;
       return sum + task.estimatedMinutes;
     }, 0);
-  }, [tasks, viewMonth]);
+  }, [visibleTasks, viewMonth]);
 
   const calendarWeeks = useMemo(() => {
     const weeks: Date[][] = [];
@@ -292,6 +310,9 @@ export default function CalendarPage() {
           monthDays={monthDays}
           tasksByDate={tasksByDate}
           examsByDate={examsByDate}
+          filter={calendarFilter}
+          subjects={filterSubjects}
+          onFilterChange={setCalendarFilter}
           onWriteCalendarState={writeCalendarState}
         />
 
@@ -302,6 +323,9 @@ export default function CalendarPage() {
           calendarWeeks={calendarWeeks}
           tasksByDate={tasksByDate}
           examsByDate={examsByDate}
+          filter={calendarFilter}
+          subjects={filterSubjects}
+          onFilterChange={setCalendarFilter}
           onWriteCalendarState={writeCalendarState}
         />
 

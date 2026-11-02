@@ -1,17 +1,27 @@
 import { format, addMonths, subMonths } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CalendarFilterPopover } from "./calendar-filter-popover";
+import type { CalendarFilter, CalendarFilterSubject } from "./calendar-filter";
 import type { WriteCalendarState } from "./types";
 
 export function CalendarToolbar({
   viewMonth,
   selectedDate,
   today,
+  filter,
+  subjects,
+  filterIdPrefix,
+  onFilterChange,
   onWriteCalendarState,
 }: {
   viewMonth: Date;
   selectedDate: Date;
   today: Date;
+  filter: CalendarFilter;
+  subjects: CalendarFilterSubject[];
+  filterIdPrefix: string;
+  onFilterChange: (filter: CalendarFilter) => void;
   onWriteCalendarState: WriteCalendarState;
 }) {
   const monthLabel = format(viewMonth, "MMMM yyyy");
@@ -54,6 +64,12 @@ export function CalendarToolbar({
       <h2 className="min-w-0 flex-1 truncate text-center text-base font-semibold tracking-tight sm:text-lg">
         {monthLabel}
       </h2>
+      <CalendarFilterPopover
+        idPrefix={filterIdPrefix}
+        filter={filter}
+        subjects={subjects}
+        onFilterChange={onFilterChange}
+      />
     </div>
   );
 }

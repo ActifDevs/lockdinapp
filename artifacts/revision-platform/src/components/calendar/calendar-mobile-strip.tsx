@@ -2,6 +2,7 @@ import { format, isSameDay, isToday } from "date-fns";
 import type { ExamDate, Task } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 import { CalendarToolbar } from "./calendar-toolbar";
+import type { CalendarFilter, CalendarFilterSubject } from "./calendar-filter";
 import type { WriteCalendarState } from "./types";
 
 export function CalendarMobileStrip({
@@ -11,6 +12,9 @@ export function CalendarMobileStrip({
   monthDays,
   tasksByDate,
   examsByDate,
+  filter,
+  subjects,
+  onFilterChange,
   onWriteCalendarState,
 }: {
   viewMonth: Date;
@@ -19,6 +23,9 @@ export function CalendarMobileStrip({
   monthDays: Date[];
   tasksByDate: Map<string, Task[]>;
   examsByDate: Map<string, ExamDate[]>;
+  filter: CalendarFilter;
+  subjects: CalendarFilterSubject[];
+  onFilterChange: (filter: CalendarFilter) => void;
   onWriteCalendarState: WriteCalendarState;
 }) {
   return (
@@ -28,6 +35,10 @@ export function CalendarMobileStrip({
           viewMonth={viewMonth}
           selectedDate={selectedDate}
           today={today}
+          filter={filter}
+          subjects={subjects}
+          filterIdPrefix="calendar-filter-mobile"
+          onFilterChange={onFilterChange}
           onWriteCalendarState={onWriteCalendarState}
         />
         <div className="scroll-snap-x flex gap-2 overflow-x-auto p-3 no-scrollbar">

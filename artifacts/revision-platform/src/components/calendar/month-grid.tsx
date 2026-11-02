@@ -3,6 +3,7 @@ import type { ExamDate, Task } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 import { CalendarDayCell } from "./calendar-day-cell";
 import { CalendarToolbar } from "./calendar-toolbar";
+import type { CalendarFilter, CalendarFilterSubject } from "./calendar-filter";
 import type { WriteCalendarState } from "./types";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -14,6 +15,9 @@ export function MonthGrid({
   calendarWeeks,
   tasksByDate,
   examsByDate,
+  filter,
+  subjects,
+  onFilterChange,
   onWriteCalendarState,
 }: {
   viewMonth: Date;
@@ -22,6 +26,9 @@ export function MonthGrid({
   calendarWeeks: Date[][];
   tasksByDate: Map<string, Task[]>;
   examsByDate: Map<string, ExamDate[]>;
+  filter: CalendarFilter;
+  subjects: CalendarFilterSubject[];
+  onFilterChange: (filter: CalendarFilter) => void;
   onWriteCalendarState: WriteCalendarState;
 }) {
   return (
@@ -30,6 +37,10 @@ export function MonthGrid({
         viewMonth={viewMonth}
         selectedDate={selectedDate}
         today={today}
+        filter={filter}
+        subjects={subjects}
+        filterIdPrefix="calendar-filter-desktop"
+        onFilterChange={onFilterChange}
         onWriteCalendarState={onWriteCalendarState}
       />
 
