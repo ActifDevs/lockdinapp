@@ -14,8 +14,6 @@ export function MonthGrid({
   calendarWeeks,
   tasksByDate,
   examsByDate,
-  monthTaskCount,
-  monthExamCount,
   onWriteCalendarState,
 }: {
   viewMonth: Date;
@@ -24,19 +22,14 @@ export function MonthGrid({
   calendarWeeks: Date[][];
   tasksByDate: Map<string, Task[]>;
   examsByDate: Map<string, ExamDate[]>;
-  monthTaskCount: number;
-  monthExamCount: number;
   onWriteCalendarState: WriteCalendarState;
 }) {
   return (
-    <div className="hidden overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[var(--elev-2)] md:block">
+    <div className="hidden overflow-hidden rounded-[var(--surface-radius)] border border-border/60 bg-card shadow-[var(--elev-2)] md:block">
       <CalendarToolbar
-        variant="desktop"
         viewMonth={viewMonth}
         selectedDate={selectedDate}
         today={today}
-        monthTaskCount={monthTaskCount}
-        monthExamCount={monthExamCount}
         onWriteCalendarState={onWriteCalendarState}
       />
 
@@ -56,7 +49,7 @@ export function MonthGrid({
       </div>
 
       <div
-        className="grid grid-cols-1 auto-rows-[minmax(90px,1fr)]"
+        className="grid grid-cols-1 auto-rows-[minmax(104px,1fr)]"
         role="grid"
         aria-label={format(viewMonth, "MMMM yyyy")}
       >

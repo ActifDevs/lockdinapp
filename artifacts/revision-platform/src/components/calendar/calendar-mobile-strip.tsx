@@ -11,8 +11,6 @@ export function CalendarMobileStrip({
   monthDays,
   tasksByDate,
   examsByDate,
-  monthTaskCount,
-  monthExamCount,
   onWriteCalendarState,
 }: {
   viewMonth: Date;
@@ -21,20 +19,15 @@ export function CalendarMobileStrip({
   monthDays: Date[];
   tasksByDate: Map<string, Task[]>;
   examsByDate: Map<string, ExamDate[]>;
-  monthTaskCount: number;
-  monthExamCount: number;
   onWriteCalendarState: WriteCalendarState;
 }) {
   return (
     <div className="space-y-4 md:hidden">
-      <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[var(--elev-2)]">
+      <div className="overflow-hidden rounded-[var(--surface-radius)] border border-border/60 bg-card shadow-[var(--elev-2)]">
         <CalendarToolbar
-          variant="mobile"
           viewMonth={viewMonth}
           selectedDate={selectedDate}
           today={today}
-          monthTaskCount={monthTaskCount}
-          monthExamCount={monthExamCount}
           onWriteCalendarState={onWriteCalendarState}
         />
         <div className="scroll-snap-x flex gap-2 overflow-x-auto p-3 no-scrollbar">
@@ -45,6 +38,7 @@ export function CalendarMobileStrip({
             const eventCount = dayTasks.length + dayExams.length;
             const selected = isSameDay(day, selectedDate);
             const todayDay = isToday(day);
+            const hasExam = dayExams.length > 0;
             return (
               <button
                 key={key}
@@ -58,6 +52,7 @@ export function CalendarMobileStrip({
                   selected
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border/60 bg-card hover:bg-muted/40",
+                  hasExam && !selected && "border-[hsl(var(--semantic-critical)/0.35)]",
                 )}
               >
                 <span className="text-[10px] font-medium uppercase text-muted-foreground">
@@ -73,7 +68,12 @@ export function CalendarMobileStrip({
                 </span>
                 {eventCount > 0 && (
                   <span
-                    className="h-1.5 w-1.5 rounded-full bg-primary"
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      hasExam
+                        ? "bg-[hsl(var(--semantic-critical))]"
+                        : "bg-primary",
+                    )}
                     aria-hidden
                   />
                 )}

@@ -10,9 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { CalendarMobileStrip } from "@/components/calendar/calendar-mobile-strip";
+import { CalendarRail } from "@/components/calendar/calendar-rail";
 import { MonthGrid } from "@/components/calendar/month-grid";
-import { TodayPanel } from "@/components/calendar/today-panel";
-import { UpcomingExamStrip } from "@/components/calendar/upcoming-exam-strip";
 import { getQueryErrorMessage } from "@/lib/query-error-message";
 import {
   format,
@@ -34,6 +33,9 @@ import {
   parseLocalCalendarMonth,
   updateQueryParams,
 } from "@/lib/navigation-query-state";
+
+const CALENDAR_SUBTITLE =
+  "Your study schedule, deadlines and exam countdowns - all in one place.";
 
 export default function CalendarPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -180,6 +182,15 @@ export default function CalendarPage() {
     return exams.filter((e) => isSameMonth(parseISO(e.date), viewMonth)).length;
   }, [exams, viewMonth]);
 
+  const plannedMinutes = useMemo(() => {
+    if (!tasks) return 0;
+    return tasks.reduce((sum, task) => {
+      if (!task.deadline || !task.estimatedMinutes) return sum;
+      if (!isSameMonth(parseISO(task.deadline), viewMonth)) return sum;
+      return sum + task.estimatedMinutes;
+    }, 0);
+  }, [tasks, viewMonth]);
+
   const calendarWeeks = useMemo(() => {
     const weeks: Date[][] = [];
     for (let i = 0; i < calendarDays.length; i += 7) {
@@ -203,8 +214,8 @@ export default function CalendarPage() {
     return (
       <div className="app-page animate-pulse">
         <div className="dash-skeleton h-10 w-48 rounded-xl" />
-        <div className="dash-skeleton h-24 rounded-[var(--surface-radius)]" />
         <div className="dash-skeleton h-[28rem] rounded-[var(--surface-radius)]" />
+        <div className="dash-skeleton h-64 rounded-[var(--surface-radius)]" />
       </div>
     );
   }
@@ -212,10 +223,7 @@ export default function CalendarPage() {
   if (isError) {
     return (
       <div className="app-page">
-        <PageHeader
-          title="Calendar"
-          subtitle="Revision deadlines and exam countdowns in one calm view."
-        />
+        <PageHeader title="Calendar" subtitle={CALENDAR_SUBTITLE} />
         <div className="dash-panel flex min-h-[40vh] flex-col items-center justify-center gap-4">
           <h2 className="text-2xl font-bold tracking-tight">
             Could not load calendar
@@ -234,17 +242,9 @@ export default function CalendarPage() {
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         Selected: {selectedDateLabel}
       </p>
-      <PageHeader
-        title="Calendar"
-        subtitle="Revision deadlines and exam countdowns in one calm view."
-      />
+      <PageHeader title="Calendar" subtitle={CALENDAR_SUBTITLE} />
 
-      <UpcomingExamStrip
-        exams={upcomingExams}
-        onWriteCalendarState={writeCalendarState}
-      />
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <CalendarMobileStrip
           viewMonth={viewMonth}
           selectedDate={selectedDate}
@@ -252,8 +252,6 @@ export default function CalendarPage() {
           monthDays={monthDays}
           tasksByDate={tasksByDate}
           examsByDate={examsByDate}
-          monthTaskCount={monthTaskCount}
-          monthExamCount={monthExamCount}
           onWriteCalendarState={writeCalendarState}
         />
 
@@ -264,15 +262,19 @@ export default function CalendarPage() {
           calendarWeeks={calendarWeeks}
           tasksByDate={tasksByDate}
           examsByDate={examsByDate}
-          monthTaskCount={monthTaskCount}
-          monthExamCount={monthExamCount}
           onWriteCalendarState={writeCalendarState}
         />
 
-        <TodayPanel
+        <CalendarRail
           selectedDate={selectedDate}
-          tasks={selTasks}
-          exams={selExams}
+          selectedTasks={selTasks}
+          selectedExams={selExams}
+          upcomingExams={upcomingExams}
+          viewMonthLabel={format(viewMonth, "MMMM yyyy")}
+          monthTaskCount={monthTaskCount}
+          monthExamCount={monthExamCount}
+          plannedMinutes={plannedMinutes}
+          onWriteCalendarState={writeCalendarState}
         />
       </div>
     </div>

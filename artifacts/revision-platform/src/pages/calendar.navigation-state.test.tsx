@@ -75,6 +75,14 @@ describe("Calendar navigation state", () => {
     expect(
       screen.getAllByRole("heading", { name: "August 2026" }),
     ).not.toHaveLength(0);
+    expect(
+      screen.getByRole("heading", { name: "Upcoming deadlines" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "This month overview" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Nothing planned for today")).toBeInTheDocument();
+    expect(screen.getByText("Planned")).toBeInTheDocument();
     expectSelectedDate(/Selected: Tuesday, August 25, 2026/);
     expect(window.location.search).toBe("");
   });
