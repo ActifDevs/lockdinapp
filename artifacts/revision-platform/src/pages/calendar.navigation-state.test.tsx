@@ -12,13 +12,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const api = vi.hoisted(() => ({
   tasks: vi.fn(),
   exams: vi.fn(),
+  memberships: vi.fn(),
+  createTask: vi.fn(),
+  createExam: vi.fn(),
 }));
 
 vi.mock("@workspace/api-client-react", () => ({
   getListTasksQueryKey: (params: unknown) => ["/api/tasks", params],
   getListExamDatesQueryKey: () => ["/api/exam-dates"],
+  getListCurrentUserSubjectsQueryKey: () => ["/api/user-subjects"],
+  getGetDashboardSummaryQueryKey: () => ["/api/dashboard/summary"],
+  getGetProgressOverviewQueryKey: () => ["/api/progress/overview"],
   useListTasks: api.tasks,
   useListExamDates: api.exams,
+  useListCurrentUserSubjects: api.memberships,
+  useCreateTask: api.createTask,
+  useCreateExamDate: api.createExam,
 }));
 
 import CalendarPage from "./calendar";
@@ -46,8 +55,36 @@ beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   vi.setSystemTime(new Date(2026, 7, 25, 12, 0, 0));
   window.history.replaceState({}, "", "/calendar");
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
   api.tasks.mockReturnValue(ok([]));
   api.exams.mockReturnValue(ok([exam]));
+  api.memberships.mockReturnValue(ok([]));
+  api.createTask.mockReturnValue({
+    mutate: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null,
+    reset: vi.fn(),
+  });
+  api.createExam.mockReturnValue({
+    mutate: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null,
+    reset: vi.fn(),
+  });
 });
 
 afterEach(() => {

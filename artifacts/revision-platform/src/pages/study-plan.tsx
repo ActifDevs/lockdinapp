@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   useListTasks,
   getListTasksQueryKey,
-  useCreateTask,
   useUpdateTask,
   useDeleteTask,
   useListCurrentUserSubjects,
@@ -10,42 +9,21 @@ import {
   getGetDashboardSummaryQueryKey,
   getGetProgressOverviewQueryKey,
   Task,
-  TaskPriority,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { DialogFooter } from "@/components/ui/dialog";
-import { ResponsiveFormPanel } from "@/components/responsive-form-panel";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { TaskRow } from "@/components/task-row";
 import { RichEmptyState } from "@/components/rich-empty-state";
 import { PageHeader } from "@/components/page-header";
+import { TaskCreateDialog } from "@/components/task-create-dialog";
 import { Plus, Trash2, Calendar as CalendarIcon } from "lucide-react";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ReadStateNotice } from "@/components/read-state-notice";
-import { Alert, AlertTitle } from "@/components/ui/alert";
 import { getMutationErrorMessage } from "@/lib/query-error-message";
+import { taskSchema } from "@/lib/task-form-schema";
 import { Link, useSearchParams } from "wouter";
 import {
   omitDefaultQueryValue,
@@ -54,28 +32,9 @@ import {
 } from "@/lib/navigation-query-state";
 import { useIdempotentControlledNavigation } from "@/hooks/use-idempotent-controlled-navigation";
 
+export { taskSchema };
+
 const TASK_VIEWS = ["today", "upcoming", "completed", "all"] as const;
-
-const subjectIdSchema = z.preprocess(
-  (value) => (value === "" || value == null ? 0 : value),
-  z.coerce
-    .number({ invalid_type_error: "Select a valid subject" })
-    .min(1, "Subject is required"),
-);
-
-export const taskSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  subjectId: subjectIdSchema,
-  deadline: z.string().optional().or(z.literal("")),
-  priority: z.enum(["low", "medium", "high"]),
-  estimatedMinutes: z.coerce
-    .number()
-    .min(1, "Must be at least 1 min")
-    .optional()
-    .or(z.literal("")),
-});
-
-type TaskFormValues = z.infer<typeof taskSchema>;
 
 export default function StudyPlan() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -149,23 +108,11 @@ export default function StudyPlan() {
     });
   };
 
-  const createTask = useCreateTask({
-    mutation: {
-      onSuccess: () => {
-        setActionError(null);
-        invalidateTaskAggregates();
-        setIsAddDialogOpen(false);
-        form.reset();
-      },
-    },
-  });
-
   const openAddDialog = () => {
     addDialogTriggerRef.current =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
-    createTask.reset();
     setIsAddDialogOpen(true);
   };
 
@@ -188,30 +135,6 @@ export default function StudyPlan() {
       onError: (error) => setActionError(mutationMessage(error)),
     },
   });
-
-  const form = useForm<TaskFormValues>({
-    resolver: zodResolver(taskSchema),
-    defaultValues: {
-      title: "",
-      priority: "medium",
-      estimatedMinutes: "",
-      deadline: "",
-    },
-  });
-
-  const onSubmit = (data: TaskFormValues) => {
-    createTask.mutate({
-      data: {
-        title: data.title,
-        subjectId: data.subjectId,
-        priority: data.priority as any,
-        deadline: data.deadline || undefined,
-        estimatedMinutes: data.estimatedMinutes
-          ? Number(data.estimatedMinutes)
-          : undefined,
-      },
-    });
-  };
 
   const toggleTaskComplete = (task: Task) => {
     updateTask.mutate({
@@ -411,170 +334,11 @@ export default function StudyPlan() {
         </Tabs>
       </Card>
 
-      <ResponsiveFormPanel
+      <TaskCreateDialog
         open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
         returnFocusRef={addDialogTriggerRef}
-        onOpenChange={(open) => {
-          setIsAddDialogOpen(open);
-          if (!open) createTask.reset();
-        }}
-        title="Add new task"
-        className="sm:max-w-[425px]"
-      >
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4 py-4"
-          >
-            {createTask.isError && (
-              <Alert variant="destructive">
-                <AlertTitle>Could not add task</AlertTitle>
-                <p>{getMutationErrorMessage(createTask.error)}</p>
-              </Alert>
-            )}
-            {membershipsLoading && (
-              <p role="status" className="text-sm text-muted-foreground">
-                Loading subjects for task creation…
-              </p>
-            )}
-            {membershipsError && (
-              <ReadStateNotice
-                compact
-                title="Subjects could not be loaded"
-                error={membershipsLoadError}
-                onRetry={() => void refetchMemberships()}
-              />
-            )}
-            {!membershipsLoading &&
-              !membershipsError &&
-              memberships?.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Choose a subject in Settings before adding a task.
-                </p>
-              )}
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Task Title</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. Read chapter 4, Integration practice..."
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="subjectId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Subject</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value?.toString()}
-                    disabled={!canCreateTask}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a subject" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {subjects?.map((s) => (
-                        <SelectItem key={s.id} value={s.id.toString()}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid form-grid-2">
-              <FormField
-                control={form.control}
-                name="deadline"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Deadline (Optional)</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="estimatedMinutes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Est. Minutes</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="45" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="priority"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Priority</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select priority" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <DialogFooter className="pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  createTask.reset();
-                  setIsAddDialogOpen(false);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={createTask.isPending || !canCreateTask}
-              >
-                {createTask.isPending ? "Adding…" : "Add task"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </ResponsiveFormPanel>
+      />
     </div>
   );
 }

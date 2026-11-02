@@ -4,14 +4,18 @@ import {
   getListTasksQueryKey,
   useListExamDates,
   getListExamDatesQueryKey,
+  getListCurrentUserSubjectsQueryKey,
+  useListCurrentUserSubjects,
   type ExamDate,
   type Task,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
+import { CalendarCreateMenu } from "@/components/calendar/calendar-create-menu";
 import { CalendarMobileStrip } from "@/components/calendar/calendar-mobile-strip";
 import { CalendarRail } from "@/components/calendar/calendar-rail";
 import { MonthGrid } from "@/components/calendar/month-grid";
+import { ReadStateNotice } from "@/components/read-state-notice";
 import { getQueryErrorMessage } from "@/lib/query-error-message";
 import {
   format,
@@ -25,7 +29,7 @@ import {
   parseISO,
   differenceInCalendarDays,
 } from "date-fns";
-import { useSearchParams } from "wouter";
+import { Link, useSearchParams } from "wouter";
 import {
   formatLocalCalendarDate,
   formatLocalCalendarMonth,
@@ -112,6 +116,16 @@ export default function CalendarPage() {
     refetch: refetchExams,
   } = useListExamDates({
     query: { queryKey: getListExamDatesQueryKey() },
+  });
+
+  const {
+    data: memberships,
+    isLoading: membershipsLoading,
+    isError: membershipsError,
+    error: membershipsLoadError,
+    refetch: refetchMemberships,
+  } = useListCurrentUserSubjects({
+    query: { queryKey: getListCurrentUserSubjectsQueryKey() },
   });
 
   const isPending = tasksPending || examsPending;
@@ -242,7 +256,33 @@ export default function CalendarPage() {
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         Selected: {selectedDateLabel}
       </p>
-      <PageHeader title="Calendar" subtitle={CALENDAR_SUBTITLE} />
+      <PageHeader
+        title="Calendar"
+        subtitle={CALENDAR_SUBTITLE}
+        action={<CalendarCreateMenu selectedDate={selectedDate} />}
+      />
+
+      {membershipsError && (
+        <ReadStateNotice
+          title="Task and exam creation is unavailable"
+          error={membershipsLoadError}
+          description="The calendar is still available, but subjects could not be loaded for new items."
+          onRetry={() => void refetchMemberships()}
+        />
+      )}
+      {!membershipsLoading &&
+        !membershipsError &&
+        memberships?.length === 0 && (
+          <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+            Choose at least one subject before adding tasks or exams.{" "}
+            <Link
+              href="/settings?tab=subjects"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Open subject settings
+            </Link>
+          </div>
+        )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <CalendarMobileStrip
