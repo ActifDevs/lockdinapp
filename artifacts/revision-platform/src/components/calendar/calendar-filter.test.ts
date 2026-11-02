@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ExamDate, Task } from "@workspace/api-client-react";
 import {
+  describeCalendarFilter,
   EMPTY_CALENDAR_FILTER,
   filterCalendarExams,
   filterCalendarTasks,
@@ -43,5 +44,19 @@ describe("calendar filter", () => {
     expect(
       filterCalendarExams(exams, { kind: "all", subjectId: 2 }),
     ).toEqual([physicsExam]);
+  });
+
+  it("describes an active filter for the live region", () => {
+    expect(
+      describeCalendarFilter(EMPTY_CALENDAR_FILTER, [
+        { id: 2, name: "Physics" },
+      ]),
+    ).toBeNull();
+    expect(
+      describeCalendarFilter(
+        { kind: "tasks", subjectId: 2 },
+        [{ id: 2, name: "Physics" }],
+      ),
+    ).toBe("Filters on: tasks, Physics.");
   });
 });

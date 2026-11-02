@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { CalendarCreateMenu } from "@/components/calendar/calendar-create-menu";
 import {
+  describeCalendarFilter,
   EMPTY_CALENDAR_FILTER,
   filterCalendarExams,
   filterCalendarTasks,
@@ -241,6 +242,10 @@ export default function CalendarPage() {
       ? `, ${selTasks.length + selExams.length} scheduled item${selTasks.length + selExams.length === 1 ? "" : "s"}`
       : ", nothing scheduled"
   }`;
+  const filterAnnouncement = describeCalendarFilter(
+    calendarFilter,
+    filterSubjects,
+  );
 
   if (isPending) {
     return (
@@ -256,7 +261,10 @@ export default function CalendarPage() {
     return (
       <div className="app-page">
         <PageHeader title="Calendar" subtitle={CALENDAR_SUBTITLE} />
-        <div className="dash-panel flex min-h-[40vh] flex-col items-center justify-center gap-4">
+        <div
+          className="dash-panel flex min-h-[40vh] flex-col items-center justify-center gap-4"
+          role="alert"
+        >
           <h2 className="text-2xl font-bold tracking-tight">
             Could not load calendar
           </h2>
@@ -273,6 +281,7 @@ export default function CalendarPage() {
     <div className="app-page animate-in fade-in duration-300 md:pb-10">
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         Selected: {selectedDateLabel}
+        {filterAnnouncement ? ` ${filterAnnouncement}` : ""}
       </p>
       <PageHeader
         title="Calendar"

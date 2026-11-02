@@ -43,7 +43,17 @@ export function CalendarCreateMenu({ selectedDate }: { selectedDate: Date }) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button disabled={!canCreate} aria-haspopup="menu">
+          <Button
+            disabled={!canCreate}
+            aria-haspopup="menu"
+            title={
+              canCreate
+                ? undefined
+                : membershipsError
+                  ? "Subjects could not be loaded"
+                  : "Choose at least one subject first"
+            }
+          >
             <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
             Add task / event
             <ChevronDown className="h-4 w-4" strokeWidth={2} aria-hidden />

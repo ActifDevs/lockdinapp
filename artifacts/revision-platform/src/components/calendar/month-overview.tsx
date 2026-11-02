@@ -62,7 +62,7 @@ function OverviewStat({
   label: string;
 }) {
   return (
-    <div className="min-w-0">
+    <div className="min-w-0" aria-label={`${value} ${label}`}>
       <span className="dash-stat-icon" aria-hidden>
         <Icon className="h-4 w-4" strokeWidth={2} />
       </span>

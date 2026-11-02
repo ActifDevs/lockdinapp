@@ -59,6 +59,8 @@ export function CalendarDayCell({
     <button
       type="button"
       role="gridcell"
+      tabIndex={selected ? 0 : -1}
+      data-date={format(day, "yyyy-MM-dd")}
       aria-selected={selected}
       aria-current={todayDay ? "date" : undefined}
       aria-label={`${dayLabel}, ${eventsLabel}`}

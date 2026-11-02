@@ -21,7 +21,10 @@ export function TodayPanel({
   const emptyTitle = today ? "Nothing planned for today" : "Nothing planned";
 
   const focusAgenda = () => {
-    document.getElementById("calendar-agenda-items")?.focus();
+    const panel = document.getElementById("calendar-agenda");
+    const items = document.getElementById("calendar-agenda-items");
+    panel?.scrollIntoView({ block: "nearest" });
+    items?.focus();
   };
 
   return (
@@ -89,11 +92,11 @@ export function TodayPanel({
                     {exam.subjectName}
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-foreground">
+                <p className="break-words text-sm font-semibold text-foreground">
                   {exam.paperCode}
                 </p>
                 {exam.notes && (
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 break-words text-xs text-muted-foreground">
                     {exam.notes}
                   </p>
                 )}
@@ -129,9 +132,9 @@ export function TodayPanel({
                           className={cn(
                             "rounded px-1.5 py-0.5 text-[10px] font-medium capitalize leading-none",
                             task.priority === "high" &&
-                              "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400",
+                              "bg-[hsl(var(--semantic-critical)/0.12)] text-[hsl(var(--semantic-critical))]",
                             task.priority === "medium" &&
-                              "bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400",
+                              "bg-[hsl(var(--semantic-attention)/0.12)] text-[hsl(var(--semantic-attention))]",
                             task.priority === "low" &&
                               "bg-muted text-muted-foreground",
                           )}
@@ -141,7 +144,7 @@ export function TodayPanel({
                       </div>
                       <p
                         className={cn(
-                          "text-sm font-medium leading-snug",
+                          "break-words text-sm font-medium leading-snug",
                           task.completed &&
                             "text-muted-foreground line-through",
                         )}
@@ -149,7 +152,7 @@ export function TodayPanel({
                         {task.title}
                       </p>
                       {task.topicTitle && (
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="mt-1 break-words text-xs text-muted-foreground">
                           {task.topicTitle}
                         </p>
                       )}

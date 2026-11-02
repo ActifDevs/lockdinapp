@@ -18,6 +18,25 @@ export function isCalendarFilterActive(filter: CalendarFilter): boolean {
   return filter.kind !== "all" || filter.subjectId != null;
 }
 
+export function describeCalendarFilter(
+  filter: CalendarFilter,
+  subjects: CalendarFilterSubject[],
+): string | null {
+  if (!isCalendarFilterActive(filter)) return null;
+  const kind =
+    filter.kind === "all"
+      ? "all types"
+      : filter.kind === "tasks"
+        ? "tasks"
+        : "exams";
+  const subject =
+    filter.subjectId == null
+      ? "all subjects"
+      : (subjects.find((item) => item.id === filter.subjectId)?.name ??
+        "one subject");
+  return `Filters on: ${kind}, ${subject}.`;
+}
+
 export function filterCalendarTasks(
   tasks: Task[] | undefined,
   filter: CalendarFilter,

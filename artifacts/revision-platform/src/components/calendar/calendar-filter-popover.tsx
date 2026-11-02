@@ -62,10 +62,11 @@ export function CalendarFilterPopover({
             {TYPE_OPTIONS.map((option) => (
               <label
                 key={option.value}
-                className="flex cursor-pointer items-center gap-2 text-sm"
+                className="flex min-h-11 cursor-pointer items-center gap-2 text-sm"
               >
                 <input
                   type="radio"
+                  className="h-4 w-4 accent-primary"
                   name={`${idPrefix}-type`}
                   value={option.value}
                   checked={filter.kind === option.value}
@@ -84,9 +85,10 @@ export function CalendarFilterPopover({
             Subject
           </legend>
           <div className="flex max-h-48 flex-col gap-1.5 overflow-y-auto">
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
               <input
                 type="radio"
+                className="h-4 w-4 accent-primary"
                 name={`${idPrefix}-subject`}
                 value="all"
                 checked={filter.subjectId == null}
@@ -99,18 +101,19 @@ export function CalendarFilterPopover({
             {subjects.map((subject) => (
               <label
                 key={subject.id}
-                className="flex cursor-pointer items-center gap-2 text-sm"
+                className="flex min-h-11 cursor-pointer items-center gap-2 text-sm"
               >
                 <input
                   type="radio"
-                name={`${idPrefix}-subject`}
-                value={String(subject.id)}
+                  className="h-4 w-4 accent-primary"
+                  name={`${idPrefix}-subject`}
+                  value={String(subject.id)}
                   checked={filter.subjectId === subject.id}
                   onChange={() =>
                     onFilterChange({ ...filter, subjectId: subject.id })
                   }
                 />
-                {subject.name}
+                <span className="min-w-0 truncate">{subject.name}</span>
               </label>
             ))}
           </div>
