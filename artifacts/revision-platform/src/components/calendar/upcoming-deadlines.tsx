@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { differenceInCalendarDays, format } from "date-fns";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
 import type { CalendarExamWithDate, WriteCalendarState } from "./types";
@@ -13,9 +13,7 @@ export function UpcomingDeadlines({
   exams: CalendarExamWithDate[];
   onWriteCalendarState: WriteCalendarState;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? exams : exams.slice(0, PREVIEW_COUNT);
-  const canExpand = exams.length > PREVIEW_COUNT;
+  const visible = exams.slice(0, PREVIEW_COUNT);
 
   return (
     <section
@@ -26,16 +24,9 @@ export function UpcomingDeadlines({
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Upcoming deadlines
         </h2>
-        {canExpand && (
-          <Button
-            variant="link"
-            className="h-auto px-0 text-xs"
-            onClick={() => setExpanded((open) => !open)}
-            aria-expanded={expanded}
-          >
-            {expanded ? "Show less" : "View all"}
-          </Button>
-        )}
+        <Button variant="link" className="h-auto px-0 text-xs" asChild>
+          <Link href="/study-plan">View all</Link>
+        </Button>
       </div>
 
       {exams.length === 0 ? (

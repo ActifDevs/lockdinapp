@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ExamDate, Task } from "@workspace/api-client-react";
 import {
+  collectCalendarFilterSubjects,
   describeCalendarFilter,
   EMPTY_CALENDAR_FILTER,
   filterCalendarExams,
@@ -8,10 +9,30 @@ import {
   isCalendarFilterActive,
 } from "./calendar-filter";
 
-const physicsTask = { id: 1, subjectId: 2, title: "Waves" } as Task;
-const mathsTask = { id: 2, subjectId: 9, title: "Pure 1" } as Task;
-const physicsExam = { id: 3, subjectId: 2, paperCode: "9702/1" } as ExamDate;
-const mathsExam = { id: 4, subjectId: 9, paperCode: "9709/1" } as ExamDate;
+const physicsTask = {
+  id: 1,
+  subjectId: 2,
+  subjectName: "Physics",
+  title: "Waves",
+} as Task;
+const mathsTask = {
+  id: 2,
+  subjectId: 9,
+  subjectName: "Mathematics",
+  title: "Pure 1",
+} as Task;
+const physicsExam = {
+  id: 3,
+  subjectId: 2,
+  subjectName: "Physics",
+  paperCode: "9702/1",
+} as ExamDate;
+const mathsExam = {
+  id: 4,
+  subjectId: 9,
+  subjectName: "Mathematics",
+  paperCode: "9709/1",
+} as ExamDate;
 
 describe("calendar filter", () => {
   it("is inactive until type or subject is chosen", () => {
@@ -58,5 +79,18 @@ describe("calendar filter", () => {
         [{ id: 2, name: "Physics" }],
       ),
     ).toBe("Filters on: tasks, Physics.");
+  });
+
+  it("unions memberships with subjects already on loaded items", () => {
+    expect(
+      collectCalendarFilterSubjects(
+        [],
+        [physicsTask],
+        [mathsExam],
+      ),
+    ).toEqual([
+      { id: 9, name: "Mathematics" },
+      { id: 2, name: "Physics" },
+    ]);
   });
 });

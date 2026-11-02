@@ -54,3 +54,23 @@ export function filterCalendarExams(
   if (filter.subjectId == null) return exams;
   return exams.filter((exam) => exam.subjectId === filter.subjectId);
 }
+
+export function collectCalendarFilterSubjects(
+  memberships: Array<{ subject: { id: number; name: string } }> | undefined,
+  tasks: Task[] | undefined,
+  exams: ExamDate[] | undefined,
+): CalendarFilterSubject[] {
+  const byId = new Map<number, string>();
+  memberships?.forEach((membership) => {
+    byId.set(membership.subject.id, membership.subject.name);
+  });
+  tasks?.forEach((task) => {
+    if (!byId.has(task.subjectId)) byId.set(task.subjectId, task.subjectName);
+  });
+  exams?.forEach((exam) => {
+    if (!byId.has(exam.subjectId)) byId.set(exam.subjectId, exam.subjectName);
+  });
+  return [...byId.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}

@@ -130,6 +130,10 @@ describe("Calendar harden", () => {
     expect(screen.getByLabelText("0 Tasks")).toBeInTheDocument();
     expect(screen.getByLabelText("0 Exams")).toBeInTheDocument();
     expect(screen.getByLabelText("0m Planned")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View all" })).toHaveAttribute(
+      "href",
+      "/study-plan",
+    );
   });
 
   it("retries a failed calendar load", () => {
@@ -198,6 +202,32 @@ describe("Calendar harden", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "View agenda" }));
     expect(document.getElementById("calendar-agenda-items")).toHaveFocus();
+  });
+
+  it("lists a mixed day of tasks and exams in the rail", () => {
+    api.tasks.mockReturnValue(ok([task(1, "Waves homework")]));
+    api.exams.mockReturnValue(
+      ok([
+        {
+          id: 8,
+          subjectId: 2,
+          subjectName: "Physics",
+          subjectColor: "#2563eb",
+          paperCode: "9702/1",
+          date: "2026-08-25",
+        },
+      ]),
+    );
+    renderPage();
+    expect(
+      screen.getByRole("gridcell", {
+        name: /Tuesday, August 25, 2026, 2 events/,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Waves homework").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("9702/1").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("1 Tasks")).toBeInTheDocument();
+    expect(screen.getByLabelText("1 Exams")).toBeInTheDocument();
   });
 
   it("shows overflow when a day is dense", () => {

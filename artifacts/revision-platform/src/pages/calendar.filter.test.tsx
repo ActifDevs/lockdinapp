@@ -137,6 +137,13 @@ describe("Calendar filter", () => {
         name: /Mathematics 9709\/1, 6 days away on August 31/,
       }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View all" })).toHaveAttribute(
+      "href",
+      "/study-plan",
+    );
+    expect(screen.getByLabelText("1 Tasks")).toBeInTheDocument();
+    expect(screen.getByLabelText("1 Exams")).toBeInTheDocument();
+    expect(screen.getByLabelText("45m Planned")).toBeInTheDocument();
     expect(window.location.search).toBe("");
   });
 
@@ -157,6 +164,9 @@ describe("Calendar filter", () => {
     expect(
       screen.queryByRole("listitem", { name: /Mathematics 9709\/1/ }),
     ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("1 Tasks")).toBeInTheDocument();
+    expect(screen.getByLabelText("0 Exams")).toBeInTheDocument();
+    expect(screen.getByLabelText("45m Planned")).toBeInTheDocument();
     expect(window.location.search).toBe("");
     expect(
       screen.getAllByRole("button", { name: "Filter calendar (filters on)" })
@@ -186,10 +196,25 @@ describe("Calendar filter", () => {
     fireEvent.click(within(panel).getByRole("radio", { name: "Mathematics" }));
     expect(screen.queryByText("Waves homework")).not.toBeInTheDocument();
     expect(screen.getByText("Nothing planned for today")).toBeInTheDocument();
+    expect(screen.getByLabelText("0 Tasks")).toBeInTheDocument();
+    expect(screen.getByLabelText("1 Exams")).toBeInTheDocument();
+    expect(screen.getByLabelText("0m Planned")).toBeInTheDocument();
     expect(
       screen.getByRole("listitem", {
         name: /Mathematics 9709\/1, 6 days away on August 31/,
       }),
+    ).toBeInTheDocument();
+  });
+
+  it("still offers subjects from loaded items when memberships are empty", () => {
+    api.memberships.mockReturnValue(ok([]));
+    renderPage();
+    const panel = openFilter();
+    expect(
+      within(panel).getByRole("radio", { name: "Physics" }),
+    ).toBeInTheDocument();
+    expect(
+      within(panel).getByRole("radio", { name: "Mathematics" }),
     ).toBeInTheDocument();
   });
 });

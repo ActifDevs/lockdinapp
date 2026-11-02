@@ -13,6 +13,12 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { CalendarCreateMenu } from "@/components/calendar/calendar-create-menu";
 import {
+  calendarItemDateKey,
+  isCalendarItemInMonth,
+  parseCalendarItemDate,
+} from "@/components/calendar/calendar-dates";
+import {
+  collectCalendarFilterSubjects,
   describeCalendarFilter,
   EMPTY_CALENDAR_FILTER,
   filterCalendarExams,
@@ -32,7 +38,6 @@ import {
   eachDayOfInterval,
   isSameDay,
   isSameMonth,
-  parseISO,
   differenceInCalendarDays,
 } from "date-fns";
 import { Link, useSearchParams } from "wouter";
@@ -45,7 +50,7 @@ import {
 } from "@/lib/navigation-query-state";
 
 const CALENDAR_SUBTITLE =
-  "Your study schedule, deadlines and exam countdowns - all in one place.";
+  "Your study schedule, deadlines and exam countdowns — all in one place.";
 
 export default function CalendarPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -139,12 +144,8 @@ export default function CalendarPage() {
   const isError = tasksError || examsError;
   const loadError = tasksLoadError ?? examsLoadError;
   const filterSubjects = useMemo(
-    () =>
-      (memberships ?? []).map((membership) => ({
-        id: membership.subject.id,
-        name: membership.subject.name,
-      })),
-    [memberships],
+    () => collectCalendarFilterSubjects(memberships, tasks, exams),
+    [memberships, tasks, exams],
   );
   const visibleTasks = useMemo(
     () => filterCalendarTasks(tasks, calendarFilter),
@@ -163,8 +164,8 @@ export default function CalendarPage() {
   const tasksByDate = useMemo(() => {
     const map = new Map<string, Task[]>();
     visibleTasks.forEach((t) => {
-      if (!t.deadline) return;
-      const key = t.deadline.split("T")[0];
+      const key = calendarItemDateKey(t.deadline);
+      if (!key) return;
       map.set(key, [...(map.get(key) ?? []), t]);
     });
     return map;
@@ -173,7 +174,8 @@ export default function CalendarPage() {
   const examsByDate = useMemo(() => {
     const map = new Map<string, ExamDate[]>();
     visibleExams.forEach((e) => {
-      const key = e.date.split("T")[0];
+      const key = calendarItemDateKey(e.date);
+      if (!key) return;
       map.set(key, [...(map.get(key) ?? []), e]);
     });
     return map;
@@ -194,7 +196,10 @@ export default function CalendarPage() {
   const upcomingExams = useMemo(() => {
     const todayDate = new Date();
     return visibleExams
-      .map((e) => ({ ...e, _date: parseISO(e.date) }))
+      .flatMap((e) => {
+        const date = parseCalendarItemDate(e.date);
+        return date ? [{ ...e, _date: date }] : [];
+      })
       .filter((e) => {
         const diff = differenceInCalendarDays(e._date, todayDate);
         return diff >= 0 && diff <= 60;
@@ -203,23 +208,21 @@ export default function CalendarPage() {
   }, [visibleExams]);
 
   const monthTaskCount = useMemo(() => {
-    return visibleTasks.filter((t) => {
-      if (!t.deadline) return false;
-      const d = parseISO(t.deadline);
-      return isSameMonth(d, viewMonth);
-    }).length;
+    return visibleTasks.filter((t) =>
+      isCalendarItemInMonth(t.deadline, viewMonth),
+    ).length;
   }, [visibleTasks, viewMonth]);
 
   const monthExamCount = useMemo(() => {
     return visibleExams.filter((e) =>
-      isSameMonth(parseISO(e.date), viewMonth),
+      isCalendarItemInMonth(e.date, viewMonth),
     ).length;
   }, [visibleExams, viewMonth]);
 
   const plannedMinutes = useMemo(() => {
     return visibleTasks.reduce((sum, task) => {
-      if (!task.deadline || !task.estimatedMinutes) return sum;
-      if (!isSameMonth(parseISO(task.deadline), viewMonth)) return sum;
+      if (!task.estimatedMinutes) return sum;
+      if (!isCalendarItemInMonth(task.deadline, viewMonth)) return sum;
       return sum + task.estimatedMinutes;
     }, 0);
   }, [visibleTasks, viewMonth]);
