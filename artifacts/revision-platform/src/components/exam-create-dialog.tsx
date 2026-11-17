@@ -106,6 +106,7 @@ export function ExamCreateDialog({
   }, [open, defaultDate, form, createExam]);
 
   const onSubmit = (data: ExamDateFormValues) => {
+    if (createExam.isPending || !canCreateExam) return;
     createExam.mutate({
       data: {
         subjectId: data.subjectId,

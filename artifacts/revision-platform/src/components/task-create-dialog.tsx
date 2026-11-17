@@ -116,6 +116,7 @@ export function TaskCreateDialog({
   }, [open, defaultDeadline, form, createTask]);
 
   const onSubmit = (data: TaskFormValues) => {
+    if (createTask.isPending || !canCreateTask) return;
     createTask.mutate({
       data: {
         title: data.title,

@@ -296,4 +296,202 @@ describe("Calendar create actions", () => {
       screen.getByText(/Choose at least one subject before adding tasks or exams/),
     ).toBeInTheDocument();
   });
+
+  it("opens both create options and dismisses the menu with Escape", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderPage();
+    const trigger = screen.getByRole("button", { name: /Add task \/ event/i });
+    await user.click(trigger);
+    expect(await screen.findByRole("menuitem", { name: "Add task" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Add exam" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("menuitem", { name: "Add task" })).not.toBeInTheDocument(),
+    );
+  });
+
+  it("lets the student change the task date without resetting the selected day", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    renderPage(client);
+    fireEvent.click(
+      screen.getByRole("gridcell", { name: /Wednesday, August 26, 2026/ }),
+    );
+    await waitFor(() =>
+      expect(window.location.search).toBe("?date=2026-08-26"),
+    );
+    await openMenuItem("Add task");
+    const dialog = screen.getByRole("dialog", { name: "Add new task" });
+    expect(within(dialog).getByLabelText("Deadline (Optional)")).toHaveValue(
+      "2026-08-26",
+    );
+    fireEvent.change(within(dialog).getByLabelText("Deadline (Optional)"), {
+      target: { value: "2026-08-28" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Task Title"), {
+      target: { value: "Review waves" },
+    });
+    fireEvent.change(
+      within(dialog).getByRole("option", { name: "Physics" }).closest("select")!,
+      { target: { value: "2" } },
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Add task" }));
+    await waitFor(() =>
+      expect(mutateTask).toHaveBeenCalledWith({
+        data: expect.objectContaining({ deadline: "2026-08-28" }),
+      }),
+    );
+    createTaskMutation.onSuccess?.();
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Add new task" })).not.toBeInTheDocument(),
+    );
+    expect(window.location.search).toBe("?date=2026-08-26");
+  });
+
+  it("blocks empty task submits", async () => {
+    renderPage();
+    await openMenuItem("Add task");
+    const dialog = screen.getByRole("dialog", { name: "Add new task" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Add task" }));
+    expect(mutateTask).not.toHaveBeenCalled();
+    expect(
+      await within(dialog).findByText("Title is required"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a task server error without creating", async () => {
+    api.createTask.mockImplementation(
+      (opts?: { mutation?: typeof createTaskMutation }) => {
+        createTaskMutation = opts?.mutation ?? {};
+        return {
+          mutate: mutateTask,
+          isPending: false,
+          isError: true,
+          error: Object.assign(new Error("HTTP 500"), { status: 500 }),
+          reset: resetTask,
+        };
+      },
+    );
+    renderPage();
+    await openMenuItem("Add task");
+    expect(screen.getByText("Could not add task")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The API returned a server error. Please retry while we investigate.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("prevents a second task submit while the first is pending", async () => {
+    api.createTask.mockImplementation(
+      (opts?: { mutation?: typeof createTaskMutation }) => {
+        createTaskMutation = opts?.mutation ?? {};
+        return {
+          mutate: mutateTask,
+          isPending: true,
+          isError: false,
+          error: null,
+          reset: resetTask,
+        };
+      },
+    );
+    renderPage();
+    await openMenuItem("Add task");
+    const dialog = screen.getByRole("dialog", { name: "Add new task" });
+    const submit = within(dialog).getByRole("button", { name: "Adding…" });
+    expect(submit).toBeDisabled();
+    fireEvent.click(submit);
+    expect(mutateTask).not.toHaveBeenCalled();
+  });
+
+  it("lets the student change the exam date without resetting the selected day", async () => {
+    renderPage();
+    fireEvent.click(
+      screen.getByRole("gridcell", { name: /Wednesday, August 26, 2026/ }),
+    );
+    await waitFor(() =>
+      expect(window.location.search).toBe("?date=2026-08-26"),
+    );
+    await openMenuItem("Add exam");
+    const dialog = screen.getByRole("dialog", { name: "Add exam date" });
+    expect(within(dialog).getByLabelText("Date")).toHaveValue("2026-08-26");
+    fireEvent.change(within(dialog).getByLabelText("Date"), {
+      target: { value: "2026-09-01" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Paper code"), {
+      target: { value: "9702/1" },
+    });
+    fireEvent.change(
+      within(dialog).getByRole("option", { name: "Physics" }).closest("select")!,
+      { target: { value: "2" } },
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Add exam" }));
+    await waitFor(() =>
+      expect(mutateExam).toHaveBeenCalledWith({
+        data: expect.objectContaining({ date: "2026-09-01" }),
+      }),
+    );
+    createExamMutation.onSuccess?.();
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Add exam date" })).not.toBeInTheDocument(),
+    );
+    expect(window.location.search).toBe("?date=2026-08-26");
+  });
+
+  it("blocks empty exam submits", async () => {
+    renderPage();
+    await openMenuItem("Add exam");
+    const dialog = screen.getByRole("dialog", { name: "Add exam date" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Add exam" }));
+    expect(mutateExam).not.toHaveBeenCalled();
+    expect(
+      await within(dialog).findByText("Paper code is required"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows an exam server error without creating", async () => {
+    api.createExam.mockImplementation(
+      (opts?: { mutation?: typeof createExamMutation }) => {
+        createExamMutation = opts?.mutation ?? {};
+        return {
+          mutate: mutateExam,
+          isPending: false,
+          isError: true,
+          error: Object.assign(new Error("HTTP 500"), { status: 500 }),
+          reset: resetExam,
+        };
+      },
+    );
+    renderPage();
+    await openMenuItem("Add exam");
+    expect(screen.getByText("Could not add exam")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The API returned a server error. Please retry while we investigate.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("prevents a second exam submit while the first is pending", async () => {
+    api.createExam.mockImplementation(
+      (opts?: { mutation?: typeof createExamMutation }) => {
+        createExamMutation = opts?.mutation ?? {};
+        return {
+          mutate: mutateExam,
+          isPending: true,
+          isError: false,
+          error: null,
+          reset: resetExam,
+        };
+      },
+    );
+    renderPage();
+    await openMenuItem("Add exam");
+    const dialog = screen.getByRole("dialog", { name: "Add exam date" });
+    const submit = within(dialog).getByRole("button", { name: "Adding…" });
+    expect(submit).toBeDisabled();
+    fireEvent.click(submit);
+    expect(mutateExam).not.toHaveBeenCalled();
+  });
 });
