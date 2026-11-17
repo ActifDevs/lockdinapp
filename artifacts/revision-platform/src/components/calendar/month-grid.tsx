@@ -62,24 +62,8 @@ export function MonthGrid({
         onWriteCalendarState={onWriteCalendarState}
       />
 
-      <div className="grid grid-cols-7 border-b" role="row">
-        {WEEKDAYS.map((d) => (
-          <div
-            key={d}
-            role="columnheader"
-            className={cn(
-              "py-2.5 text-center text-xs font-medium text-muted-foreground",
-              (d === "Sat" || d === "Sun") && "text-muted-foreground/60",
-            )}
-          >
-            {d}
-          </div>
-        ))}
-      </div>
-
       <div
         ref={gridRef}
-        className="grid grid-cols-1 auto-rows-[minmax(104px,1fr)]"
         role="grid"
         aria-label={format(viewMonth, "MMMM yyyy")}
         onKeyDown={(event) => {
@@ -107,25 +91,41 @@ export function MonthGrid({
           onWriteCalendarState(viewMonth, next);
         }}
       >
-        {calendarWeeks.map((week, weekIdx) => (
-          <div key={weekIdx} className="grid grid-cols-7" role="row">
-            {week.map((day, idx) => {
-              const key = format(day, "yyyy-MM-dd");
-              return (
-                <CalendarDayCell
-                  key={key}
-                  day={day}
-                  columnIndex={idx}
-                  viewMonth={viewMonth}
-                  selectedDate={selectedDate}
-                  dayTasks={tasksByDate.get(key) ?? []}
-                  dayExams={examsByDate.get(key) ?? []}
-                  onWriteCalendarState={onWriteCalendarState}
-                />
-              );
-            })}
-          </div>
-        ))}
+        <div className="grid grid-cols-7 border-b" role="row">
+          {WEEKDAYS.map((d) => (
+            <div
+              key={d}
+              role="columnheader"
+              className={cn(
+                "py-2.5 text-center text-xs font-medium text-muted-foreground",
+                (d === "Sat" || d === "Sun") && "text-muted-foreground/60",
+              )}
+            >
+              {d}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 auto-rows-[minmax(104px,1fr)]">
+          {calendarWeeks.map((week, weekIdx) => (
+            <div key={weekIdx} className="grid grid-cols-7" role="row">
+              {week.map((day, idx) => {
+                const key = format(day, "yyyy-MM-dd");
+                return (
+                  <CalendarDayCell
+                    key={key}
+                    day={day}
+                    columnIndex={idx}
+                    viewMonth={viewMonth}
+                    selectedDate={selectedDate}
+                    dayTasks={tasksByDate.get(key) ?? []}
+                    dayExams={examsByDate.get(key) ?? []}
+                    onWriteCalendarState={onWriteCalendarState}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

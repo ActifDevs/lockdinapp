@@ -191,6 +191,33 @@ describe("Calendar harden", () => {
     );
   });
 
+  it("keeps one tab stop on the mobile day strip", () => {
+    renderPage();
+    const stripDays = screen.getAllByRole("button", {
+      name: /,\s+\d+ events?$|, no events$/,
+    });
+    expect(stripDays.length).toBeGreaterThan(1);
+    expect(
+      stripDays.filter((day) => day.getAttribute("tabindex") === "0"),
+    ).toHaveLength(1);
+    expect(
+      stripDays.filter((day) => day.getAttribute("tabindex") === "-1"),
+    ).toHaveLength(stripDays.length - 1);
+    expect(
+      stripDays.find((day) => day.getAttribute("tabindex") === "0"),
+    ).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("exposes weekday headers inside the month grid", () => {
+    renderPage();
+    const grid = screen.getByRole("grid", { name: "August 2026" });
+    expect(
+      within(grid)
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+  });
+
   it("announces an active filter and sends View agenda to the study plan", () => {
     renderPage();
     fireEvent.click(screen.getAllByRole("button", { name: "Filter calendar" })[0]);

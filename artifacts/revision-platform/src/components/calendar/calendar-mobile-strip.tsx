@@ -28,6 +28,10 @@ export function CalendarMobileStrip({
   onFilterChange: (filter: CalendarFilter) => void;
   onWriteCalendarState: WriteCalendarState;
 }) {
+  const selectedInStrip = monthDays.some((item) =>
+    isSameDay(item, selectedDate),
+  );
+
   return (
     <div className="space-y-4 md:hidden">
       <div className="overflow-hidden rounded-[var(--surface-radius)] border border-border/60 bg-card shadow-[var(--elev-2)]">
@@ -42,7 +46,7 @@ export function CalendarMobileStrip({
           onWriteCalendarState={onWriteCalendarState}
         />
         <div className="scroll-snap-x flex gap-2 overflow-x-auto p-3 no-scrollbar">
-          {monthDays.map((day) => {
+          {monthDays.map((day, index) => {
             const key = format(day, "yyyy-MM-dd");
             const dayTasks = tasksByDate.get(key) ?? [];
             const dayExams = examsByDate.get(key) ?? [];
@@ -61,6 +65,9 @@ export function CalendarMobileStrip({
                 aria-label={`${format(day, "EEEE, MMMM d, yyyy")}, ${eventsLabel}`}
                 aria-current={todayDay ? "date" : undefined}
                 aria-selected={selected}
+                tabIndex={
+                  selected || (!selectedInStrip && index === 0) ? 0 : -1
+                }
                 onClick={() => onWriteCalendarState(viewMonth, day)}
                 className={cn(
                   "scroll-snap-start flex min-h-11 min-w-[3.25rem] shrink-0 flex-col items-center gap-1 rounded-xl border px-2 py-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
