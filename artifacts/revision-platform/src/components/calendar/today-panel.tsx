@@ -1,11 +1,19 @@
-import { format, isToday } from "date-fns";
+import { differenceInCalendarDays, format, isToday } from "date-fns";
 import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { Link } from "wouter";
 import type { ExamDate, Task } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RichEmptyState } from "@/components/rich-empty-state";
 import { cn } from "@/lib/utils";
 import { resolveSubjectAccent } from "@/lib/subject-accent";
+
+function studyPlanAgendaHref(selectedDate: Date): string {
+  const offset = differenceInCalendarDays(selectedDate, new Date());
+  if (offset === 0) return "/study-plan";
+  if (offset > 0) return "/study-plan?view=upcoming";
+  return "/study-plan?view=all";
+}
 
 export function TodayPanel({
   selectedDate,
@@ -19,13 +27,6 @@ export function TodayPanel({
   const today = isToday(selectedDate);
   const heading = `${today ? "Today" : format(selectedDate, "EEEE")} · ${format(selectedDate, "d MMMM yyyy")}`;
   const emptyTitle = today ? "Nothing planned for today" : "Nothing planned";
-
-  const focusAgenda = () => {
-    const panel = document.getElementById("calendar-agenda");
-    const items = document.getElementById("calendar-agenda-items");
-    panel?.scrollIntoView({ block: "nearest" });
-    items?.focus();
-  };
 
   return (
     <section
@@ -41,12 +42,8 @@ export function TodayPanel({
         >
           {heading}
         </h2>
-        <Button
-          variant="link"
-          className="h-auto px-0 text-xs"
-          onClick={focusAgenda}
-        >
-          View agenda
+        <Button variant="link" className="h-auto px-0 text-xs" asChild>
+          <Link href={studyPlanAgendaHref(selectedDate)}>View agenda</Link>
         </Button>
       </div>
 

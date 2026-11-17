@@ -185,9 +185,13 @@ describe("Calendar harden", () => {
     expect(
       screen.getByText(/Selected: Wednesday, August 26, 2026/),
     ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View agenda" })).toHaveAttribute(
+      "href",
+      "/study-plan?view=upcoming",
+    );
   });
 
-  it("announces an active filter and focuses today's agenda", () => {
+  it("announces an active filter and sends View agenda to the study plan", () => {
     renderPage();
     fireEvent.click(screen.getAllByRole("button", { name: "Filter calendar" })[0]);
     fireEvent.click(
@@ -199,9 +203,10 @@ describe("Calendar harden", () => {
     expect(
       screen.getByText(/Selected: Tuesday, August 25, 2026.*Filters on: tasks/),
     ).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "View agenda" }));
-    expect(document.getElementById("calendar-agenda-items")).toHaveFocus();
+    expect(screen.getByRole("link", { name: "View agenda" })).toHaveAttribute(
+      "href",
+      "/study-plan",
+    );
   });
 
   it("lists a mixed day of tasks and exams in the rail", () => {
@@ -228,6 +233,10 @@ describe("Calendar harden", () => {
     expect(screen.getAllByText("9702/1").length).toBeGreaterThan(0);
     expect(screen.getByLabelText("1 Tasks")).toBeInTheDocument();
     expect(screen.getByLabelText("1 Exams")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View agenda" })).toHaveAttribute(
+      "href",
+      "/study-plan",
+    );
   });
 
   it("shows overflow when a day is dense", () => {
