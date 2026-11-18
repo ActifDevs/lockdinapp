@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { addDays, format } from "date-fns";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
@@ -223,5 +224,63 @@ describe("Dashboard unified today's mission", () => {
     expect(
       screen.queryByRole("progressbar", { name: "Today's mission progress" }),
     ).toBeNull();
+  });
+});
+
+describe("Dashboard what's next", () => {
+  it("lists future deadlines and exams in date order and skips today's tasks", () => {
+    const today = format(new Date(), "yyyy-MM-dd");
+    const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd");
+    const later = format(addDays(new Date(), 8), "yyyy-MM-dd");
+
+    api.summary.mockReturnValue(
+      ok({
+        ...summary,
+        upcomingDeadlines: [
+          { ...task, id: 1, title: "Due today", deadline: today },
+          {
+            ...task,
+            id: 2,
+            title: "Complete Mechanics revision",
+            deadline: tomorrow,
+          },
+        ],
+        upcomingExams: [
+          {
+            id: 9,
+            subjectId: 2,
+            subjectName: "Mathematics",
+            subjectColor: "#0f766e",
+            paperCode: "9709 Paper 3",
+            date: later,
+            notes: null,
+          },
+        ],
+      }),
+    );
+
+    renderPage();
+
+    expect(
+      screen.getByRole("heading", { name: "What's Next?" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Your Progress & Activity" }),
+    ).toBeVisible();
+    expect(screen.getByRole("link", { name: /study plan/i })).toHaveAttribute(
+      "href",
+      "/study-plan",
+    );
+    expect(screen.getByRole("link", { name: /calendar/i })).toHaveAttribute(
+      "href",
+      "/calendar",
+    );
+    expect(screen.queryByText("Due today")).toBeNull();
+    expect(screen.getByText("Complete Mechanics revision")).toBeVisible();
+    expect(screen.getByText("Mathematics 9709 Paper 3")).toBeVisible();
+    expect(screen.getByText("Deadline")).toBeVisible();
+    expect(screen.getByText("Exam")).toBeVisible();
+    expect(screen.queryByText("Approaching deadlines")).toBeNull();
+    expect(screen.queryByText("Upcoming exams")).toBeNull();
   });
 });

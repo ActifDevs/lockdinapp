@@ -704,6 +704,44 @@
   color: hsl(var(--semantic-critical));
 }
 
+.dash-chip-deadline {
+  border-color: hsl(var(--border));
+  background: hsl(var(--muted) / 0.55);
+  color: hsl(var(--muted-foreground));
+}
+
+.dash-chip-exam {
+  border-color: hsl(var(--primary) / 0.28);
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+}
+
+.dash-next-panel {
+  border-radius: var(--surface-radius);
+  border: 1px solid hsl(var(--card-border));
+  background: hsl(var(--card));
+  box-shadow: var(--elev-1);
+  padding: 0.5rem 1rem 0.75rem;
+}
+
+.dash-next-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dash-next-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+}
+
+.dash-next-list > .dash-next-row + .dash-next-row {
+  border-top: 1px solid hsl(var(--border) / 0.45);
+}
+
 /* ——— Loading: a sweep instead of a blunt pulse, sized like the real layout ——— */
 .dash-skeleton {
   position: relative;

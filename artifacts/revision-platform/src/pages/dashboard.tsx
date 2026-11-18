@@ -25,16 +25,14 @@ import { formatExamChip } from "@/components/dashboard/dashboard-hero";
 import { SubjectMasteryGrid } from "@/components/dashboard/subject-mastery-grid";
 import { TodaysMission } from "@/components/dashboard/todays-mission";
 import { AchievementPanel } from "@/components/dashboard/achievement-panel";
+import { WhatsNextPanel } from "@/components/dashboard/whats-next-panel";
 import {
   ArrowDownRight,
   ArrowUpRight,
   BarChart2,
-  Calendar,
   ChevronRight,
-  Clock,
   type LucideIcon,
 } from "lucide-react";
-import { format, isTomorrow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "@/hooks/use-toast";
@@ -77,13 +75,16 @@ function SectionHeader({
   title,
   subtitle,
   action,
+  actions,
   titleId,
 }: {
   title: string;
   subtitle?: string;
   action?: { label: string; href: string };
+  actions?: Array<{ label: string; href: string }>;
   titleId?: string;
 }) {
+  const links = actions ?? (action ? [action] : []);
   return (
     <div className="flex items-end justify-between gap-4">
       <div className="min-w-0">
@@ -92,11 +93,15 @@ function SectionHeader({
         </h2>
         {subtitle && <p className="section-subtitle">{subtitle}</p>}
       </div>
-      {action && (
-        <Link href={action.href} className="section-link pb-0.5">
-          {action.label}
-          <ChevronRight className="h-4 w-4" aria-hidden strokeWidth={2.25} />
-        </Link>
+      {links.length > 0 && (
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 pb-0.5">
+          {links.map((item) => (
+            <Link key={item.href} href={item.href} className="section-link">
+              {item.label}
+              <ChevronRight className="h-4 w-4" aria-hidden strokeWidth={2.25} />
+            </Link>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -397,75 +402,30 @@ export default function Dashboard() {
         </section>
       )}
 
-      <section aria-labelledby="momentum-heading" className="space-y-4">
+      <section aria-labelledby="next-heading" className="space-y-4">
         <SectionHeader
-          titleId="momentum-heading"
-          title="What's ahead"
-          subtitle="Deadlines first, then scores, exams, and achievements."
+          titleId="next-heading"
+          title="What's Next?"
+          subtitle="Upcoming deadlines and exams after today."
+          actions={[
+            { label: "Study plan", href: "/study-plan" },
+            { label: "Calendar", href: "/calendar" },
+          ]}
+        />
+        <WhatsNextPanel
+          deadlines={derived.upcomingDeadlines}
+          exams={derived.upcomingExams}
+        />
+      </section>
+
+      <section aria-labelledby="activity-heading" className="space-y-4">
+        <SectionHeader
+          titleId="activity-heading"
+          title="Your Progress & Activity"
+          subtitle="Recent papers, this week, and achievements."
         />
 
         <div className="grid gap-4 lg:grid-cols-12 lg:gap-5">
-          <InsightCard
-            className="dash-insight-emphasis h-full lg:col-span-7"
-            tint="coral"
-            title={
-              <CardTitle icon={Clock} tone="attention">
-                Approaching deadlines
-              </CardTitle>
-            }
-            action={{ label: "Study plan", href: "/study-plan" }}
-          >
-            {derived.upcomingDeadlines.length === 0 ? (
-              <RichEmptyState
-                scene="calendar"
-                title="Clear runway ahead"
-                description="Schedule revision blocks with due dates so exam week stays calm, focused, and winnable."
-                actionLabel="Schedule a task"
-                actionHref="/study-plan"
-                variant="yellow"
-                className="py-6"
-              />
-            ) : (
-              <div className="dash-list-rows">
-                {derived.upcomingDeadlines.map((task) => {
-                  const date = new Date(task.deadline!);
-                  const isTaskTomorrow = isTomorrow(date);
-                  const accent = resolveSubjectAccent({
-                    name: task.subjectName,
-                    color: task.subjectColor,
-                  });
-                  return (
-                    <div key={task.id} className="dash-list-row">
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <span
-                          className="h-2 w-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: accent }}
-                          aria-hidden
-                        />
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold leading-tight">
-                            {task.title}
-                          </p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {task.subjectName}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={cn(
-                          "dash-chip shrink-0",
-                          isTaskTomorrow && "dash-chip-urgent",
-                        )}
-                      >
-                        {isTaskTomorrow ? "Tomorrow" : format(date, "MMM d")}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </InsightCard>
-
           <InsightCard
             className="h-full lg:col-span-5"
             tint="deep"
@@ -546,88 +506,40 @@ export default function Dashboard() {
               </div>
             )}
           </InsightCard>
-        </div>
 
-        <div
-          className={cn(
-            "grid gap-4 md:grid-cols-2",
-            hasWeeklyChart && "xl:grid-cols-3",
-          )}
-        >
-          {progressOverview &&
-            progressOverview.weeklyTasksCompleted.length > 0 && (
-              <InsightCard
-                className="h-full"
-                tint="cream"
-                title={
-                  <CardTitle icon={BarChart2} tone="progress">
-                    This week
-                  </CardTitle>
-                }
-                action={{ label: "Details", href: "/progress" }}
-              >
-                <Suspense fallback={<ChartSkeleton height={140} />}>
-                  <WeeklyActivityBarChart
-                    data={progressOverview.weeklyTasksCompleted}
-                    height={140}
-                    compact
-                  />
-                </Suspense>
-              </InsightCard>
-            )}
-
-          <InsightCard
-            className="h-full"
-            tint="cream"
-            title={
-              <CardTitle icon={Calendar} tone="exam">
-                Upcoming exams
-              </CardTitle>
-            }
-            action={{ label: "Calendar", href: "/calendar" }}
-          >
-            {derived.upcomingExams.length === 0 ? (
-              <p className="py-2 text-sm text-muted-foreground">
-                No exams on the calendar yet. Add session dates and the
-                countdown becomes your daily focus.
-              </p>
-            ) : (
-              <div className="dash-list-rows">
-                {derived.upcomingExams.slice(0, 4).map((exam) => {
-                  const examDate = new Date(exam.date);
-                  const daysAway = Math.ceil(
-                    (examDate.getTime() - Date.now()) / 86400000,
-                  );
-                  return (
-                    <div key={exam.id} className="dash-list-row">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold leading-tight">
-                          {exam.subjectName}
-                        </p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          {exam.paperCode} · {format(examDate, "MMM d")}
-                        </p>
-                      </div>
-                      <p className="shrink-0 text-right text-lg font-bold leading-none tabular text-primary">
-                        {daysAway}
-                        <span className="ml-0.5 text-xs font-semibold text-muted-foreground">
-                          d
-                        </span>
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </InsightCard>
-
-          <AchievementPanel
-            achievements={derived.achievements}
+          <div
             className={cn(
-              "h-full",
-              hasWeeklyChart && "md:col-span-2 xl:col-span-1",
+              "grid gap-4 lg:col-span-7",
+              hasWeeklyChart ? "md:grid-cols-2" : "md:grid-cols-1",
             )}
-          />
+          >
+            {progressOverview &&
+              progressOverview.weeklyTasksCompleted.length > 0 && (
+                <InsightCard
+                  className="h-full"
+                  tint="cream"
+                  title={
+                    <CardTitle icon={BarChart2} tone="progress">
+                      This week
+                    </CardTitle>
+                  }
+                  action={{ label: "Details", href: "/progress" }}
+                >
+                  <Suspense fallback={<ChartSkeleton height={140} />}>
+                    <WeeklyActivityBarChart
+                      data={progressOverview.weeklyTasksCompleted}
+                      height={140}
+                      compact
+                    />
+                  </Suspense>
+                </InsightCard>
+              )}
+
+            <AchievementPanel
+              achievements={derived.achievements}
+              className="h-full"
+            />
+          </div>
         </div>
       </section>
     </div>
@@ -651,6 +563,8 @@ function DashboardSkeleton() {
           ))}
         </div>
       </div>
+
+      <div className="dash-skeleton h-28 rounded-[1.25rem]" />
     </div>
   );
 }
