@@ -16,7 +16,7 @@ type GamificationRailProps = {
   level: LevelInfo;
 };
 
-function streakEncouragement(streak: number): string {
+export function streakEncouragement(streak: number): string {
   if (streak === 0) return "Finish one task today to open your streak.";
   if (streak === 1) return "Day one down. Show up tomorrow to make it two.";
   if (streak >= 7) return `${streak} days of momentum. This is what top grades look like.`;

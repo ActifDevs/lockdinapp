@@ -179,3 +179,49 @@ describe("Dashboard mission task mutations", () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ["/api/tasks"] });
   });
 });
+
+describe("Dashboard unified today's mission", () => {
+  it("renders one mission heading, one primary CTA, and one progress indicator", () => {
+    const { container } = renderPage();
+
+    expect(
+      screen.getAllByRole("heading", { name: "Today's mission" }),
+    ).toHaveLength(1);
+    expect(container.querySelectorAll("[data-mission-cta='primary']")).toHaveLength(
+      1,
+    );
+    expect(
+      screen.getByRole("link", { name: /start session/i }),
+    ).toHaveAttribute("href", "#todays-mission-tasks");
+    expect(screen.queryByRole("link", { name: /open mission/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /log a paper/i })).toBeNull();
+    expect(
+      screen.getAllByRole("progressbar", { name: "Today's mission progress" }),
+    ).toHaveLength(1);
+    expect(screen.getAllByText(/streak 1 day/i)).toHaveLength(1);
+    expect(screen.queryByText("Study streak")).toBeNull();
+    expect(screen.queryByText("Earned today")).toBeNull();
+  });
+
+  it("keeps empty-mission creation as the only primary CTA", () => {
+    api.summary.mockReturnValue(
+      ok({
+        ...summary,
+        todayTasksTotal: 0,
+        todayTasksCompleted: 0,
+        todayTasks: [],
+      }),
+    );
+    const { container } = renderPage();
+
+    expect(
+      screen.getByRole("link", { name: /create today's mission/i }),
+    ).toHaveAttribute("href", "/study-plan");
+    expect(container.querySelectorAll("[data-mission-cta='primary']")).toHaveLength(
+      1,
+    );
+    expect(
+      screen.queryByRole("progressbar", { name: "Today's mission progress" }),
+    ).toBeNull();
+  });
+});

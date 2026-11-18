@@ -21,11 +21,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { RichEmptyState } from "@/components/rich-empty-state";
 import { InsightCard } from "@/components/insight-card";
-import {
-  DashboardHero,
-  formatExamChip,
-} from "@/components/dashboard/dashboard-hero";
-import { GamificationRail } from "@/components/dashboard/gamification-rail";
+import { formatExamChip } from "@/components/dashboard/dashboard-hero";
 import { SubjectMasteryGrid } from "@/components/dashboard/subject-mastery-grid";
 import { TodaysMission } from "@/components/dashboard/todays-mission";
 import { AchievementPanel } from "@/components/dashboard/achievement-panel";
@@ -237,7 +233,6 @@ export default function Dashboard() {
       recentPerformance: summary.recentPerformance ?? [],
       upcomingExams,
       nextExam,
-      todayPct,
       attention,
       level,
       todayXp,
@@ -258,7 +253,6 @@ export default function Dashboard() {
       examLabel: nextExam
         ? formatExamChip(nextExam.date, nextExam.paperCode, nextExam.daysAway)
         : null,
-      tasksRemaining: summary.todayTasksTotal - summary.todayTasksCompleted,
     };
   }, [summary, progressOverview, user]);
 
@@ -360,13 +354,19 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-9 pb-10 sm:space-y-12">
-      <DashboardHero
+      <TodaysMission
         greeting={getGreeting()}
         displayName={displayName}
         missionFocus={derived.missionFocus}
         motivational={derived.motivational}
+        tasks={derived.todayTasks}
+        completed={summary.todayTasksCompleted}
+        total={summary.todayTasksTotal}
+        rewardXp={derived.missionXp}
+        todayXp={derived.todayXp}
         streak={summary.studyStreakDays}
         longestStreak={derived.longestStreak}
+        level={derived.level}
         daysToExam={derived.nextExam?.daysAway ?? null}
         examLabel={
           derived.examLabel ??
@@ -374,43 +374,12 @@ export default function Dashboard() {
             ? `${user.examSession}${user.level ? ` · ${user.level}` : ""}`
             : null)
         }
-        tasksRemaining={derived.tasksRemaining}
-        todayCompleted={summary.todayTasksCompleted}
-        todayTotal={summary.todayTasksTotal}
-        todayPct={derived.todayPct}
         focusSession={derived.focusSession}
+        toggling={updateTask.isPending}
+        onToggle={(taskId, completed) =>
+          updateTask.mutate({ taskId, data: { completed: !completed } })
+        }
       />
-
-      <section aria-labelledby="today-heading" className="space-y-4">
-        <SectionHeader
-          titleId="today-heading"
-          title={format(new Date(), "EEEE d MMMM")}
-          subtitle="Finish the mission. Protect the streak. Build exam confidence."
-        />
-
-        <div className="grid gap-4 lg:grid-cols-12 lg:gap-5">
-          <div className="lg:col-span-8">
-            <TodaysMission
-              tasks={derived.todayTasks}
-              completed={summary.todayTasksCompleted}
-              total={summary.todayTasksTotal}
-              rewardXp={derived.missionXp}
-              toggling={updateTask.isPending}
-              onToggle={(taskId, completed) =>
-                updateTask.mutate({ taskId, data: { completed: !completed } })
-              }
-            />
-          </div>
-
-          <div className="lg:col-span-4">
-            <GamificationRail
-              streak={summary.studyStreakDays}
-              todayXp={derived.todayXp}
-              level={derived.level}
-            />
-          </div>
-        </div>
-      </section>
 
       {subjectList.length > 0 && (
         <section aria-labelledby="mastery-heading" className="space-y-4">
@@ -672,18 +641,7 @@ function DashboardSkeleton() {
       aria-busy="true"
       aria-live="polite"
     >
-      <div className="dash-skeleton h-[11.5rem] rounded-2xl sm:h-[10.5rem]" />
-
-      <div className="space-y-4">
-        <div className="dash-skeleton h-7 w-56 rounded-lg" />
-        <div className="grid gap-4 lg:grid-cols-12">
-          <div className="dash-skeleton h-[24rem] rounded-[1.25rem] lg:col-span-8" />
-          <div className="grid gap-4 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-1">
-            <div className="dash-skeleton h-32 rounded-[1.25rem]" />
-            <div className="dash-skeleton h-40 rounded-[1.25rem]" />
-          </div>
-        </div>
-      </div>
+      <div className="dash-skeleton h-[22rem] rounded-[1.25rem] sm:h-[18rem]" />
 
       <div className="space-y-4">
         <div className="dash-skeleton h-7 w-48 rounded-lg" />
