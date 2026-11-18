@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowDownRight, ArrowUpRight, ChevronRight } from "lucide-react";
 import type {
   AttentionItem,
   RecentPerformanceItem,
@@ -40,25 +39,6 @@ function MasteryMeter({ value, label }: { value: number; label: string }) {
   );
 }
 
-/** Tiny momentum spark from a single change value — no invented history */
-function TrendSpark({ change }: { change: number }) {
-  const up = change > 0;
-  const mid = 14;
-  const end = up ? 4 : 22;
-  return (
-    <svg className="dash-mastery-spark" viewBox="0 0 48 24" aria-hidden>
-      <path
-        d={`M2 18 L16 ${mid} L32 ${up ? 10 : 16} L46 ${end}`}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 type SubjectMasteryGridProps = {
   subjects: Array<
     SubjectReference & {
@@ -73,7 +53,6 @@ type SubjectMasteryGridProps = {
 export function SubjectMasteryGrid({
   subjects,
   attention,
-  recentPerformance = [],
 }: SubjectMasteryGridProps) {
   const reduceMotion = useReducedMotion();
 
@@ -82,40 +61,31 @@ export function SubjectMasteryGrid({
   }
 
   return (
-    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {subjects.map((subject, index) => {
         const attentionItem = attention.find((a) => a.subjectId === subject.id);
-        const performance = recentPerformance.find(
-          (p) => p.subjectId === subject.id,
-        );
+        const attentionReason = attentionItem?.reason?.trim() || null;
         const grade = predictedGradeFromSubject(
           subject.syllabusProgress,
           subject.recentPaperScore,
         );
         const tone = gradeTone(grade);
-        const focusLabel =
-          attentionItem?.reason?.trim() || "Open subject workspace";
         const accent = resolveSubjectAccent({
           code: subject.code,
           name: subject.name,
           color: subject.color,
         });
         const Mark = subjectMark(subject.name);
-        const change =
-          performance?.change ?? attentionItem?.recentScoreTrend ?? null;
-        const momentum =
-          change === null
-            ? "Steady"
-            : change > 0
-              ? "Rising"
-              : change < 0
-                ? "Needs care"
-                : "Steady";
         const entrance = entranceProps(reduceMotion, index);
+        const paperLabel =
+          subject.recentPaperScore !== null
+            ? `${subject.recentPaperScore}%`
+            : "—";
 
         return (
           <motion.div
             key={subject.id}
+            className="min-w-0 h-full"
             initial={entrance.initial}
             animate={entrance.animate}
             transition={entrance.transition}
@@ -129,7 +99,6 @@ export function SubjectMasteryGrid({
               style={{ "--subject-accent": accent } as CSSProperties}
             >
               <span className="dash-mastery-accent" aria-hidden />
-              <span className="dash-mastery-glow" aria-hidden />
 
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -149,19 +118,19 @@ export function SubjectMasteryGrid({
                       "dash-grade-badge tabular",
                       `dash-grade-${tone}`,
                     )}
-                    title="Estimated from syllabus coverage and recent papers"
+                    title="Estimate from syllabus coverage and recent papers, not an official Cambridge grade"
                   >
                     {grade}
                   </span>
-                  <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-                    Predicted
+                  <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                    Est. grade
                   </p>
                 </div>
               </div>
 
               <div className="dash-mastery-progress">
-                <div className="mb-2.5 flex items-baseline justify-between gap-3">
-                  <span className="card-label">Syllabus progress</span>
+                <div className="mb-2 flex items-baseline justify-between gap-3">
+                  <span className="card-label">Syllabus coverage</span>
                   <span className="dash-mastery-pct tabular">
                     {subject.syllabusProgress}%
                   </span>
@@ -172,72 +141,14 @@ export function SubjectMasteryGrid({
                 />
               </div>
 
-              <div className="dash-mastery-stats">
-                <div>
-                  <p className="card-label">Syllabus topics</p>
-                  <p className="mt-1.5 text-[0.9375rem] font-bold tabular leading-none">
-                    {subject.topicsTotal}
-                  </p>
-                </div>
-                <div>
-                  <p className="card-label">Latest paper</p>
-                  <p className="mt-1.5 text-[0.9375rem] font-bold tabular leading-none">
-                    {subject.recentPaperScore !== null
-                      ? `${subject.recentPaperScore}%`
-                      : "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="card-label">Momentum</p>
-                  <p
-                    className={cn(
-                      "mt-1.5 inline-flex items-center gap-1 text-[0.8125rem] font-bold leading-none",
-                      change !== null &&
-                        change > 0 &&
-                        "text-emerald-600 dark:text-emerald-400",
-                      change !== null && change < 0 && "text-destructive",
-                    )}
-                  >
-                    {change !== null && change !== 0 ? (
-                      <>
-                        {change > 0 ? (
-                          <ArrowUpRight
-                            className="h-3.5 w-3.5"
-                            aria-hidden
-                            strokeWidth={2.5}
-                          />
-                        ) : (
-                          <ArrowDownRight
-                            className="h-3.5 w-3.5"
-                            aria-hidden
-                            strokeWidth={2.5}
-                          />
-                        )}
-                        {Math.abs(change)}%
-                      </>
-                    ) : (
-                      momentum
-                    )}
-                    {change !== null && change !== 0 && (
-                      <TrendSpark change={change} />
-                    )}
-                  </p>
-                </div>
-              </div>
+              <p className="dash-mastery-paper">
+                <span className="card-label">Latest paper</span>
+                <span className="dash-mastery-paper-value tabular">{paperLabel}</span>
+              </p>
 
-              <div className="dash-mastery-focus">
-                <div className="min-w-0 flex-1">
-                  <p className="card-label">
-                    {attentionItem ? "Focus" : "Next step"}
-                  </p>
-                  <p className="mt-1 line-clamp-2 text-sm font-semibold leading-snug tracking-[-0.01em]">
-                    {focusLabel}
-                  </p>
-                </div>
-                <span className="dash-mastery-go" aria-hidden>
-                  <ChevronRight className="h-4 w-4" strokeWidth={2} />
-                </span>
-              </div>
+              {attentionReason && (
+                <p className="dash-mastery-attention line-clamp-2">{attentionReason}</p>
+              )}
             </Link>
           </motion.div>
         );

@@ -72,8 +72,46 @@ describe("SubjectMasteryGrid personal progress", () => {
     expect(screen.getByText("80%")).toBeVisible();
     expect(screen.getByText("61%")).toBeVisible();
     expect(screen.getByText("92%")).toBeVisible();
-    expect(screen.getAllByText("Syllabus progress")).toHaveLength(2);
+    expect(screen.getAllByText("Syllabus coverage")).toHaveLength(2);
+    expect(screen.getAllByText("Latest paper")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: /subject 1/i })).toHaveAttribute(
+      "href",
+      "/subjects/1",
+    );
     expect(screen.queryByText("Weak topics")).not.toBeInTheDocument();
     expect(screen.queryByText(/\/10/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Syllabus topics")).not.toBeInTheDocument();
+    expect(screen.queryByText("Momentum")).not.toBeInTheDocument();
+    expect(screen.queryByText("Open subject workspace")).not.toBeInTheDocument();
   }, 15_000);
+
+  it("shows an em dash when a subject has no latest paper", () => {
+    render(
+      <SubjectMasteryGrid subjects={[subject(2, 40, null)]} attention={[]} />,
+    );
+
+    expect(screen.getByText("40%")).toBeVisible();
+    expect(screen.getByText("—")).toBeVisible();
+  });
+
+  it("shows attention copy only when a reason exists", () => {
+    render(
+      <SubjectMasteryGrid
+        subjects={[subject(1, 25, 61), subject(3, 80, 92)]}
+        attention={[
+          {
+            subjectId: 1,
+            subjectName: "Subject 1",
+            subjectColor: "#0f766e",
+            reason: "Revise mechanics this week",
+            syllabusProgress: 25,
+            recentScoreTrend: -4,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Revise mechanics this week")).toBeVisible();
+    expect(screen.queryByText("Open subject workspace")).not.toBeInTheDocument();
+  });
 });
