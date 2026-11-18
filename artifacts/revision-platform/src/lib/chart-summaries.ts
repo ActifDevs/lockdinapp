@@ -1,3 +1,5 @@
+import { format } from "date-fns";
+import { parseLocalCalendarDate } from "@/lib/navigation-query-state";
 import { formatPercentage } from "@/lib/format-percentage";
 
 export type WeeklyActivityPoint = {
@@ -16,6 +18,29 @@ export function weeklyActivitySummary(data: WeeklyActivityPoint[]): string {
     .join("; ");
 
   return `Last seven days: ${total} task${total === 1 ? "" : "s"} completed. Daily breakdown: ${daily}.`;
+}
+
+/** Compact dashboard X-axis only. Progress page keeps ISO date ticks. */
+export function compactWeekdayTick(value: unknown): string {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return format(value, "EEE");
+  }
+  const raw = String(value ?? "");
+  const key = raw.split("T")[0] ?? "";
+  const date = parseLocalCalendarDate(key);
+  return date ? format(date, "EEE") : raw;
+}
+
+export function weeklyQuietCaption(
+  data: WeeklyActivityPoint[] | null | undefined,
+): string | null {
+  if (!data || data.length === 0) {
+    return "No activity recorded in the last seven days.";
+  }
+  if (data.every((point) => point.tasksCompleted === 0)) {
+    return "No tasks completed in the last seven days.";
+  }
+  return null;
 }
 
 export function scoreTrendSummary<T extends { percentage: number }>(

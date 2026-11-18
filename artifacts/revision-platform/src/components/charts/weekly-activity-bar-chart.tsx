@@ -8,6 +8,7 @@ import {
   YAxis,
 } from "recharts";
 import {
+  compactWeekdayTick,
   weeklyActivitySummary,
   type WeeklyActivityPoint,
 } from "@/lib/chart-summaries";
@@ -20,13 +21,39 @@ type WeeklyActivityBarChartProps = {
   compact?: boolean;
 };
 
+type AxisTickProps = {
+  x?: number;
+  y?: number;
+  payload?: { value?: unknown };
+};
+
+/**
+ * Recharts still paints `payload.value` for style-object ticks. Compact labels
+ * must be rendered here so weekday abbreviations actually appear.
+ */
+export function CompactWeekdayAxisTick({ x = 0, y = 0, payload }: AxisTickProps) {
+  return (
+    <text
+      x={x}
+      y={y}
+      dy={10}
+      textAnchor="middle"
+      className="fill-current"
+      fontSize={10}
+      opacity={0.45}
+    >
+      {compactWeekdayTick(payload?.value)}
+    </text>
+  );
+}
+
 export default function WeeklyActivityBarChart({
   data,
   height,
   compact = false,
 }: WeeklyActivityBarChartProps) {
   const margin = compact
-    ? { top: 4, right: 4, left: 0, bottom: 0 }
+    ? { top: 4, right: 8, left: 0, bottom: 4 }
     : { top: 10, right: 10, left: 0, bottom: 0 };
   const gradientId = "weekProgressFill";
   const summary = weeklyActivitySummary(data);
@@ -47,11 +74,17 @@ export default function WeeklyActivityBarChart({
             dataKey="date"
             axisLine={false}
             tickLine={false}
-            tick={{
-              fontSize: compact ? 10 : 12,
-              fill: "currentColor",
-              opacity: compact ? 0.45 : 0.5,
-            }}
+            interval={compact ? 0 : undefined}
+            tick={
+              compact
+                ? CompactWeekdayAxisTick
+                : {
+                    fontSize: 12,
+                    fill: "currentColor",
+                    opacity: 0.5,
+                  }
+            }
+            tickFormatter={compact ? compactWeekdayTick : undefined}
             dy={compact ? 0 : 10}
           />
           <YAxis

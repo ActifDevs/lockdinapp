@@ -284,3 +284,91 @@ describe("Dashboard what's next", () => {
     expect(screen.queryByText("Upcoming exams")).toBeNull();
   });
 });
+
+describe("Dashboard progress and activity", () => {
+  it("shows compact paper rows, week caption, and a quiet achievements heading", () => {
+    api.summary.mockReturnValue(
+      ok({
+        ...summary,
+        recentPerformance: [
+          {
+            subjectId: 2,
+            subjectName: "Physics",
+            subjectColor: "#2563eb",
+            paperLabel: "9702/1 — May/June 2024",
+            previousPercentage: 50,
+            latestPercentage: 80,
+            change: 30,
+          },
+        ],
+      }),
+    );
+    api.progress.mockReturnValue(
+      ok({
+        ...progress,
+        weeklyTasksCompleted: [
+          { date: "2026-11-12", tasksCompleted: 0 },
+          { date: "2026-11-13", tasksCompleted: 0 },
+          { date: "2026-11-14", tasksCompleted: 0 },
+          { date: "2026-11-15", tasksCompleted: 0 },
+          { date: "2026-11-16", tasksCompleted: 0 },
+          { date: "2026-11-17", tasksCompleted: 0 },
+          { date: "2026-11-18", tasksCompleted: 0 },
+        ],
+      }),
+    );
+
+    renderPage();
+
+    expect(
+      screen.getByRole("heading", { name: "Your Progress & Activity" }),
+    ).toBeVisible();
+    expect(screen.getByText("9702/1 — May/June 2024")).toBeVisible();
+    expect(screen.getByText("80%")).toBeVisible();
+    expect(screen.getByText("30%")).toBeVisible();
+    expect(screen.getByRole("link", { name: /view all/i })).toHaveAttribute(
+      "href",
+      "/past-papers",
+    );
+    expect(
+      screen.queryByRole("link", { name: /9702\/1 — May\/June 2024/i }),
+    ).toBeNull();
+    expect(screen.getByRole("link", { name: /details/i })).toHaveAttribute(
+      "href",
+      "/progress",
+    );
+    expect(
+      screen.getByText("No tasks completed in the last seven days."),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Achievements" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("progressbar", { name: "Achievements unlocked" }),
+    ).toBeNull();
+    expect(screen.getByText("First A Grade")).toBeVisible();
+    expect(screen.getByText("Next: 30 Day Streak")).toBeVisible();
+    expect(screen.queryByText("Start building your paper bank")).toBeNull();
+  });
+
+  it("keeps compact paper empty-state navigation", () => {
+    renderPage();
+
+    expect(
+      screen.getByRole("link", { name: /log your first paper/i }),
+    ).toHaveAttribute("href", "/past-papers");
+    expect(screen.getByRole("link", { name: /view all/i })).toHaveAttribute(
+      "href",
+      "/past-papers",
+    );
+    expect(screen.getByText("This week")).toBeVisible();
+    expect(
+      screen.getByText("No activity recorded in the last seven days."),
+    ).toBeVisible();
+    expect(screen.queryByText("Start building your paper bank")).toBeNull();
+    const papersHeading = screen.getByRole("heading", { name: "Recent papers" });
+    const papersCard = papersHeading.closest(".dash-insight-card");
+    expect(papersCard).toHaveClass("lg:self-start");
+    expect(papersCard).not.toHaveClass("h-full");
+  });
+});

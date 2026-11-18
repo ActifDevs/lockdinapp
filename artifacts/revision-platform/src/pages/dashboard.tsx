@@ -19,7 +19,6 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { RichEmptyState } from "@/components/rich-empty-state";
 import { InsightCard } from "@/components/insight-card";
 import { formatExamChip } from "@/components/dashboard/dashboard-hero";
 import { SubjectMasteryGrid } from "@/components/dashboard/subject-mastery-grid";
@@ -37,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "@/hooks/use-toast";
 import { ChartSkeleton } from "@/components/charts/chart-skeleton";
+import { weeklyQuietCaption } from "@/lib/chart-summaries";
 import {
   buildAchievements,
   computeLevel,
@@ -354,8 +354,8 @@ export default function Dashboard() {
       },
     ];
   });
-  const hasWeeklyChart =
-    !!progressOverview && progressOverview.weeklyTasksCompleted.length > 0;
+  const weekPoints = progressOverview.weeklyTasksCompleted ?? [];
+  const weekCaption = weeklyQuietCaption(weekPoints);
 
   return (
     <div className="space-y-9 pb-10 sm:space-y-12">
@@ -422,13 +422,12 @@ export default function Dashboard() {
         <SectionHeader
           titleId="activity-heading"
           title="Your Progress & Activity"
-          subtitle="Recent papers, this week, and achievements."
+          subtitle="Logged papers, this week, milestones."
         />
 
         <div className="grid gap-4 lg:grid-cols-12 lg:gap-5">
           <InsightCard
-            className="h-full lg:col-span-5"
-            tint="deep"
+            className="dash-quiet-card lg:col-span-7 lg:self-start"
             title={
               <CardTitle icon={BarChart2} tone="papers">
                 Recent papers
@@ -437,24 +436,29 @@ export default function Dashboard() {
             action={{ label: "View all", href: "/past-papers" }}
           >
             {derived.recentPerformance.length === 0 ? (
-              <RichEmptyState
-                scene="papers"
-                title="Start building your paper bank"
-                description="Log timed past papers to unlock trends, predicted grades, and sharper focus for every subject."
-                actionLabel="Log your first paper"
-                actionHref="/past-papers"
-                variant="blue"
-                className="py-6"
-              />
+              <div className="space-y-2 py-1">
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  No papers logged yet. Timed past papers unlock trends and
+                  sharper focus.
+                </p>
+                <Link href="/past-papers" className="section-link">
+                  Log your first paper
+                  <ChevronRight
+                    className="h-4 w-4"
+                    aria-hidden
+                    strokeWidth={2.25}
+                  />
+                </Link>
+              </div>
             ) : (
               <div className="dash-list-rows">
-                {derived.recentPerformance.map((perf, i) => {
+                {derived.recentPerformance.map((perf) => {
                   const accent = resolveSubjectAccent({
                     name: perf.subjectName,
                     color: perf.subjectColor,
                   });
                   return (
-                    <div key={i} className="dash-list-row">
+                    <div key={perf.subjectId} className="dash-list-row">
                       <div className="flex min-w-0 items-center gap-2.5">
                         <span
                           className="h-2 w-2 shrink-0 rounded-full"
@@ -496,7 +500,7 @@ export default function Dashboard() {
                             {Math.abs(perf.change)}%
                           </span>
                         )}
-                        <p className="w-12 text-right text-lg font-bold leading-none tabular">
+                        <p className="w-12 text-right text-base font-semibold leading-none tabular sm:text-lg sm:font-bold">
                           {perf.latestPercentage}%
                         </p>
                       </div>
@@ -507,33 +511,31 @@ export default function Dashboard() {
             )}
           </InsightCard>
 
-          <div
-            className={cn(
-              "grid gap-4 lg:col-span-7",
-              hasWeeklyChart ? "md:grid-cols-2" : "md:grid-cols-1",
-            )}
-          >
-            {progressOverview &&
-              progressOverview.weeklyTasksCompleted.length > 0 && (
-                <InsightCard
-                  className="h-full"
-                  tint="cream"
-                  title={
-                    <CardTitle icon={BarChart2} tone="progress">
-                      This week
-                    </CardTitle>
-                  }
-                  action={{ label: "Details", href: "/progress" }}
-                >
-                  <Suspense fallback={<ChartSkeleton height={140} />}>
-                    <WeeklyActivityBarChart
-                      data={progressOverview.weeklyTasksCompleted}
-                      height={140}
-                      compact
-                    />
-                  </Suspense>
-                </InsightCard>
-              )}
+          <div className="grid gap-4 lg:col-span-5">
+            <InsightCard
+              className="dash-quiet-card h-full"
+              title={
+                <CardTitle icon={BarChart2} tone="progress">
+                  This week
+                </CardTitle>
+              }
+              action={{ label: "Details", href: "/progress" }}
+            >
+              {weekPoints.length > 0 ? (
+                <Suspense fallback={<ChartSkeleton height={140} />}>
+                  <WeeklyActivityBarChart
+                    data={weekPoints}
+                    height={140}
+                    compact
+                  />
+                </Suspense>
+              ) : null}
+              {weekCaption ? (
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  {weekCaption}
+                </p>
+              ) : null}
+            </InsightCard>
 
             <AchievementPanel
               achievements={derived.achievements}
@@ -565,6 +567,11 @@ function DashboardSkeleton() {
       </div>
 
       <div className="dash-skeleton h-28 rounded-[1.25rem]" />
+
+      <div className="grid gap-4 lg:grid-cols-12">
+        <div className="dash-skeleton h-36 rounded-[1.25rem] lg:col-span-7" />
+        <div className="dash-skeleton h-36 rounded-[1.25rem] lg:col-span-5" />
+      </div>
     </div>
   );
 }
