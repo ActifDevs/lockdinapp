@@ -74,7 +74,12 @@ router.get(
       return;
     }
 
-    const { data: rows, error } = await listUserTaskRows(client, userId);
+    const [tasksResult, pastPapersResult, examsResult] = await Promise.all([
+      listUserTaskRows(client, userId),
+      listUserPastPaperRows(client, userId),
+      listUserExamDateRows(client, userId),
+    ]);
+    const { data: rows, error } = tasksResult;
     if (error) {
       sendSupabaseError(res, error, "dashboard_tasks");
       return;
@@ -83,17 +88,14 @@ router.get(
     const allTasks = mappedUserTasks(rows);
 
     const { data: pastPaperRows, error: pastPaperError } =
-      await listUserPastPaperRows(client, userId);
+      pastPapersResult;
     if (pastPaperError) {
       sendSupabaseError(res, pastPaperError, "dashboard_past_paper_attempts");
       return;
     }
     const attempts = await enrichPastPaperRows(pastPaperRows);
 
-    const { data: examRows, error: examError } = await listUserExamDateRows(
-      client,
-      userId,
-    );
+    const { data: examRows, error: examError } = examsResult;
     if (examError) {
       sendSupabaseError(res, examError, "dashboard_exam_dates");
       return;
