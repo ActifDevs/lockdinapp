@@ -2,6 +2,18 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 
+const reads = vi.hoisted(() => {
+  const state = { active: 0, peak: 0 };
+  const list = async () => {
+    state.active++;
+    state.peak = Math.max(state.peak, state.active);
+    await Promise.resolve();
+    state.active--;
+    return { data: [], error: null };
+  };
+  return { state, list };
+});
+
 const profileName = vi.hoisted(() => ({
   value: "Ada Student" as string | null,
 }));
@@ -58,7 +70,7 @@ vi.mock("../lib/user-subject-progress.js", () => ({
 }));
 
 vi.mock("../lib/user-tasks.js", () => ({
-  listUserTaskRows: async () => ({ data: [], error: null }),
+  listUserTaskRows: reads.list,
   mappedUserTasks: () => [],
 }));
 
@@ -67,12 +79,12 @@ vi.mock("../lib/enrich-task.js", () => ({
 }));
 
 vi.mock("../lib/past-paper-attempts.js", () => ({
-  listUserPastPaperRows: async () => ({ data: [], error: null }),
+  listUserPastPaperRows: reads.list,
   enrichPastPaperRows: async () => [],
 }));
 
 vi.mock("../lib/exam-dates.js", () => ({
-  listUserExamDateRows: async () => ({ data: [], error: null }),
+  listUserExamDateRows: reads.list,
   filterUpcomingExamRows: () => [],
   enrichExamDateRows: async () => [],
 }));
@@ -84,6 +96,13 @@ describe("GET /api/dashboard/summary — empty / new-user DB", () => {
     const { default: dashboardRouter } = await import("./dashboard.js");
     app = express();
     app.use("/api", dashboardRouter);
+  });
+
+  it("overlaps independent caller-owned reads after profile resolution", async () => {
+    reads.state.peak = 0;
+    const response = await request(app).get("/api/dashboard/summary");
+    expect(response.status).toBe(200);
+    expect(reads.state.peak).toBe(3);
   });
 
   it("falls back to Student only when the caller profile name is null", async () => {
