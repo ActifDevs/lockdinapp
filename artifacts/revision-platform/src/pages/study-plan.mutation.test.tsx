@@ -222,6 +222,26 @@ async function openAndFill() {
   return dialog;
 }
 
+describe("Study Plan task aggregate invalidation", () => {
+  it.each(["update", "remove"] as const)(
+    "invalidates all three query families after %s succeeds",
+    (operation) => {
+      const { client } = renderPage();
+      const keys = [
+        ["/api/tasks", undefined],
+        ["/api/dashboard/summary"],
+        ["/api/progress/overview"],
+      ];
+      for (const key of keys) client.setQueryData(key, []);
+      const [options] = api[operation].mock.lastCall!;
+      options.mutation.onSuccess();
+      for (const key of keys) {
+        expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+      }
+    },
+  );
+});
+
 describe("Study Plan create-task mutations", () => {
   it("keeps the dialog open with entered values and safe modal error", async () => {
     const { rerender, client } = renderPage();

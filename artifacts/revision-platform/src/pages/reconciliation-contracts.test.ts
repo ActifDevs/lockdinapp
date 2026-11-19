@@ -35,15 +35,6 @@ describe("Slice 5 frontend reconciliation contracts", () => {
     );
   });
 
-  it("all Study Plan task mutations invalidate task, dashboard, and progress families", () => {
-    const text = source("study-plan.tsx");
-    expect(text).toContain("invalidateTaskAggregates");
-    expect(text.match(/invalidateTaskAggregates\(\)/g)).toHaveLength(3);
-    expect(text).toContain("getListTasksQueryKey()");
-    expect(text).toContain("getGetDashboardSummaryQueryKey()");
-    expect(text).toContain("getGetProgressOverviewQueryKey()");
-  });
-
   it("Settings writes membership response and invalidates dependent aggregates", () => {
     const text = source("settings.tsx");
     expect(text).toContain(
