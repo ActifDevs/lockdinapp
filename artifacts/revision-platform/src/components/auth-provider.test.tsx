@@ -460,6 +460,58 @@ describe("AuthProvider", () => {
     expect(getCurrentProfile.mock.calls.length).toBe(calls);
   });
 
+  it("keeps the authenticated page usable while refocus revalidates its profile", async () => {
+    const session = sessionFor("user-a");
+    getSession.mockResolvedValue({ data: { session } });
+    getCurrentProfile.mockResolvedValueOnce(onboardedProfile);
+    renderAuth();
+    await waitFor(() =>
+      expect(screen.getByTestId("onboarded")).toHaveTextContent("true"),
+    );
+
+    let finish!: (profile: typeof onboardedProfile) => void;
+    getCurrentProfile.mockImplementation(
+      () => new Promise((resolve) => { finish = resolve; }),
+    );
+    await act(async () => {
+      authListener?.("SIGNED_IN", session);
+    });
+    expect(getCurrentProfile).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    expect(screen.getByTestId("user-id")).toHaveTextContent("user-a");
+    await act(async () => {
+      finish({ ...onboardedProfile, fullName: "Grace Hopper" });
+    });
+    expect(screen.getByTestId("first-name")).toHaveTextContent("Grace");
+  });
+
+  it("keeps initial profile resolution blocking across repeated session events", async () => {
+    const session = sessionFor("user-a");
+    getSession.mockResolvedValue({ data: { session } });
+    getCurrentProfile.mockImplementation(() => new Promise(() => {}));
+    renderAuth();
+    await waitFor(() => expect(getCurrentProfile).toHaveBeenCalledTimes(1));
+    for (const event of ["INITIAL_SESSION", "SIGNED_IN", "TOKEN_REFRESHED"]) {
+      await act(async () => {
+        authListener?.(event, session);
+      });
+      expect(screen.getByTestId("loading")).toHaveTextContent("true");
+      expect(getCurrentProfile).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("ignores a delayed bootstrap session after a sign-out notification", async () => {
+    let finish!: (value: unknown) => void;
+    getSession.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    renderAuth();
+    await act(async () => {
+      authListener?.("SIGNED_OUT", null);
+      finish({ data: { session: sessionFor("user-a") } });
+    });
+    expect(screen.getByTestId("authenticated")).toHaveTextContent("false");
+    expect(getCurrentProfile).not.toHaveBeenCalled();
+  });
+
   it("clears React Query cache including exam-date keys on auth identity switch", async () => {
     getCurrentProfile.mockResolvedValue({
       id: "user-b",

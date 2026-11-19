@@ -139,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const profileRequestId = useRef(0);
+  const profilePending = useRef(false);
   const loggingOut = useRef(false);
   const sessionUserIdRef = useRef<string | null>(null);
 
@@ -151,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearProtectedState = useCallback(() => {
     profileRequestId.current += 1;
+    profilePending.current = false;
     sessionUserIdRef.current = null;
     setSession(null);
     setUser(null);
@@ -185,8 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearProtectedState, setLocation]);
 
   const fetchProfileForUser = useCallback(
-    async (sessionUser: SupabaseUser) => {
-      const requestId = ++profileRequestId.current;
+    async (sessionUser: SupabaseUser, requestId: number) => {
       const userId = sessionUser.id;
 
       for (const delayMs of PROFILE_RETRY_DELAYS_MS) {
@@ -206,6 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
           applyProfile(sessionUser, profile);
+          profilePending.current = false;
           setIsLoading(false);
           return;
         } catch {
@@ -225,21 +227,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const beginProfileResolution = useCallback(
-    (sessionUser: SupabaseUser) => {
+    (sessionUser: SupabaseUser, background = false) => {
       const previousUserId = sessionUserIdRef.current;
       const nextUserId = sessionUser.id;
 
-      setIsLoading(true);
+      if (!background) setIsLoading(true);
       if (previousUserId && previousUserId !== nextUserId) {
         queryClient.clear();
         setUser(null);
       }
       sessionUserIdRef.current = nextUserId;
+      profilePending.current = true;
+      const requestId = ++profileRequestId.current;
       void emitAccountCreatedIfPending(nextUserId);
 
       // Keep onAuthStateChange synchronous; resolve outside the callback.
       queueMicrotask(() => {
-        void fetchProfileForUser(sessionUser);
+        void fetchProfileForUser(sessionUser, requestId);
       });
     },
     [fetchProfileForUser, queryClient],
@@ -258,48 +262,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void logout();
     });
 
+    let listenerDelivered = false;
+    let disposed = false;
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      listenerDelivered = true;
       setSession(nextSession);
 
       if (!nextSession?.user) {
-        sessionUserIdRef.current = null;
-        setUser(null);
-        if (event === "SIGNED_OUT") {
-          queryClient.clear();
-        }
-        setIsLoading(false);
+        clearProtectedState();
         return;
       }
 
-      if (
-        event === "INITIAL_SESSION" ||
-        event === "SIGNED_IN" ||
-        event === "USER_UPDATED" ||
-        event === "PASSWORD_RECOVERY"
-      ) {
+      if (sessionUserIdRef.current !== nextSession.user.id) {
         beginProfileResolution(nextSession.user);
         return;
       }
 
-      // TOKEN_REFRESHED and other events: keep existing profile state.
-      sessionUserIdRef.current = nextSession.user.id;
-      setIsLoading(false);
+      if (event === "SIGNED_IN" && !profilePending.current) {
+        // Supabase also emits SIGNED_IN when an existing tab regains visibility.
+        beginProfileResolution(nextSession.user, true);
+      } else if (event === "USER_UPDATED" || event === "PASSWORD_RECOVERY") {
+        beginProfileResolution(nextSession.user);
+      }
+      // A same-account token refresh must not release an initial profile gate.
     });
 
     // Bootstrap when the listener has not yet delivered INITIAL_SESSION (tests / edge cases).
     void supabase.auth.getSession().then(({ data }) => {
+      if (disposed || listenerDelivered) return;
       const initial = data.session;
       if (!initial?.user) {
-        if (!sessionUserIdRef.current) {
-          setSession(null);
-          setIsLoading(false);
-        }
-        return;
-      }
-      // Auth listener already started resolution for this user.
-      if (sessionUserIdRef.current === initial.user.id) {
+        setSession(null);
+        setIsLoading(false);
         return;
       }
       setSession(initial);
@@ -307,6 +303,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => {
+      disposed = true;
+      profileRequestId.current += 1;
+      profilePending.current = false;
+      sessionUserIdRef.current = null;
       subscription.unsubscribe();
       setAuthTokenGetter(null);
       setUnauthorizedHandler(null);
