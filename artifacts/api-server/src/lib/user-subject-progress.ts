@@ -1,4 +1,4 @@
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db, subjectsTable, syllabusVersionsTable } from "@workspace/db";
 import { listTopicIdsForSyllabusVersions } from "./syllabus-topic-counts";
 import { REFERENCE_CONTEXT_UNAVAILABLE } from "./resolve-reference-syllabus-version";
@@ -144,22 +144,20 @@ export async function getUserSubjectProgress(
   }
 
   const versionIds = memberships.map((row) => row.syllabus_version_id);
-  const [subjects, versions, topics] = await Promise.all([
-    db
-      .select({
-        id: subjectsTable.id,
-        name: subjectsTable.name,
-        color: subjectsTable.color,
-      })
-      .from(subjectsTable)
-      .where(inArray(subjectsTable.id, enrolledSubjectIds)),
+  const [versions, topics] = await Promise.all([
     db
       .select({
         id: syllabusVersionsTable.id,
         subjectId: syllabusVersionsTable.subjectId,
         lifecycle: syllabusVersionsTable.lifecycle,
+        subject: {
+          id: subjectsTable.id,
+          name: subjectsTable.name,
+          color: subjectsTable.color,
+        },
       })
       .from(syllabusVersionsTable)
+      .innerJoin(subjectsTable, eq(subjectsTable.id, syllabusVersionsTable.subjectId))
       .where(inArray(syllabusVersionsTable.id, versionIds)),
     listTopicIdsForSyllabusVersions(versionIds),
   ]);
@@ -192,7 +190,7 @@ export async function getUserSubjectProgress(
   return {
     data: aggregateUserSubjectProgress(
       enrolledSubjectIds,
-      subjects,
+      versions.map((version) => version.subject),
       topics,
       progressRows,
     ),
